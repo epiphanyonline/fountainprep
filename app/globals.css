@@ -211,3 +211,149 @@ button {
     padding: 24px 16px;
   }
 }
+
+.two-col-grid {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+@media (max-width: 900px) {
+  .two-col-grid,
+  .hero-grid,
+  .three-col-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid,
+  .three-col-grid,
+  .hero-grid,
+  .two-col-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  background: rgba(248, 246, 252, 0.94);
+  border-bottom: 1px solid rgba(111, 66, 193, 0.1);
+}
+
+.site-nav {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-link {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.brand-link span {
+  color: var(--primary);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(111, 66, 193, 0.14);
+  border-radius: 16px;
+  padding: 11px 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-btn-light {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text);
+}
+
+.nav-btn-primary {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  color: #fff;
+  border-color: transparent;
+}
+
+@media (max-width: 700px) {
+  .site-nav {
+    min-height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    align-items: flex-start;
+  }
+
+  .brand-link {
+    font-size: 20px;
+    padding-top: 7px;
+  }
+
+  .nav-actions {
+    max-width: 74%;
+    gap: 6px;
+  }
+
+  .nav-btn {
+    font-size: 12px;
+    padding: 8px 9px;
+    border-radius: 12px;
+  }
+
+  .page-wrap {
+    padding: 18px 10px;
+  }
+
+  .container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .card {
+    border-radius: 22px;
+  }
+
+  .page-title {
+    font-size: clamp(32px, 10vw, 44px) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.05em !important;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .page-subtitle {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+  }
+}
+
+.hero-title {
+  font-size: clamp(42px, 7vw, 58px) !important;
+  max-width: 720px;
+}
+
+@media (max-width: 700px) {
+  .hero-title {
+    font-size: 38px !important;
+    line-height: 1.06 !important;
+  }
+}
