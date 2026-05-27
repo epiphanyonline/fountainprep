@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { Menu, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 type UserProfile = {
@@ -13,9 +14,11 @@ type UserProfile = {
 
 export default function Navbar() {
   const router = useRouter()
+  const pathname = usePathname()
 
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     async function loadProfile() {
@@ -55,220 +58,345 @@ export default function Navbar() {
     }
   }, [router])
 
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
   async function handleLogout() {
     await supabase.auth.signOut()
-
     setProfile(null)
-
+    setMenuOpen(false)
     router.push('/login')
     router.refresh()
   }
 
   function dashboardHref() {
     if (!profile) return '/login'
-
     if (profile.role === 'ADMIN') return '/admin'
-
     if (profile.role === 'TUTOR') return '/tutor/dashboard'
-
     if (profile.role === 'PARENT') return '/parent/dashboard'
-
     return '/account'
   }
+
+  const publicLinks = [
+    { label: 'Home', href: '/' },
+    { label: 'Subjects', href: '/subjects' },
+    { label: 'Parents', href: '/signup/parent' },
+    { label: 'Tutors', href: '/signup/tutor' },
+  ]
+
+  const authedLinks = [
+    ...(profile?.role === 'PARENT'
+      ? [{ label: 'Start Learning', href: '/parent/students' }]
+      : []),
+    ...(profile?.role === 'TUTOR'
+      ? [{ label: 'Availability', href: '/tutor/availability' }]
+      : []),
+    { label: 'Dashboard', href: dashboardHref() },
+    { label: 'Account', href: '/account' },
+  ]
+
+  const links = !loading && profile ? authedLinks : publicLinks
 
   return (
     <header className="site-header">
       <div className="site-nav container">
         <Link href="/" className="brand-link" aria-label="Fountain Prep home">
-          <span className="brand-main">Fountain</span>
-          <span className="brand-accent">Prep</span>
+          <span className="brand-mark">F</span>
+          <span className="brand-text">
+            <span className="brand-main">Fountain</span>
+            <span className="brand-accent">Prep</span>
+          </span>
         </Link>
 
-        <nav className="nav-actions" aria-label="Main navigation">
-          <Link href="/" className="nav-btn nav-btn-light">
-            Home
-          </Link>
+        <nav className="desktop-nav" aria-label="Main navigation">
+          {links.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={
+                pathname === item.href
+                  ? 'nav-btn nav-btn-light active'
+                  : 'nav-btn nav-btn-light'
+              }
+            >
+              {item.label}
+            </Link>
+          ))}
 
           {!loading && !profile ? (
-            <>
-              <Link href="/subjects" className="nav-btn nav-btn-light">
-                Subjects
-              </Link>
-
-              <Link href="/signup/parent" className="nav-btn nav-btn-light">
-                Parents
-              </Link>
-
-              <Link href="/signup/tutor" className="nav-btn nav-btn-light">
-                Tutors
-              </Link>
-
-              <Link href="/login" className="nav-btn nav-btn-primary">
-                Login
-              </Link>
-            </>
+            <Link href="/login" className="nav-btn nav-btn-primary">
+              Login
+            </Link>
           ) : null}
 
           {!loading && profile ? (
-            <>
-              {profile.role === 'PARENT' ? (
-                <Link
-                  href="/parent/students"
-                  className="nav-btn nav-btn-light"
-                >
-                  Start Learning
-                </Link>
-              ) : null}
+            <button
+              type="button"
+              className="nav-btn nav-btn-primary"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          ) : null}
+        </nav>
 
-              {profile.role === 'TUTOR' ? (
-                <Link
-                  href="/tutor/availability"
-                  className="nav-btn nav-btn-light"
-                >
-                  Availability
-                </Link>
-              ) : null}
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setMenuOpen((value) => !value)}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
 
-              <Link href={dashboardHref()} className="nav-btn nav-btn-light">
-                Dashboard
+      {menuOpen ? (
+        <div className="mobile-panel">
+          <div className="mobile-panel-inner container">
+            {links.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  pathname === item.href
+                    ? 'mobile-link active'
+                    : 'mobile-link'
+                }
+              >
+                {item.label}
               </Link>
+            ))}
 
-              <Link href="/account" className="nav-btn nav-btn-light">
-                Account
+            {!loading && !profile ? (
+              <Link href="/login" className="mobile-link primary">
+                Login
               </Link>
+            ) : null}
 
+            {!loading && profile ? (
               <button
                 type="button"
-                className="nav-btn nav-btn-primary"
+                className="mobile-link primary"
                 onClick={handleLogout}
               >
                 Logout
               </button>
-            </>
-          ) : null}
-        </nav>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
-        <style jsx>{`
-          .brand-link {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            text-decoration: none;
-            font-size: 34px;
-            font-weight: 900;
-            letter-spacing: -0.05em;
-            line-height: 1;
-            white-space: nowrap;
-          }
+      <style jsx>{`
+        .site-header {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          background: rgba(255, 255, 255, 0.88);
+          border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+          backdrop-filter: blur(18px);
+        }
 
-          .brand-main {
-            color: #1f1230;
-          }
+        .site-nav {
+          min-height: 76px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+        }
 
-          .brand-accent {
-            color: #7c3aed;
-          }
+        .brand-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          min-width: 0;
+        }
 
-          .site-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(16px);
-            background: rgba(255, 255, 255, 0.82);
-            border-bottom: 1px solid rgba(124, 58, 237, 0.08);
-          }
+        .brand-mark {
+          width: 42px;
+          height: 42px;
+          border-radius: 16px;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #7c3aed, #6d28d9);
+          color: white;
+          font-size: 20px;
+          font-weight: 950;
+          box-shadow: 0 12px 28px rgba(109, 40, 217, 0.22);
+        }
 
+        .brand-text {
+          display: inline-flex;
+          align-items: baseline;
+          letter-spacing: -0.055em;
+          line-height: 1;
+          white-space: nowrap;
+          font-size: 34px;
+          font-weight: 950;
+        }
+
+        .brand-main {
+          color: #1f1230;
+        }
+
+        .brand-accent {
+          color: #7c3aed;
+        }
+
+        .desktop-nav {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .nav-btn {
+          min-height: 46px;
+          padding: 0 17px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          font-weight: 850;
+          transition: all 0.2s ease;
+          border: none;
+          cursor: pointer;
+          font-size: 15px;
+          white-space: nowrap;
+        }
+
+        .nav-btn-light {
+          background: rgba(255, 255, 255, 0.86);
+          border: 1px solid rgba(124, 58, 237, 0.12);
+          color: #251634;
+        }
+
+        .nav-btn-light:hover,
+        .nav-btn-light.active {
+          background: #f4edff;
+          color: #6d28d9;
+          border-color: rgba(124, 58, 237, 0.2);
+        }
+
+        .nav-btn-primary {
+          background: linear-gradient(135deg, #7c3aed, #6d28d9);
+          color: white;
+          box-shadow: 0 12px 28px rgba(109, 40, 217, 0.2);
+        }
+
+        .nav-btn-primary:hover {
+          transform: translateY(-1px);
+        }
+
+        .mobile-menu-btn {
+          display: none;
+          width: 46px;
+          height: 46px;
+          border-radius: 18px;
+          border: 1px solid rgba(124, 58, 237, 0.14);
+          background: #ffffff;
+          color: #1f1230;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 10px 24px rgba(55, 35, 95, 0.08);
+        }
+
+        .mobile-panel {
+          display: none;
+          border-top: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.96);
+        }
+
+        .mobile-panel-inner {
+          padding-top: 12px;
+          padding-bottom: 16px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .mobile-link {
+          min-height: 50px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          font-size: 15px;
+          font-weight: 900;
+          color: #251634;
+          background: #ffffff;
+          border: 1px solid rgba(124, 58, 237, 0.12);
+          box-shadow: 0 10px 24px rgba(55, 35, 95, 0.06);
+        }
+
+        .mobile-link.active {
+          background: #f4edff;
+          color: #6d28d9;
+        }
+
+        .mobile-link.primary {
+          grid-column: 1 / -1;
+          border: none;
+          color: #ffffff;
+          background: linear-gradient(135deg, #7c3aed, #6d28d9);
+          box-shadow: 0 14px 30px rgba(109, 40, 217, 0.22);
+          cursor: pointer;
+        }
+
+        @media (max-width: 900px) {
           .site-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 84px;
-            gap: 20px;
+            min-height: 68px;
           }
 
-          .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+          .desktop-nav {
+            display: none;
           }
 
-          .nav-btn {
-            min-height: 48px;
-            padding: 0 18px;
-            border-radius: 16px;
+          .mobile-menu-btn {
             display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
-            font-size: 15px;
           }
 
-          .nav-btn-light {
-            background: rgba(255, 255, 255, 0.88);
-            border: 1px solid rgba(124, 58, 237, 0.08);
-            color: #251634;
+          .mobile-panel {
+            display: block;
           }
 
-          .nav-btn-light:hover {
-            background: #f7f2ff;
+          .brand-text {
+            font-size: 28px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .site-nav {
+            min-height: 64px;
           }
 
-          .nav-btn-primary {
-            background: linear-gradient(135deg, #7c3aed, #6d28d9);
-            color: white;
-            box-shadow: 0 10px 28px rgba(109, 40, 217, 0.2);
+          .brand-text {
+            font-size: 25px;
           }
 
-          .nav-btn-primary:hover {
-            transform: translateY(-1px);
+          .brand-mark {
+            display: inline-flex;
+            width: 38px;
+            height: 38px;
+            border-radius: 15px;
+            font-size: 18px;
           }
 
-          @media (max-width: 900px) {
-            .site-nav {
-              flex-direction: column;
-              align-items: stretch;
-              padding: 14px 0;
-            }
-
-            .brand-link {
-              justify-content: center;
-              font-size: 30px;
-            }
-
-            .nav-actions {
-              width: 100%;
-              justify-content: center;
-            }
-
-            .nav-btn {
-              flex: 1;
-              min-width: 120px;
-            }
+          .mobile-menu-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 16px;
           }
 
-          @media (max-width: 640px) {
-            .nav-actions {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 10px;
-            }
-
-            .nav-btn {
-              width: 100%;
-              min-width: unset;
-            }
-
-            .brand-link {
-              font-size: 28px;
-            }
+          .mobile-panel-inner {
+            grid-template-columns: 1fr;
           }
-        `}</style>
-      </div>
+        }
+      `}</style>
     </header>
   )
 }
