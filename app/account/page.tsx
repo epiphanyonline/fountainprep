@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 
 type UserProfile = {
   id: string
+  public_id: string | null
   email: string | null
   role: string
   full_name: string | null
@@ -18,6 +19,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [message, setMessage] = useState('Loading...')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     async function loadAccount() {
@@ -32,7 +34,7 @@ export default function AccountPage() {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, email, role, full_name')
+        .select('id, public_id, email, role, full_name')
         .eq('id', user.id)
         .single()
 
@@ -55,12 +57,31 @@ export default function AccountPage() {
     router.push('/login')
   }
 
+  async function handleCopyId() {
+    if (!profile?.public_id) return
+
+    await navigator.clipboard.writeText(profile.public_id)
+    setCopied(true)
+
+    setTimeout(() => {
+      setCopied(false)
+    }, 1500)
+  }
+
   function dashboardLink() {
     if (!profile) return '/'
     if (profile.role === 'ADMIN') return '/admin'
     if (profile.role === 'TUTOR') return '/tutor/dashboard'
     if (profile.role === 'PARENT') return '/parent/dashboard'
     return '/'
+  }
+
+  function publicIdLabel() {
+    if (!profile) return 'Account ID'
+    if (profile.role === 'TUTOR') return 'Tutor ID'
+    if (profile.role === 'PARENT') return 'Parent ID'
+    if (profile.role === 'ADMIN') return 'Admin ID'
+    return 'Account ID'
   }
 
   if (loading) {
@@ -92,7 +113,7 @@ export default function AccountPage() {
           <div className="kpi-list" style={{ marginTop: 24 }}>
             <div className="kpi-row">
               <span className="kpi-label">Auth Email</span>
-              <span className="kpi-value">{profile.email}</span>
+              <span className="kpi-value">{profile.email || '-'}</span>
             </div>
 
             <div className="kpi-row">
@@ -106,12 +127,59 @@ export default function AccountPage() {
             </div>
 
             <div className="kpi-row">
-              <span className="kpi-label">User ID</span>
-              <span className="kpi-value">{profile.id}</span>
+              <span className="kpi-label">{publicIdLabel()}</span>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span
+                  className="kpi-value"
+                  style={{
+                    letterSpacing: 0.5,
+                    fontWeight: 900,
+                    color: '#111827',
+                  }}
+                >
+                  {profile.public_id || 'Generating...'}
+                </span>
+
+                {profile.public_id ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyId}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      background: copied ? '#f3edff' : '#ffffff',
+                      color: copied ? '#6f42c1' : '#374151',
+                      borderRadius: 999,
+                      padding: '6px 13px',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 20px rgba(17, 24, 39, 0.06)',
+                    }}
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginTop: 28,
+            }}
+          >
             <Link href={dashboardLink()} className="btn-primary">
               Go to Dashboard
             </Link>
@@ -124,7 +192,9 @@ export default function AccountPage() {
 
         {profile.role === 'ADMIN' ? (
           <section style={{ marginTop: 28 }}>
-            <h2 style={{ fontSize: 30, marginBottom: 16 }}>Admin Control Centre</h2>
+            <h2 style={{ fontSize: 30, marginBottom: 16 }}>
+              Admin Control Centre
+            </h2>
 
             <div
               className="three-col-grid"
@@ -189,9 +259,11 @@ function AdminCard({
   return (
     <Link href={href} className="card" style={{ padding: 24, display: 'block' }}>
       <h3 style={{ margin: 0, fontSize: 22 }}>{title}</h3>
+
       <p className="page-subtitle" style={{ marginTop: 10 }}>
         {text}
       </p>
+
       <p style={{ marginTop: 18, color: '#6f42c1', fontWeight: 800 }}>
         Open →
       </p>
