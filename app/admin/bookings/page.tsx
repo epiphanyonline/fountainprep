@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -19,8 +19,6 @@ type Booking = {
   payment_status: string
   amount_gbp: number | null
   meeting_link: string | null
-  booking_frequency: string | null
-  repeat_weeks: number | null
   created_at: string | null
   student_profiles: {
     full_name: string
@@ -33,22 +31,25 @@ type Booking = {
   } | null
 }
 
-const subjectLabels: Record<string, string> = {
-  maths: 'Maths',
-  english: 'English',
-  science: 'Science',
-  coding: 'Coding',
-  music: 'Music',
-  yoruba: 'Yoruba',
-  igbo: 'Igbo',
-  hausa: 'Hausa',
+type Subject = {
+  id: string
+  name: string
 }
 
+type ProgressNote = {
+  lesson_booking_id: string
+}
+
+type Earning = {
+  booking_id: string
+  status: string
+}
+
+type Filter = 'ALL' | 'UPCOMING' | 'COMPLETED' | 'PENDING_PAYMENT' | 'NEEDS_REPORT' | 'NEEDS_PAYOUT'
+
 const planLabels: Record<string, string> = {
-  payg: 'Pay As You Go',
   monthly: 'Monthly Plan',
   three_month: '3-Month Plan',
-  six_month: '6-Month Plan',
 }
 
 export default function AdminBookingsPage() {
@@ -57,10 +58,15 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('Loading bookings...')
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [filter, setFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'UNASSIGNED'>('ALL')
+  const [subjects, setSubjects] = useState<Record<string, string>>({})
+  const [progressNotes, setProgressNotes] = useState<Record<string, boolean>>({})
+  const [earnings, setEarnings] = useState<Record<string, string>>({})
+  const [filter, setFilter] = useState<Filter>('ALL')
 
   useEffect(() => {
     async function loadBookings() {
+      setLoading(true)
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -97,8 +103,6 @@ export default function AdminBookingsPage() {
           payment_status,
           amount_gbp,
           meeting_link,
-          booking_frequency,
-          repeat_weeks,
           created_at,
           student_profiles (
             full_name,
@@ -110,7 +114,8 @@ export default function AdminBookingsPage() {
             full_name
           )
         `)
-        .order('created_at', { ascending: false })
+        .order('lesson_date', { ascending: false })
+        .order('lesson_time', { ascending: false })
 
       if (error) {
         setMessage(error.message)
@@ -129,6 +134,53 @@ export default function AdminBookingsPage() {
       })) as Booking[]
 
       setBookings(cleanRows)
+
+      const subjectIds = Array.from(new Set(cleanRows.map((row) => row.subject_id)))
+      const bookingIds = cleanRows.map((row) => row.id)
+
+      if (subjectIds.length > 0) {
+        const { data: subjectRows } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', subjectIds)
+
+        const subjectMap: Record<string, string> = {}
+
+        ;((subjectRows ?? []) as Subject[]).forEach((subject) => {
+          subjectMap[subject.id] = subject.name
+        })
+
+        setSubjects(subjectMap)
+      }
+
+      if (bookingIds.length > 0) {
+        const { data: noteRows } = await supabase
+          .from('lesson_progress_notes')
+          .select('lesson_booking_id')
+          .in('lesson_booking_id', bookingIds)
+
+        const noteMap: Record<string, boolean> = {}
+
+        ;((noteRows ?? []) as ProgressNote[]).forEach((note) => {
+          noteMap[note.lesson_booking_id] = true
+        })
+
+        setProgressNotes(noteMap)
+
+        const { data: earningRows } = await supabase
+          .from('tutor_earnings')
+          .select('booking_id, status')
+          .in('booking_id', bookingIds)
+
+        const earningMap: Record<string, string> = {}
+
+        ;((earningRows ?? []) as Earning[]).forEach((earning) => {
+          earningMap[earning.booking_id] = earning.status
+        })
+
+        setEarnings(earningMap)
+      }
+
       setMessage('')
       setLoading(false)
     }
@@ -136,28 +188,52 @@ export default function AdminBookingsPage() {
     loadBookings()
   }, [router])
 
+  const today = new Date().toISOString().split('T')[0]
+
+  const paidBookings = bookings.filter(
+    (b) => b.payment_status === 'PAID' || b.status === 'CONFIRMED' || b.status === 'COMPLETED'
+  )
+
+  const completedBookings = bookings.filter((b) => b.status === 'COMPLETED')
+
+  const upcomingBookings = bookings.filter(
+    (b) =>
+      b.lesson_date &&
+      b.lesson_date >= today &&
+      (b.payment_status === 'PAID' || b.status === 'CONFIRMED')
+  )
+
+  const pendingPaymentBookings = bookings.filter((b) => b.payment_status !== 'PAID')
+
+  const needsReportBookings = bookings.filter(
+    (b) => b.status === 'COMPLETED' && !progressNotes[b.id]
+  )
+
+  const needsPayoutBookings = bookings.filter(
+    (b) => b.status === 'COMPLETED' && earnings[b.id] !== 'paid'
+  )
+
+  const revenue = paidBookings.reduce(
+    (total, b) => total + Number(b.amount_gbp || 0),
+    0
+  )
+
   const filteredBookings = useMemo(() => {
-    if (filter === 'PAID') {
-      return bookings.filter((b) => b.payment_status === 'PAID' || b.status === 'CONFIRMED')
-    }
-
-    if (filter === 'PENDING') {
-      return bookings.filter((b) => b.payment_status !== 'PAID')
-    }
-
-    if (filter === 'UNASSIGNED') {
-      return bookings.filter((b) => !b.tutor_id)
-    }
-
+    if (filter === 'UPCOMING') return upcomingBookings
+    if (filter === 'COMPLETED') return completedBookings
+    if (filter === 'PENDING_PAYMENT') return pendingPaymentBookings
+    if (filter === 'NEEDS_REPORT') return needsReportBookings
+    if (filter === 'NEEDS_PAYOUT') return needsPayoutBookings
     return bookings
-  }, [bookings, filter])
-
-  const paidCount = bookings.filter((b) => b.payment_status === 'PAID' || b.status === 'CONFIRMED').length
-  const pendingCount = bookings.filter((b) => b.payment_status !== 'PAID').length
-  const unassignedCount = bookings.filter((b) => !b.tutor_id).length
-  const revenue = bookings
-    .filter((b) => b.payment_status === 'PAID' || b.status === 'CONFIRMED')
-    .reduce((total, b) => total + Number(b.amount_gbp || 0), 0)
+  }, [
+    filter,
+    bookings,
+    upcomingBookings,
+    completedBookings,
+    pendingPaymentBookings,
+    needsReportBookings,
+    needsPayoutBookings,
+  ])
 
   if (loading) {
     return (
@@ -181,14 +257,16 @@ export default function AdminBookingsPage() {
         <h1 style={styles.title}>Bookings control centre</h1>
 
         <p style={styles.subtitle}>
-          Track every parent booking, tutor assignment, payment state, class time, and meeting link.
+          Track every parent booking, tutor assignment, payment status, lesson report,
+          and tutor payout from one operational view.
         </p>
 
         <div style={styles.kpiGrid}>
           <Kpi label="Total Bookings" value={String(bookings.length)} />
-          <Kpi label="Paid / Confirmed" value={String(paidCount)} />
-          <Kpi label="Pending Payment" value={String(pendingCount)} />
-          <Kpi label="Unassigned" value={String(unassignedCount)} />
+          <Kpi label="Upcoming" value={String(upcomingBookings.length)} />
+          <Kpi label="Completed" value={String(completedBookings.length)} />
+          <Kpi label="Needs Report" value={String(needsReportBookings.length)} />
+          <Kpi label="Needs Payout" value={String(needsPayoutBookings.length)} />
           <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
         </div>
 
@@ -197,35 +275,36 @@ export default function AdminBookingsPage() {
             Back to Admin
           </Link>
 
-          <Link href="/admin/tutors" style={styles.primaryLink}>
-            Tutor Approval
+          <Link href="/admin/tutor-payouts" style={styles.primaryLink}>
+            Tutor Payouts
           </Link>
 
-          <Link href="/admin/payments" style={styles.secondaryLink}>
-            Payments
+          <Link href="/admin/reports" style={styles.secondaryLink}>
+            Reports
           </Link>
         </div>
       </section>
 
       <section style={styles.cardWide}>
         <div style={styles.filterBar}>
-          {(['ALL', 'PAID', 'PENDING', 'UNASSIGNED'] as const).map((item) => (
+          {[
+            ['ALL', 'All'],
+            ['UPCOMING', 'Upcoming'],
+            ['COMPLETED', 'Completed'],
+            ['PENDING_PAYMENT', 'Pending Payment'],
+            ['NEEDS_REPORT', 'Needs Report'],
+            ['NEEDS_PAYOUT', 'Needs Payout'],
+          ].map(([key, label]) => (
             <button
-              key={item}
+              key={key}
               type="button"
-              onClick={() => setFilter(item)}
+              onClick={() => setFilter(key as Filter)}
               style={{
                 ...styles.filterButton,
-                ...(filter === item ? styles.filterButtonActive : {}),
+                ...(filter === key ? styles.filterButtonActive : {}),
               }}
             >
-              {item === 'ALL'
-                ? 'All'
-                : item === 'PAID'
-                  ? 'Paid'
-                  : item === 'PENDING'
-                    ? 'Pending'
-                    : 'Unassigned'}
+              {label}
             </button>
           ))}
         </div>
@@ -233,82 +312,102 @@ export default function AdminBookingsPage() {
         {filteredBookings.length === 0 ? (
           <div style={styles.emptyState}>
             <h3 style={styles.emptyTitle}>No bookings found</h3>
-            <p style={styles.emptyText}>Bookings matching this filter will appear here.</p>
+            <p style={styles.emptyText}>
+              Bookings matching this filter will appear here.
+            </p>
           </div>
         ) : (
-          <div style={styles.bookingList}>
-            {filteredBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))}
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Date</th>
+                  <th style={styles.th}>Student</th>
+                  <th style={styles.th}>Subject</th>
+                  <th style={styles.th}>Tutor</th>
+                  <th style={styles.th}>Plan</th>
+                  <th style={styles.th}>Payment</th>
+                  <th style={styles.th}>Lesson</th>
+                  <th style={styles.th}>Report</th>
+                  <th style={styles.th}>Payout</th>
+                  <th style={styles.th}>Amount</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredBookings.map((booking) => (
+                  <tr key={booking.id}>
+                    <td style={styles.td}>
+                      <strong>{formatDate(booking.lesson_date)}</strong>
+                      <br />
+                      <span style={styles.muted}>{booking.lesson_time || '-'}</span>
+                    </td>
+
+                    <td style={styles.td}>
+                      <strong>
+                        {booking.student_profiles?.full_name || 'Selected child'}
+                      </strong>
+                      <br />
+                      <span style={styles.muted}>
+                        {booking.student_profiles?.country_class_label || ''}
+                      </span>
+                    </td>
+
+                    <td style={styles.td}>
+                      {subjects[booking.subject_id] || 'Selected subject'}
+                    </td>
+
+                    <td style={styles.td}>
+                      {booking.tutor_profiles?.full_name || 'Tutor pending'}
+                    </td>
+
+                    <td style={styles.td}>
+                      {planLabels[booking.plan_id] || 'Learning Plan'}
+                    </td>
+
+                    <td style={styles.td}>
+                      <Badge
+                        text={booking.payment_status === 'PAID' ? 'Paid' : 'Pending'}
+                        tone={booking.payment_status === 'PAID' ? 'green' : 'orange'}
+                      />
+                    </td>
+
+                    <td style={styles.td}>
+                      <Badge
+                        text={booking.status}
+                        tone={booking.status === 'COMPLETED' ? 'green' : 'blue'}
+                      />
+                    </td>
+
+                    <td style={styles.td}>
+                      <Badge
+                        text={progressNotes[booking.id] ? 'Submitted' : 'Missing'}
+                        tone={progressNotes[booking.id] ? 'green' : 'orange'}
+                      />
+                    </td>
+
+                    <td style={styles.td}>
+                      <Badge
+                        text={
+                          earnings[booking.id] === 'paid'
+                            ? 'Paid'
+                            : earnings[booking.id] === 'pending'
+                              ? 'Pending'
+                              : 'Not Created'
+                        }
+                        tone={earnings[booking.id] === 'paid' ? 'green' : 'orange'}
+                      />
+                    </td>
+
+                    <td style={styles.td}>£{Number(booking.amount_gbp || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
     </main>
-  )
-}
-
-function BookingCard({ booking }: { booking: Booking }) {
-  const paid = booking.payment_status === 'PAID' || booking.status === 'CONFIRMED'
-
-  return (
-    <div style={styles.bookingCard}>
-      <div style={styles.bookingTop}>
-        <div>
-          <p style={styles.bookingTitle}>
-            {subjectLabels[booking.subject_id] || booking.subject_id}
-          </p>
-
-          <p style={styles.bookingMeta}>
-            Student: {booking.student_profiles?.full_name || 'Unknown student'}
-          </p>
-
-          <p style={styles.bookingMeta}>
-            Tutor: {booking.tutor_profiles?.full_name || 'Not assigned'}
-          </p>
-        </div>
-
-        <span
-          style={{
-            ...styles.statusBadge,
-            ...(paid ? styles.statusPaid : styles.statusPending),
-          }}
-        >
-          {paid ? 'Paid / Confirmed' : booking.payment_status || 'Pending'}
-        </span>
-      </div>
-
-      <div style={styles.detailGrid}>
-        <Detail label="Plan" value={planLabels[booking.plan_id] || booking.plan_id} />
-        <Detail label="Date" value={booking.lesson_date || '-'} />
-        <Detail label="Time" value={booking.lesson_time || '-'} />
-        <Detail label="Timezone" value={booking.timezone || '-'} />
-        <Detail label="Frequency" value={booking.booking_frequency || 'ONE_OFF'} />
-        <Detail label="Repeat" value={`${booking.repeat_weeks || 1} week(s)`} />
-        <Detail label="Amount" value={`£${Number(booking.amount_gbp || 0).toFixed(2)}`} />
-        <Detail label="Booking ID" value={booking.id.slice(0, 8)} />
-      </div>
-
-      <div style={styles.meetingBox}>
-        <p style={styles.meetingLabel}>Meeting Link</p>
-
-        {booking.meeting_link ? (
-          <a href={booking.meeting_link} target="_blank" rel="noreferrer" style={styles.meetingLink}>
-            {booking.meeting_link}
-          </a>
-        ) : (
-          <p style={styles.missingText}>Missing meeting link</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={styles.detailBox}>
-      <p style={styles.detailLabel}>{label}</p>
-      <p style={styles.detailValue}>{value}</p>
-    </div>
   )
 }
 
@@ -321,12 +420,52 @@ function Kpi({ label, value }: { label: string; value: string }) {
   )
 }
 
-const styles: Record<string, CSSProperties> = {
+function Badge({
+  text,
+  tone,
+}: {
+  text: string
+  tone: 'green' | 'orange' | 'blue'
+}) {
+  const bg =
+    tone === 'green' ? '#ecfdf3' : tone === 'blue' ? '#eff6ff' : '#fff7ed'
+  const color =
+    tone === 'green' ? '#027a48' : tone === 'blue' ? '#1d4ed8' : '#9a3412'
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        padding: '8px 11px',
+        borderRadius: 999,
+        background: bg,
+        color,
+        fontWeight: 900,
+        fontSize: 12,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </span>
+  )
+}
+
+function formatDate(date: string | null) {
+  if (!date) return 'Date pending'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00`))
+}
+
+const styles: Record<string, any> = {
   page: {
     minHeight: '100vh',
-    padding: '42px 20px 90px',
+    padding: '42px 18px 90px',
     background:
-      'radial-gradient(circle at top right, #efe4ff 0, #faf7ff 34%, #f8f5ff 100%)',
+      'radial-gradient(circle at top right, rgba(124,58,237,0.16), transparent 30%), linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff)',
     color: '#21152d',
   },
 
@@ -334,65 +473,66 @@ const styles: Record<string, CSSProperties> = {
     position: 'relative',
     maxWidth: 1180,
     margin: '0 auto',
-    padding: '44px 36px',
-    borderRadius: 34,
+    padding: 48,
+    borderRadius: 40,
     overflow: 'hidden',
     background:
-      'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(248,242,255,0.96))',
-    border: '1px solid rgba(126,87,194,0.16)',
-    boxShadow: '0 30px 90px rgba(88,52,150,0.12)',
+      'radial-gradient(circle at top right, rgba(124,58,237,0.18), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.96))',
+    border: '1px solid rgba(126,87,194,0.14)',
+    boxShadow: '0 30px 90px rgba(71,43,117,0.12)',
   },
 
   heroGlow: {
     position: 'absolute',
-    right: -120,
-    top: -120,
-    width: 360,
-    height: 360,
-    borderRadius: '50%',
+    right: -130,
+    top: -130,
+    width: 380,
+    height: 380,
+    borderRadius: 999,
     background: 'rgba(124,58,237,0.18)',
-    filter: 'blur(20px)',
+    filter: 'blur(24px)',
   },
 
   eyebrow: {
     position: 'relative',
     margin: 0,
-    color: '#7441d8',
-    fontWeight: 900,
-    fontSize: 15,
+    color: '#6d28d9',
+    fontWeight: 950,
+    fontSize: 14,
   },
 
   title: {
     position: 'relative',
     margin: '14px 0 0',
-    fontSize: 'clamp(34px, 5vw, 54px)',
-    lineHeight: 1.05,
+    maxWidth: 900,
+    fontSize: 'clamp(42px, 6vw, 72px)',
+    lineHeight: 0.96,
+    letterSpacing: '-0.06em',
     fontWeight: 950,
-    letterSpacing: -1.2,
   },
 
   subtitle: {
     position: 'relative',
-    maxWidth: 760,
-    margin: '18px 0 0',
+    maxWidth: 820,
+    margin: '20px 0 0',
     color: '#6f637e',
-    fontSize: 17,
-    lineHeight: 1.7,
+    fontSize: 18,
+    lineHeight: 1.75,
   },
 
   kpiGrid: {
     position: 'relative',
-    marginTop: 30,
+    marginTop: 32,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: 16,
   },
 
   kpiCard: {
     padding: 20,
     borderRadius: 24,
-    background: 'rgba(255,255,255,0.9)',
-    border: '1px solid rgba(124,58,237,0.14)',
+    background: 'rgba(255,255,255,0.92)',
+    border: '1px solid rgba(124,58,237,0.12)',
     boxShadow: '0 18px 45px rgba(71,43,117,0.07)',
   },
 
@@ -406,179 +546,113 @@ const styles: Record<string, CSSProperties> = {
   kpiValue: {
     margin: '8px 0 0',
     fontSize: 30,
+    lineHeight: 1,
+    letterSpacing: '-0.05em',
     fontWeight: 950,
   },
 
   actions: {
     position: 'relative',
     display: 'flex',
-    gap: 12,
     flexWrap: 'wrap',
-    marginTop: 28,
+    gap: 12,
+    marginTop: 30,
   },
 
   primaryLink: {
-    display: 'inline-flex',
+    minHeight: 54,
+    padding: '0 24px',
     borderRadius: 18,
-    padding: '15px 22px',
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    fontWeight: 950,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     textDecoration: 'none',
+    fontWeight: 950,
+    background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+    color: 'white',
     boxShadow: '0 16px 38px rgba(124,58,237,0.28)',
   },
 
   secondaryLink: {
-    display: 'inline-flex',
+    minHeight: 54,
+    padding: '0 24px',
     borderRadius: 18,
-    padding: '15px 22px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textDecoration: 'none',
+    fontWeight: 950,
     background: 'white',
     color: '#351e55',
-    fontWeight: 950,
-    textDecoration: 'none',
-    border: '1px solid rgba(124,58,237,0.18)',
+    border: '1px solid rgba(124,58,237,0.16)',
   },
 
   cardWide: {
     maxWidth: 1180,
-    margin: '30px auto 0',
-    padding: 30,
-    borderRadius: 30,
+    margin: '28px auto 0',
+    padding: 32,
+    borderRadius: 34,
     background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
+    border: '1px solid rgba(126,87,194,0.12)',
+    boxShadow: '0 24px 70px rgba(71,43,117,0.09)',
   },
 
   filterBar: {
     display: 'flex',
-    gap: 10,
     flexWrap: 'wrap',
-    marginBottom: 22,
+    gap: 10,
+    marginBottom: 24,
   },
 
   filterButton: {
     border: '1px solid rgba(124,58,237,0.16)',
-    borderRadius: 16,
-    padding: '12px 16px',
     background: 'white',
     color: '#351e55',
-    fontWeight: 950,
+    minHeight: 44,
+    padding: '0 16px',
+    borderRadius: 999,
+    fontWeight: 900,
     cursor: 'pointer',
   },
 
   filterButtonActive: {
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
+    background: '#6d28d9',
     color: 'white',
-    border: '1px solid #6f35d5',
   },
 
-  bookingList: {
-    display: 'grid',
-    gap: 18,
+  tableWrap: {
+    overflowX: 'auto',
   },
 
-  bookingCard: {
-    padding: 22,
-    borderRadius: 26,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
+  table: {
+    width: '100%',
+    minWidth: 1100,
+    borderCollapse: 'collapse',
   },
 
-  bookingTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 18,
-    alignItems: 'flex-start',
-  },
-
-  bookingTitle: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 950,
-  },
-
-  bookingMeta: {
-    margin: '7px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-  },
-
-  statusBadge: {
-    padding: '8px 11px',
-    borderRadius: 999,
-    fontWeight: 950,
-    fontSize: 12,
-    whiteSpace: 'nowrap',
-  },
-
-  statusPaid: {
-    background: '#ecfdf3',
-    color: '#027a48',
-  },
-
-  statusPending: {
-    background: '#fff7ed',
-    color: '#9a3412',
-  },
-
-  detailGrid: {
-    marginTop: 18,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: 12,
-  },
-
-  detailBox: {
+  th: {
+    textAlign: 'left',
     padding: 14,
-    borderRadius: 18,
-    background: 'white',
-    border: '1px solid rgba(124,58,237,0.1)',
-  },
-
-  detailLabel: {
-    margin: 0,
     color: '#7a7088',
-    fontWeight: 850,
     fontSize: 13,
-  },
-
-  detailValue: {
-    margin: '7px 0 0',
     fontWeight: 950,
-    wordBreak: 'break-word',
+    borderBottom: '1px solid rgba(124,58,237,0.12)',
   },
 
-  meetingBox: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 18,
-    background: 'white',
-    border: '1px solid rgba(124,58,237,0.1)',
+  td: {
+    padding: 14,
+    borderBottom: '1px solid rgba(124,58,237,0.08)',
+    color: '#241535',
+    verticalAlign: 'top',
   },
 
-  meetingLabel: {
-    margin: 0,
+  muted: {
     color: '#7a7088',
-    fontWeight: 850,
     fontSize: 13,
-  },
-
-  meetingLink: {
-    display: 'block',
-    marginTop: 8,
-    color: '#6f35d5',
-    fontWeight: 950,
-    wordBreak: 'break-word',
-  },
-
-  missingText: {
-    margin: '8px 0 0',
-    color: '#9a3412',
-    fontWeight: 850,
   },
 
   emptyState: {
-    padding: 24,
+    padding: 26,
     borderRadius: 24,
     background: '#fbf8ff',
     border: '1px solid rgba(124,58,237,0.12)',
@@ -593,6 +667,6 @@ const styles: Record<string, CSSProperties> = {
   emptyText: {
     margin: '10px 0 0',
     color: '#6f637e',
-    lineHeight: 1.6,
+    lineHeight: 1.7,
   },
 }

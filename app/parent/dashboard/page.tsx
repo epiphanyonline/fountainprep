@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -25,6 +25,7 @@ type LessonBooking = {
   status: string
   payment_status: string
   amount_gbp: number | null
+  meeting_link: string | null
 }
 
 type Student = {
@@ -32,35 +33,31 @@ type Student = {
   full_name: string
 }
 
-const subjectLabels: Record<string, string> = {
-  maths: 'Maths',
-  english: 'English',
-  science: 'Science',
-  coding: 'Coding',
-  music: 'Music',
-  yoruba: 'Yoruba',
-  igbo: 'Igbo',
-  hausa: 'Hausa',
+type Subject = {
+  id: string
+  name: string
 }
 
 const planLabels: Record<string, string> = {
-  payg: 'Pay As You Go',
   monthly: 'Monthly Plan',
   three_month: '3-Month Plan',
-  six_month: '6-Month Plan',
 }
 
 export default function ParentDashboardPage() {
   const router = useRouter()
 
-  const [message, setMessage] = useState('Loading...')
+  const [message, setMessage] = useState('Loading your dashboard...')
   const [profile, setProfile] = useState<ParentProfile | null>(null)
   const [studentCount, setStudentCount] = useState(0)
   const [bookings, setBookings] = useState<LessonBooking[]>([])
   const [students, setStudents] = useState<Record<string, string>>({})
+  const [subjects, setSubjects] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadDashboard() {
+      setLoading(true)
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -83,12 +80,15 @@ export default function ParentDashboardPage() {
 
       const { data: parentProfile, error } = await supabase
         .from('parent_profiles')
-        .select('id, full_name, phone, country_of_residence, timezone, preferred_currency')
+        .select(
+          'id, full_name, phone, country_of_residence, timezone, preferred_currency'
+        )
         .eq('user_id', user.id)
         .maybeSingle()
 
       if (error) {
         setMessage(error.message)
+        setLoading(false)
         return
       }
 
@@ -97,8 +97,7 @@ export default function ParentDashboardPage() {
         return
       }
 
-      setProfile(parentProfile)
-      setMessage('')
+      setProfile(parentProfile as ParentProfile)
 
       const { count: studentsTotal } = await supabase
         .from('student_profiles')
@@ -124,24 +123,51 @@ export default function ParentDashboardPage() {
 
       const { data: bookingRows } = await supabase
         .from('lesson_bookings')
-        .select(`
+        .select(
+          `
           id,
-          student_id,
-          subject_id,
-          plan_id,
-          lesson_date,
-          lesson_time,
-          timezone,
-          status,
-          payment_status,
-          amount_gbp
-        `)
+student_id,
+subject_id,
+plan_id,
+lesson_date,
+lesson_time,
+timezone,
+status,
+payment_status,
+amount_gbp,
+meeting_link
+        `
+        )
         .eq('parent_id', user.id)
         .gte('lesson_date', today)
         .order('lesson_date', { ascending: true })
-        .limit(5)
+        .order('lesson_time', { ascending: true })
+        .limit(8)
 
-      setBookings((bookingRows ?? []) as LessonBooking[])
+      const cleanBookings = (bookingRows ?? []) as LessonBooking[]
+      setBookings(cleanBookings)
+
+      const subjectIds = Array.from(
+        new Set(cleanBookings.map((booking) => booking.subject_id).filter(Boolean))
+      )
+
+      if (subjectIds.length > 0) {
+        const { data: subjectRows } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', subjectIds)
+
+        const subjectMap: Record<string, string> = {}
+
+        ;((subjectRows ?? []) as Subject[]).forEach((subject) => {
+          subjectMap[subject.id] = subject.name
+        })
+
+        setSubjects(subjectMap)
+      }
+
+      setMessage('')
+      setLoading(false)
     }
 
     loadDashboard()
@@ -149,91 +175,123 @@ export default function ParentDashboardPage() {
 
   const confirmedLessons = useMemo(() => {
     return bookings.filter(
-      (booking) =>
-        booking.status === 'CONFIRMED' ||
-        booking.payment_status === 'PAID'
+      (booking) => booking.status === 'CONFIRMED' || booking.payment_status === 'PAID'
     )
   }, [bookings])
 
   const pendingPayments = useMemo(() => {
     return bookings.filter(
       (booking) =>
-        booking.payment_status !== 'PAID' &&
-        booking.status !== 'CONFIRMED'
+        booking.payment_status !== 'PAID' && booking.status !== 'CONFIRMED'
     )
   }, [bookings])
 
+  const nextLesson = confirmedLessons[0]
+
+  if (loading) {
+    return (
+      <main className="page">
+        <section className="hero">
+          <p className="eyebrow">Parent Portal</p>
+          <h1>Loading your learning dashboard...</h1>
+          <p className="subtitle">{message}</p>
+        </section>
+
+        <style jsx>{styles}</style>
+      </main>
+    )
+  }
+
   return (
-    <main style={styles.page}>
-      <section style={styles.hero}>
-        <div style={styles.heroGlow} />
+    <main className="page">
+      <section className="hero">
+        <div className="heroGlow" />
 
-        <p style={styles.eyebrow}>Parent Portal</p>
+        <p className="eyebrow">Parent Portal</p>
 
-        <h1 style={styles.title}>
-          Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+        <h1>
+          Welcome back
+          {profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
         </h1>
 
-        <p style={styles.subtitle}>
-          Manage your children, track upcoming lessons, complete pending payments, and book new support.
+        <p className="subtitle">
+          Manage your child’s private 1-to-1 tutoring, upcoming lessons, payments,
+          and learning journey in one place.
         </p>
 
-        <div style={styles.kpiGrid}>
+        <div className="kpiGrid">
           <KpiCard label="Students" value={String(studentCount)} />
           <KpiCard label="Upcoming Lessons" value={String(confirmedLessons.length)} />
           <KpiCard label="Pending Payments" value={String(pendingPayments.length)} />
-          <KpiCard label="Currency" value={profile?.preferred_currency ?? '-'} />
+          <KpiCard label="Learning Type" value="1-to-1" />
         </div>
 
-        <div style={styles.actions}>
-          <Link href="/parent/students" style={styles.primaryLink}>
-            Add or Choose Child
-          </Link>
-
-          <Link href="/parent/students" style={styles.secondaryLink}>
+        <div className="actions">
+          <Link href="/parent/students" className="primaryLink">
             Book New Lesson
           </Link>
 
-          <Link href="/parent/bookings" style={styles.secondaryLink}>
+          <Link href="/parent/students" className="secondaryLink">
+            Add or Choose Child
+          </Link>
+
+          <Link href="/parent/bookings" className="secondaryLink">
             My Bookings
           </Link>
         </div>
       </section>
 
-      <section style={styles.grid}>
-        <div style={styles.card}>
-          <p style={styles.sectionEyebrow}>Upcoming Lessons</p>
+      <section className="topGrid">
+        <div className="card mainCard">
+          <p className="sectionEyebrow">Next Lesson</p>
 
-          {confirmedLessons.length === 0 ? (
-            <EmptyState
-              title="No upcoming lessons yet"
-              text="Once payment is completed, your scheduled lessons will appear here."
-              href="/parent/students"
-              button="Book a Lesson"
-            />
-          ) : (
-            <div style={styles.lessonList}>
-              {confirmedLessons.map((booking) => (
-                <LessonRow
-                  key={booking.id}
-                  booking={booking}
-                  childName={students[booking.student_id] || 'Selected child'}
-                />
-              ))}
+          {nextLesson ? (
+            <div className="nextLesson">
+              <div>
+                <h2>{subjects[nextLesson.subject_id] || 'Selected subject'}</h2>
+                <p>
+                  {students[nextLesson.student_id] || 'Selected child'} •{' '}
+                  {planLabels[nextLesson.plan_id] || 'Learning Plan'}
+                </p>
+              </div>
+
+              <div className="lessonTimeBox">
+  <strong>{formatDate(nextLesson.lesson_date)}</strong>
+  <span>{nextLesson.lesson_time || 'Time pending'}</span>
+
+  {nextLesson.meeting_link ? (
+    <a
+      href={nextLesson.meeting_link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="joinBtn"
+    >
+      Join Lesson
+    </a>
+  ) : null}
+</div>
             </div>
+          ) : (
+            <EmptyState
+              title="No confirmed lessons yet"
+              text="Once payment is completed, your child's upcoming lessons will appear here."
+              href="/parent/students"
+              button="Start Learning"
+            />
           )}
         </div>
 
-        <aside style={styles.card}>
-          <p style={styles.sectionEyebrow}>Profile Summary</p>
-
-          {message ? <p>{message}</p> : null}
+        <aside className="card profileCard">
+          <p className="sectionEyebrow">Family Profile</p>
 
           {profile ? (
-            <div style={styles.profileList}>
+            <div className="profileList">
               <ProfileRow label="Name" value={profile.full_name} />
               <ProfileRow label="Phone" value={profile.phone ?? '-'} />
-              <ProfileRow label="Country" value={profile.country_of_residence ?? '-'} />
+              <ProfileRow
+                label="Country"
+                value={profile.country_of_residence ?? '-'}
+              />
               <ProfileRow label="Timezone" value={profile.timezone} />
               <ProfileRow label="Currency" value={profile.preferred_currency} />
             </div>
@@ -241,49 +299,84 @@ export default function ParentDashboardPage() {
         </aside>
       </section>
 
-      <section style={styles.cardWide}>
-        <p style={styles.sectionEyebrow}>Recent / Pending Bookings</p>
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Upcoming Learning</p>
+            <h2>Your child’s lesson schedule</h2>
+          </div>
+
+          <Link href="/parent/bookings" className="smallLink">
+            View all
+          </Link>
+        </div>
+
+        {confirmedLessons.length === 0 ? (
+          <EmptyState
+            title="No upcoming lessons yet"
+            text="Book a subject and complete payment to activate your private tutoring plan."
+            href="/parent/students"
+            button="Book a Lesson"
+          />
+        ) : (
+          <div className="lessonList">
+            {confirmedLessons.map((booking) => (
+              <LessonRow
+                key={booking.id}
+                booking={booking}
+                childName={students[booking.student_id] || 'Selected child'}
+                subjectName={subjects[booking.subject_id] || 'Selected subject'}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Payments & Bookings</p>
+            <h2>Recent booking activity</h2>
+          </div>
+        </div>
 
         {bookings.length === 0 ? (
           <EmptyState
             title="No bookings yet"
-            text="Start by choosing a child, subject, plan, and lesson time."
+            text="Start by choosing a child, subject, plan, and weekly lesson time."
             href="/parent/students"
             button="Start Learning"
           />
         ) : (
-          <div style={styles.bookingGrid}>
+          <div className="bookingGrid">
             {bookings.map((booking) => (
-              <div key={booking.id} style={styles.bookingCard}>
-                <p style={styles.bookingTitle}>
-                  {subjectLabels[booking.subject_id] || booking.subject_id}
+              <div key={booking.id} className="bookingCard">
+                <p className="bookingTitle">
+                  {subjects[booking.subject_id] || 'Selected subject'}
                 </p>
 
-                <p style={styles.bookingText}>
+                <p className="bookingText">
                   {students[booking.student_id] || 'Selected child'} •{' '}
-                  {planLabels[booking.plan_id] || booking.plan_id}
+                  {planLabels[booking.plan_id] || 'Learning Plan'}
                 </p>
 
-                <p style={styles.bookingText}>
-                  {booking.lesson_date || 'Date pending'} • {booking.lesson_time || 'Time pending'}
+                <p className="bookingText">
+                  {formatDate(booking.lesson_date)} •{' '}
+                  {booking.lesson_time || 'Time pending'}
                 </p>
 
                 <span
-                  style={{
-                    ...styles.statusBadge,
-                    ...(booking.payment_status === 'PAID'
-                      ? styles.statusPaid
-                      : styles.statusPending),
-                  }}
+                  className={
+                    booking.payment_status === 'PAID'
+                      ? 'statusBadge statusPaid'
+                      : 'statusBadge statusPending'
+                  }
                 >
                   {booking.payment_status === 'PAID' ? 'Paid' : 'Pending Payment'}
                 </span>
 
                 {booking.payment_status !== 'PAID' ? (
-                  <Link
-                    href={`/payment?bookingId=${booking.id}`}
-                    style={styles.payLink}
-                  >
+                  <Link href={`/payment?bookingId=${booking.id}`} className="payLink">
                     Complete Payment
                   </Link>
                 ) : null}
@@ -292,24 +385,26 @@ export default function ParentDashboardPage() {
           </div>
         )}
       </section>
+
+      <style jsx>{styles}</style>
     </main>
   )
 }
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.kpiCard}>
-      <p style={styles.kpiLabel}>{label}</p>
-      <h2 style={styles.kpiValue}>{value}</h2>
+    <div className="kpiCard">
+      <p>{label}</p>
+      <h2>{value}</h2>
     </div>
   )
 }
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.profileRow}>
-      <span style={styles.profileLabel}>{label}</span>
-      <span style={styles.profileValue}>{value}</span>
+    <div className="profileRow">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
@@ -317,24 +412,37 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
 function LessonRow({
   booking,
   childName,
+  subjectName,
 }: {
   booking: LessonBooking
   childName: string
+  subjectName: string
 }) {
   return (
-    <div style={styles.lessonRow}>
+    <div className="lessonRow">
       <div>
-        <p style={styles.lessonTitle}>
-          {subjectLabels[booking.subject_id] || booking.subject_id}
-        </p>
-        <p style={styles.lessonMeta}>
-          {childName} • {planLabels[booking.plan_id] || booking.plan_id}
+        <p className="lessonTitle">{subjectName}</p>
+
+        <p className="lessonMeta">
+          {childName} • {planLabels[booking.plan_id] || 'Learning Plan'}
         </p>
       </div>
 
-      <div style={styles.lessonTime}>
-        <strong>{booking.lesson_date}</strong>
-        <span>{booking.lesson_time}</span>
+      <div className="lessonDate">
+        <strong>{formatDate(booking.lesson_date)}</strong>
+
+        <span>{booking.lesson_time || 'Time pending'}</span>
+
+        {booking.meeting_link ? (
+          <a
+            href={booking.meeting_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="joinBtn smallJoin"
+          >
+            Join
+          </a>
+        ) : null}
       </div>
     </div>
   )
@@ -352,299 +460,464 @@ function EmptyState({
   button: string
 }) {
   return (
-    <div style={styles.emptyState}>
-      <h3 style={styles.emptyTitle}>{title}</h3>
-      <p style={styles.emptyText}>{text}</p>
-      <Link href={href} style={styles.primaryLink}>
+    <div className="emptyState">
+      <h3>{title}</h3>
+      <p>{text}</p>
+      <Link href={href} className="primaryLink">
         {button}
       </Link>
     </div>
   )
 }
 
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    padding: '42px 20px 90px',
-    background:
-      'radial-gradient(circle at top right, #efe4ff 0, #faf7ff 34%, #f8f5ff 100%)',
-    color: '#21152d',
-  },
+function formatDate(date: string | null) {
+  if (!date) return 'Date pending'
 
-  hero: {
-    position: 'relative',
-    maxWidth: 1180,
-    margin: '0 auto',
-    padding: '44px 36px',
-    borderRadius: 34,
-    overflow: 'hidden',
-    background:
-      'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(248,242,255,0.96))',
-    border: '1px solid rgba(126,87,194,0.16)',
-    boxShadow: '0 30px 90px rgba(88,52,150,0.12)',
-  },
-
-  heroGlow: {
-    position: 'absolute',
-    right: -120,
-    top: -120,
-    width: 360,
-    height: 360,
-    borderRadius: '50%',
-    background: 'rgba(124,58,237,0.18)',
-    filter: 'blur(20px)',
-  },
-
-  eyebrow: {
-    position: 'relative',
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 900,
-    fontSize: 15,
-  },
-
-  title: {
-    position: 'relative',
-    margin: '14px 0 0',
-    fontSize: 'clamp(34px, 5vw, 54px)',
-    lineHeight: 1.05,
-    fontWeight: 950,
-    letterSpacing: -1.2,
-  },
-
-  subtitle: {
-    position: 'relative',
-    maxWidth: 760,
-    margin: '18px 0 0',
-    color: '#6f637e',
-    fontSize: 17,
-    lineHeight: 1.7,
-  },
-
-  kpiGrid: {
-    position: 'relative',
-    marginTop: 30,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: 16,
-  },
-
-  kpiCard: {
-    padding: 20,
-    borderRadius: 24,
-    background: 'rgba(255,255,255,0.9)',
-    border: '1px solid rgba(124,58,237,0.14)',
-    boxShadow: '0 18px 45px rgba(71,43,117,0.07)',
-  },
-
-  kpiLabel: {
-    margin: 0,
-    color: '#7a7088',
-    fontWeight: 850,
-    fontSize: 14,
-  },
-
-  kpiValue: {
-    margin: '8px 0 0',
-    fontSize: 30,
-    fontWeight: 950,
-  },
-
-  actions: {
-    position: 'relative',
-    display: 'flex',
-    gap: 12,
-    flexWrap: 'wrap',
-    marginTop: 28,
-  },
-
-  primaryLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    fontWeight: 950,
-    textDecoration: 'none',
-    boxShadow: '0 16px 38px rgba(124,58,237,0.28)',
-  },
-
-  secondaryLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    textDecoration: 'none',
-    border: '1px solid rgba(124,58,237,0.18)',
-  },
-
-  grid: {
-    maxWidth: 1180,
-    margin: '30px auto 0',
-    display: 'grid',
-    gridTemplateColumns: '1.3fr 0.7fr',
-    gap: 24,
-  },
-
-  card: {
-    padding: 30,
-    borderRadius: 30,
-    background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
-  },
-
-  cardWide: {
-    maxWidth: 1180,
-    margin: '30px auto 0',
-    padding: 30,
-    borderRadius: 30,
-    background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
-  },
-
-  sectionEyebrow: {
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 950,
-    fontSize: 14,
-  },
-
-  lessonList: {
-    marginTop: 20,
-    display: 'grid',
-    gap: 14,
-  },
-
-  lessonRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 18,
-    padding: 18,
-    borderRadius: 22,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  lessonTitle: {
-    margin: 0,
-    fontWeight: 950,
-    fontSize: 18,
-  },
-
-  lessonMeta: {
-    margin: '6px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-  },
-
-  lessonTime: {
-    textAlign: 'right',
-    display: 'grid',
-    gap: 5,
-    color: '#21152d',
-  },
-
-  profileList: {
-    marginTop: 20,
-  },
-
-  profileRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 18,
-    padding: '16px 0',
-    borderBottom: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  profileLabel: {
-    color: '#7a7088',
-    fontWeight: 850,
-  },
-
-  profileValue: {
-    fontWeight: 950,
-    textAlign: 'right',
-  },
-
-  bookingGrid: {
-    marginTop: 20,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: 16,
-  },
-
-  bookingCard: {
-    padding: 20,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  bookingTitle: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 950,
-  },
-
-  bookingText: {
-    margin: '8px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-
-  statusBadge: {
-    display: 'inline-flex',
-    marginTop: 14,
-    padding: '8px 11px',
-    borderRadius: 999,
-    fontWeight: 900,
-    fontSize: 12,
-  },
-
-  statusPaid: {
-    background: '#ecfdf3',
-    color: '#027a48',
-  },
-
-  statusPending: {
-    background: '#fff7ed',
-    color: '#9a3412',
-  },
-
-  payLink: {
-    display: 'inline-flex',
-    marginTop: 14,
-    color: '#6f35d5',
-    fontWeight: 950,
-    textDecoration: 'none',
-  },
-
-  emptyState: {
-    marginTop: 20,
-    padding: 24,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  emptyTitle: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 950,
-  },
-
-  emptyText: {
-    margin: '10px 0 20px',
-    color: '#6f637e',
-    lineHeight: 1.6,
-  },
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${date}T00:00:00`))
 }
+
+const styles = `
+  .page {
+    min-height: 100vh;
+    padding: 42px 18px 90px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 30%),
+      linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff);
+    color: #21152d;
+  }
+
+  .hero,
+  .topGrid,
+  .cardWide {
+    max-width: 1180px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 48px;
+    border-radius: 40px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 34%),
+      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.96));
+    border: 1px solid rgba(126,87,194,0.14);
+    box-shadow: 0 30px 90px rgba(71,43,117,0.12);
+  }
+
+  .heroGlow {
+    position: absolute;
+    right: -120px;
+    top: -120px;
+    width: 360px;
+    height: 360px;
+    border-radius: 999px;
+    background: rgba(124,58,237,0.18);
+    filter: blur(24px);
+  }
+
+  .eyebrow,
+  .sectionEyebrow {
+    position: relative;
+    margin: 0;
+    color: #6d28d9;
+    font-weight: 950;
+    font-size: 14px;
+  }
+
+  .hero h1 {
+    position: relative;
+    margin: 14px 0 0;
+    max-width: 850px;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 0.96;
+    letter-spacing: -0.06em;
+    font-weight: 950;
+  }
+
+  .subtitle {
+    position: relative;
+    max-width: 760px;
+    margin: 20px 0 0;
+    color: #6f637e;
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  .kpiGrid {
+    position: relative;
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .kpiCard {
+    padding: 20px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(124,58,237,0.12);
+    box-shadow: 0 18px 45px rgba(71,43,117,0.07);
+  }
+
+  .kpiCard p {
+    margin: 0;
+    color: #7a7088;
+    font-weight: 850;
+    font-size: 14px;
+  }
+
+  .kpiCard h2 {
+    margin: 8px 0 0;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    font-weight: 950;
+  }
+
+  .actions {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 30px;
+  }
+
+  .primaryLink,
+  .secondaryLink,
+  .smallLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    min-height: 52px;
+    padding: 0 22px;
+    font-weight: 950;
+    text-decoration: none;
+  }
+
+  .primaryLink {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
+  }
+
+  .secondaryLink,
+  .smallLink {
+    background: white;
+    color: #351e55;
+    border: 1px solid rgba(124,58,237,0.16);
+  }
+
+  .topGrid {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: 1.25fr 0.75fr;
+    gap: 24px;
+  }
+
+  .card,
+  .cardWide {
+    padding: 32px;
+    border-radius: 34px;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(126,87,194,0.12);
+    box-shadow: 0 24px 70px rgba(71,43,117,0.09);
+  }
+
+  .cardWide {
+    margin-top: 28px;
+  }
+
+  .sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 22px;
+  }
+
+  .sectionHeader h2,
+  .nextLesson h2 {
+    margin: 10px 0 0;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+    font-weight: 950;
+  }
+
+  .nextLesson {
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: center;
+    padding: 24px;
+    border-radius: 28px;
+    background: linear-gradient(135deg, #fbf8ff, #f3ecff);
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .nextLesson p {
+    margin: 10px 0 0;
+    color: #6f637e;
+    font-weight: 750;
+  }
+
+  .lessonTimeBox {
+    min-width: 180px;
+    padding: 18px;
+    border-radius: 22px;
+    background: white;
+    border: 1px solid rgba(124,58,237,0.12);
+    text-align: right;
+  }
+
+  .lessonTimeBox strong,
+  .lessonTimeBox span {
+    display: block;
+  }
+
+  .lessonTimeBox span {
+    margin-top: 8px;
+    color: #6d28d9;
+    font-weight: 950;
+  }
+
+  .profileList {
+    margin-top: 22px;
+  }
+
+  .profileRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(124,58,237,0.1);
+  }
+
+  .profileRow span {
+    color: #7a7088;
+    font-weight: 850;
+  }
+
+  .profileRow strong {
+    text-align: right;
+    font-weight: 950;
+  }
+
+  .lessonList {
+    display: grid;
+    gap: 14px;
+  }
+
+  .lessonRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px;
+    border-radius: 22px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .lessonTitle {
+    margin: 0;
+    font-weight: 950;
+    font-size: 19px;
+  }
+
+  .lessonMeta {
+    margin: 7px 0 0;
+    color: #6f637e;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .lessonDate {
+    text-align: right;
+    display: grid;
+    gap: 6px;
+  }
+
+  .lessonDate span {
+    color: #6d28d9;
+    font-weight: 950;
+  }
+
+  .bookingGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .bookingCard {
+    padding: 20px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .bookingTitle {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 950;
+  }
+
+  .bookingText {
+    margin: 8px 0 0;
+    color: #6f637e;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .statusBadge {
+    display: inline-flex;
+    margin-top: 14px;
+    padding: 8px 11px;
+    border-radius: 999px;
+    font-weight: 950;
+    font-size: 12px;
+  }
+
+  .statusPaid {
+    background: #ecfdf3;
+    color: #027a48;
+  }
+
+  .statusPending {
+    background: #fff7ed;
+    color: #9a3412;
+  }
+
+  .payLink {
+    display: inline-flex;
+    margin-top: 14px;
+    color: #6d28d9;
+    font-weight: 950;
+    text-decoration: none;
+  }
+
+  .emptyState {
+    margin-top: 22px;
+    padding: 24px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .emptyState h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 950;
+  }
+
+  .emptyState p {
+    margin: 10px 0 20px;
+    color: #6f637e;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 900px) {
+    .page {
+      padding: 26px 12px 70px;
+    }
+
+    .hero {
+      padding: 32px 20px;
+      border-radius: 30px;
+    }
+
+    .hero h1 {
+      font-size: clamp(38px, 12vw, 56px);
+    }
+
+    .subtitle {
+      font-size: 16px;
+    }
+
+    .kpiGrid,
+    .topGrid {
+      grid-template-columns: 1fr;
+    }
+
+    .actions {
+      flex-direction: column;
+    }
+
+    .primaryLink,
+    .secondaryLink {
+      width: 100%;
+    }
+
+    .card,
+    .cardWide {
+      padding: 24px 20px;
+      border-radius: 28px;
+    }
+
+    .sectionHeader,
+    .nextLesson,
+    .lessonRow {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .lessonTimeBox,
+    .lessonDate {
+      width: 100%;
+      text-align: left;
+    }
+
+    .profileRow {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .joinBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0 22px;
+  margin-top: 14px;
+  border-radius: 18px;
+  text-decoration: none;
+  font-weight: 900;
+  color: white;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 16px 38px rgba(124,58,237,0.25);
+}
+
+    .profileRow strong {
+      text-align: left;
+    }
+  }
+
+  .joinBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  margin-top: 12px;
+  border-radius: 15px;
+  text-decoration: none;
+  font-weight: 950;
+  color: white;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 14px 30px rgba(124,58,237,0.22);
+}
+
+.smallJoin {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+`

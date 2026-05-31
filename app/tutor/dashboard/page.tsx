@@ -349,7 +349,7 @@ function LessonCard({ lesson }: { lesson: LessonBooking }) {
             rel="noreferrer"
             style={styles.primaryLink}
           >
-            Join Class
+            Join Lesson
           </a>
         ) : (
           <span style={styles.disabledButton}>No meeting link yet</span>

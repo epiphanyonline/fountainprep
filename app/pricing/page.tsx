@@ -16,36 +16,26 @@ const plans = [
   {
     id: 'monthly',
     title: 'Monthly Plan',
-    price: 'From £6',
-    sub: 'per class',
-    tag: 'Most popular',
-    desc: 'Best for steady weekly support, school confidence, and consistent learning rhythm.',
+    price: '£10',
+    sub: 'per private 1-to-1 class',
+    tag: 'Flexible monthly support',
+    desc: 'Best for families who want steady weekly learning with flexibility.',
     sessions: '4 classes monthly',
-    total: 'From £24/month',
-    outcome: 'A simple monthly plan for children who need regular guided support.',
+    total: 'From £40/month',
+    outcome: 'Great for confidence, homework support, and regular progress.',
     featured: true,
   },
   {
     id: 'three_month',
     title: '3-Month Plan',
-    price: 'From £6',
-    sub: 'per class',
-    tag: 'Steady progress',
-    desc: 'Best for families who want visible progress across a school term.',
+    price: '£9',
+    sub: 'per private 1-to-1 class',
+    tag: 'Best value',
+    desc: 'Best for families who want consistent progress across a school term.',
     sessions: '12+ classes',
-    total: '3-month learning package',
-    outcome: 'Ideal for building stronger habits, confidence, and subject understanding.',
-  },
-  {
-    id: 'six_month',
-    title: '6-Month Plan',
-    price: 'Best value',
-    sub: 'continuous support',
-    tag: 'Highest value',
-    desc: 'Best for parents who want structured, long-term academic growth.',
-    sessions: '24+ classes',
-    total: '6-month learning package',
-    outcome: 'Designed for deeper progress, stronger foundations, and continuous improvement.',
+    total: 'From £108 per 3 months',
+    outcome: 'Ideal for stronger habits, exam preparation, and deeper progress.',
+    featured: false,
   },
 ]
 
@@ -127,9 +117,7 @@ function PricingContent() {
     params.set('subjectId', subjectId)
     params.set('planId', planId)
 
-    if (programId) {
-      params.set('programId', programId)
-    }
+    if (programId) params.set('programId', programId)
 
     router.push(`/schedule?${params.toString()}`)
   }
@@ -144,33 +132,36 @@ function PricingContent() {
   }
 
   return (
-    <main className="pricing-page">
-      <section className="pricing-hero">
-        <div className="hero-glow hero-glow-one" />
-        <div className="hero-glow hero-glow-two" />
+    <main className="pricingPage">
+      <section className="hero">
+        <p className="eyebrow">Private 1-to-1 learning plans</p>
 
-        <p className="eyebrow">Learning Plans</p>
+        <h1>Simple pricing for focused one-to-one tutoring.</h1>
 
-        <h1>Choose the right learning plan for your child.</h1>
-
-        <p className="hero-subtitle">
-          Fountain Prep is designed for structured learning, not random one-off
-          lessons. Choose a plan that supports your child’s rhythm, confidence,
-          and long-term progress.
+        <p className="heroSubtitle">
+          Every Fountain Prep lesson is private, structured, and focused on your
+          child. No crowded online classes. No confusing hourly marketplace
+          pricing.
         </p>
 
+        <div className="heroBadges">
+          <span>✓ Private 1-to-1 lessons</span>
+          <span>✓ From £10/class</span>
+          <span>✓ Save with 3-month plan</span>
+        </div>
+
         {hasBookingContext ? (
-          <div className="context-box">
+          <div className="contextBox">
             <div>
-              <p className="context-label">Learning path</p>
-              <p className="context-value">
+              <p className="contextLabel">Learning path</p>
+              <p className="contextValue">
                 {loadingStudent
                   ? 'Loading child...'
                   : student?.full_name || 'Child not found'}
               </p>
 
               {student ? (
-                <p className="context-sub">
+                <p className="contextSub">
                   {student.child_age ? `Age ${student.child_age}` : ''}
                   {student.country_system ? ` • ${student.country_system}` : ''}
                   {student.country_class_label
@@ -181,33 +172,33 @@ function PricingContent() {
             </div>
 
             <div>
-              <p className="context-label">Selected subject</p>
-              <p className="context-value">{subjectName}</p>
-              <p className="context-sub">Tutor-matched learning support</p>
+              <p className="contextLabel">Selected subject</p>
+              <p className="contextValue">{subjectName}</p>
+              <p className="contextSub">Tutor-matched private learning</p>
             </div>
 
             <button
               type="button"
               onClick={handleChangeSubject}
-              className="secondary-button"
+              className="secondaryButton"
             >
               Change Subject
             </button>
           </div>
         ) : (
-          <div className="warning-box">
+          <div className="warningBox">
             <div>
               <h3>Start with your child’s learning path</h3>
               <p>
-                To continue, choose your child and subject first. This helps
-                Fountain Prep guide the right learning plan.
+                Choose your child and subject first so we can guide the right
+                learning plan.
               </p>
             </div>
 
             <button
               type="button"
               onClick={() => router.push('/parent/students')}
-              className="primary-button"
+              className="primaryButton"
             >
               Choose Child
             </button>
@@ -215,33 +206,31 @@ function PricingContent() {
         )}
       </section>
 
-      <section className="plans-section">
-        <div className="plans-grid">
+      <section className="plansSection">
+        <div className="plansGrid">
           {plans.map((plan) => (
             <article
               key={plan.id}
-              className={`plan-card ${plan.featured ? 'featured-plan' : ''}`}
+              className={`planCard ${plan.featured ? 'featuredPlan' : ''}`}
             >
-              <div className="plan-tag">{plan.tag}</div>
+              <div className="planTag">{plan.tag}</div>
 
               <h2>{plan.title}</h2>
 
-              <div className="price-block">
+              <div className="priceBlock">
                 <p className="price">{plan.price}</p>
-                <p className="price-sub">{plan.sub}</p>
+                <p className="priceSub">{plan.sub}</p>
               </div>
 
-              <p className="plan-desc">{plan.desc}</p>
+              <p className="planDesc">{plan.desc}</p>
 
-              <div className="plan-details">
+              <div className="planDetails">
                 <p>
                   <strong>Sessions:</strong> {plan.sessions}
                 </p>
-
                 <p>
                   <strong>Total:</strong> {plan.total}
                 </p>
-
                 <p>
                   <strong>Best for:</strong> {plan.outcome}
                 </p>
@@ -250,7 +239,7 @@ function PricingContent() {
               <button
                 type="button"
                 onClick={() => handleChoosePlan(plan.id)}
-                className="choose-button"
+                className="chooseButton"
               >
                 Choose {plan.title}
               </button>
@@ -259,22 +248,22 @@ function PricingContent() {
         </div>
       </section>
 
-      <section className="trust-section">
-        <div className="trust-card">
+      <section className="trustSection">
+        <div className="trustCard">
           <div>
-            <p className="eyebrow">Clear and parent-friendly</p>
-            <h2>Simple pricing. Structured progress.</h2>
+            <p className="eyebrow">What parents get</p>
+            <h2>Private tutoring with structure, clarity, and value.</h2>
             <p>
-              Parents can start with a monthly plan and increase lesson
-              frequency during scheduling. One lesson weekly starts from
-              £24/month, while two lessons weekly starts from £48/month.
+              At £10 per class, Fountain Prep gives families private learning
+              support at a price that remains far more affordable than many UK
+              tutoring options.
             </p>
           </div>
 
-          <div className="trust-list">
-            <span>✔ No one-off random lesson path</span>
-            <span>✔ Clear monthly learning structure</span>
-            <span>✔ Flexible weekly lesson frequency</span>
+          <div className="trustList">
+            <span>✔ No group classes</span>
+            <span>✔ Clear monthly structure</span>
+            <span>✔ Flexible lesson frequency</span>
             <span>✔ Designed for consistent progress</span>
           </div>
         </div>
@@ -287,11 +276,11 @@ function PricingContent() {
 
 function PricingLoading() {
   return (
-    <main className="pricing-page">
-      <section className="pricing-hero">
+    <main className="pricingPage">
+      <section className="hero">
         <p className="eyebrow">Learning Plans</p>
         <h1>Loading pricing...</h1>
-        <p className="hero-subtitle">Preparing your Fountain Prep plans.</p>
+        <p className="heroSubtitle">Preparing your Fountain Prep plans.</p>
       </section>
 
       <style jsx>{pricingStyles}</style>
@@ -300,80 +289,76 @@ function PricingLoading() {
 }
 
 const pricingStyles = `
-  .pricing-page {
+  .pricingPage {
     min-height: 100vh;
-    padding: 54px 20px 90px;
+    padding: 46px 20px 90px;
     background:
-      radial-gradient(circle at top right, #eadcff 0, #faf7ff 34%, #f8f5ff 100%);
-    color: #21152d;
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 30%),
+      linear-gradient(180deg, #ffffff, #fbf8ff 48%, #f5edff);
+    color: #201230;
   }
 
-  .pricing-hero {
-    position: relative;
+  .hero,
+  .plansSection,
+  .trustSection {
     max-width: 1180px;
-    margin: 0 auto;
-    padding: 54px 44px;
-    border-radius: 34px;
-    overflow: hidden;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero {
+    padding: 52px 44px;
+    border-radius: 38px;
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 242, 255, 0.96));
-    border: 1px solid rgba(126, 87, 194, 0.16);
-    box-shadow: 0 30px 90px rgba(88, 52, 150, 0.12);
-  }
-
-  .hero-glow {
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(22px);
-    pointer-events: none;
-  }
-
-  .hero-glow-one {
-    width: 380px;
-    height: 380px;
-    right: -130px;
-    top: -130px;
-    background: rgba(124, 58, 237, 0.18);
-  }
-
-  .hero-glow-two {
-    width: 220px;
-    height: 220px;
-    left: -90px;
-    bottom: -90px;
-    background: rgba(196, 181, 253, 0.26);
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 34%),
+      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.94));
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    box-shadow: 0 30px 90px rgba(47, 25, 80, 0.11);
   }
 
   .eyebrow {
-    position: relative;
     margin: 0;
-    color: #7441d8;
+    color: #6d28d9;
     font-weight: 950;
     font-size: 15px;
   }
 
   h1 {
-    position: relative;
-    max-width: 930px;
+    max-width: 900px;
     margin: 18px 0 0;
-    font-size: clamp(42px, 6vw, 76px);
+    font-size: clamp(42px, 6vw, 74px);
     line-height: 0.96;
     letter-spacing: -0.06em;
     font-weight: 950;
   }
 
-  .hero-subtitle {
-    position: relative;
-    max-width: 820px;
+  .heroSubtitle {
+    max-width: 780px;
     margin: 22px 0 0;
-    color: #6f637e;
+    color: #6d647c;
     font-size: 18px;
     line-height: 1.75;
   }
 
-  .context-box,
-  .warning-box {
-    position: relative;
+  .heroBadges {
+    margin-top: 26px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .heroBadges span {
+    padding: 11px 15px;
+    border-radius: 999px;
+    background: white;
+    color: #352145;
+    font-weight: 850;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+    box-shadow: 0 12px 30px rgba(55, 35, 95, 0.05);
+  }
+
+  .contextBox,
+  .warningBox {
     margin-top: 34px;
     display: grid;
     grid-template-columns: 1fr 1fr auto;
@@ -386,70 +371,69 @@ const pricingStyles = `
     box-shadow: 0 18px 45px rgba(71, 43, 117, 0.07);
   }
 
-  .warning-box {
+  .warningBox {
     grid-template-columns: 1fr auto;
   }
 
-  .warning-box h3 {
+  .warningBox h3 {
     margin: 0;
     font-size: 22px;
     font-weight: 950;
   }
 
-  .warning-box p {
+  .warningBox p {
     margin: 8px 0 0;
     color: #6f637e;
     line-height: 1.6;
   }
 
-  .context-label {
+  .contextLabel {
     margin: 0;
     color: #7a7088;
     font-weight: 850;
     font-size: 14px;
   }
 
-  .context-value {
+  .contextValue {
     margin: 8px 0 0;
     font-size: 21px;
     font-weight: 950;
   }
 
-  .context-sub {
+  .contextSub {
     margin: 6px 0 0;
     color: #766b84;
     font-size: 14px;
     line-height: 1.5;
   }
 
-  .plans-section {
-    max-width: 1180px;
-    margin: 34px auto 0;
+  .plansSection {
+    margin-top: 34px;
   }
 
-  .plans-grid {
+  .plansGrid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
   }
 
-  .plan-card {
+  .planCard {
     display: flex;
     flex-direction: column;
-    min-height: 540px;
-    padding: 34px 30px;
-    border-radius: 32px;
-    background: rgba(255, 255, 255, 0.96);
+    min-height: 520px;
+    padding: 36px 32px;
+    border-radius: 34px;
+    background: rgba(255, 255, 255, 0.97);
     border: 1px solid rgba(126, 87, 194, 0.14);
     box-shadow: 0 25px 70px rgba(71, 43, 117, 0.1);
   }
 
-  .featured-plan {
+  .featuredPlan {
     border: 2px solid #7c3aed;
-    box-shadow: 0 30px 80px rgba(124, 58, 237, 0.16);
+    box-shadow: 0 32px 90px rgba(124, 58, 237, 0.18);
   }
 
-  .plan-tag {
+  .planTag {
     width: fit-content;
     padding: 9px 14px;
     border-radius: 999px;
@@ -459,41 +443,41 @@ const pricingStyles = `
     font-size: 13px;
   }
 
-  .plan-card h2 {
+  .planCard h2 {
     margin: 24px 0 0;
-    font-size: clamp(28px, 3vw, 36px);
-    line-height: 1.06;
-    letter-spacing: -0.04em;
+    font-size: clamp(30px, 3vw, 42px);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
     font-weight: 950;
   }
 
-  .price-block {
+  .priceBlock {
     margin-top: 26px;
   }
 
   .price {
     margin: 0;
-    font-size: clamp(42px, 5vw, 58px);
-    line-height: 1;
-    letter-spacing: -0.05em;
+    font-size: clamp(54px, 6vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
     font-weight: 950;
   }
 
-  .price-sub {
-    margin: 8px 0 0;
+  .priceSub {
+    margin: 10px 0 0;
     color: #6f637e;
     font-size: 16px;
     font-weight: 850;
   }
 
-  .plan-desc {
+  .planDesc {
     margin: 28px 0 0;
     color: #6f637e;
     line-height: 1.75;
     font-size: 16px;
   }
 
-  .plan-details {
+  .planDetails {
     margin-top: 26px;
     padding: 20px;
     border-radius: 24px;
@@ -501,18 +485,18 @@ const pricingStyles = `
     border: 1px solid rgba(124, 58, 237, 0.12);
   }
 
-  .plan-details p {
+  .planDetails p {
     margin: 0;
     color: #4f435f;
     line-height: 1.65;
     font-size: 15px;
   }
 
-  .plan-details p + p {
+  .planDetails p + p {
     margin-top: 12px;
   }
 
-  .choose-button {
+  .chooseButton {
     margin-top: auto;
     width: 100%;
     border: 0;
@@ -526,8 +510,8 @@ const pricingStyles = `
     box-shadow: 0 16px 38px rgba(124, 58, 237, 0.28);
   }
 
-  .primary-button,
-  .secondary-button {
+  .primaryButton,
+  .secondaryButton {
     border-radius: 18px;
     padding: 16px 22px;
     font-weight: 950;
@@ -536,25 +520,24 @@ const pricingStyles = `
     white-space: nowrap;
   }
 
-  .primary-button {
+  .primaryButton {
     border: 0;
     background: linear-gradient(135deg, #6f35d5, #8b5cf6);
     color: white;
     box-shadow: 0 16px 38px rgba(124, 58, 237, 0.24);
   }
 
-  .secondary-button {
+  .secondaryButton {
     border: 1px solid rgba(124, 58, 237, 0.18);
     background: white;
     color: #351e55;
   }
 
-  .trust-section {
-    max-width: 1180px;
-    margin: 34px auto 0;
+  .trustSection {
+    margin-top: 34px;
   }
 
-  .trust-card {
+  .trustCard {
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
     gap: 28px;
@@ -562,12 +545,12 @@ const pricingStyles = `
     padding: 36px;
     border-radius: 32px;
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 242, 255, 0.96));
+      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,242,255,0.96));
     border: 1px solid rgba(126, 87, 194, 0.14);
     box-shadow: 0 25px 70px rgba(71, 43, 117, 0.1);
   }
 
-  .trust-card h2 {
+  .trustCard h2 {
     margin: 12px 0 0;
     font-size: clamp(28px, 4vw, 44px);
     line-height: 1.06;
@@ -575,19 +558,19 @@ const pricingStyles = `
     font-weight: 950;
   }
 
-  .trust-card p {
+  .trustCard p {
     margin: 16px 0 0;
     color: #6f637e;
     line-height: 1.75;
     font-size: 16px;
   }
 
-  .trust-list {
+  .trustList {
     display: grid;
     gap: 12px;
   }
 
-  .trust-list span {
+  .trustList span {
     padding: 15px 18px;
     border-radius: 18px;
     background: white;
@@ -597,40 +580,36 @@ const pricingStyles = `
   }
 
   @media (max-width: 980px) {
-    .pricing-hero {
+    .hero {
       padding: 36px 24px;
     }
 
-    .context-box,
-    .warning-box {
+    .contextBox,
+    .warningBox,
+    .trustCard {
       grid-template-columns: 1fr;
     }
 
-    .plans-grid {
+    .plansGrid {
       grid-template-columns: 1fr;
     }
 
-    .plan-card {
+    .planCard {
       min-height: auto;
     }
 
-    .trust-card {
-      grid-template-columns: 1fr;
-      padding: 28px 22px;
-    }
-
-    .secondary-button,
-    .primary-button {
+    .secondaryButton,
+    .primaryButton {
       width: 100%;
     }
   }
 
   @media (max-width: 640px) {
-    .pricing-page {
+    .pricingPage {
       padding: 28px 14px 70px;
     }
 
-    .pricing-hero {
+    .hero {
       border-radius: 28px;
       padding: 30px 20px;
     }
@@ -639,23 +618,23 @@ const pricingStyles = `
       font-size: clamp(38px, 12vw, 54px);
     }
 
-    .hero-subtitle {
+    .heroSubtitle {
       font-size: 16px;
     }
 
-    .plans-grid {
-      gap: 18px;
-    }
-
-    .plan-card {
+    .planCard {
       border-radius: 28px;
       padding: 28px 22px;
     }
 
-    .context-box,
-    .warning-box {
+    .contextBox,
+    .warningBox {
       padding: 18px;
       border-radius: 22px;
+    }
+
+    .trustCard {
+      padding: 28px 22px;
     }
   }
 `

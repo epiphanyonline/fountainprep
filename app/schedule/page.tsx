@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
@@ -26,37 +26,28 @@ type Slot = {
   timezone: string
   is_available: boolean
   is_booked: boolean
-  tutor_profiles: {
-    full_name: string
-  } | null
+  tutor_profiles: { full_name: string } | null
 }
 
 type BookingFrequency = 'WEEKLY_SAME_TIME' | 'TWO_DAYS_WEEKLY'
 
-type BookingPatternSummary = {
-  id: string
-  label: string
-  dayTime: string
-  tutor: string
-  dates: string[]
-}
+const FIRST_LESSON_NOTICE_HOURS = 72
+const EARLIEST_BOOKABLE_HOUR = 8
+const LATEST_BOOKABLE_START_HOUR = 19
 
 const planLabels: Record<string, string> = {
   monthly: 'Monthly Plan',
   three_month: '3-Month Plan',
-  six_month: '6-Month Plan',
 }
 
 const planWeeks: Record<string, number> = {
   monthly: 4,
   three_month: 12,
-  six_month: 24,
 }
 
-const planBaseAmounts: Record<string, number> = {
-  monthly: 24,
-  three_month: 72,
-  six_month: 144,
+const planPricePerClass: Record<string, number> = {
+  monthly: 10,
+  three_month: 9,
 }
 
 const subjectLabels: Record<string, string> = {
@@ -85,7 +76,8 @@ function ScheduleContent() {
   const studentId = searchParams.get('studentId')
   const subjectIdParam = searchParams.get('subjectId')
   const programId = searchParams.get('programId')
-  const planId = searchParams.get('planId') || 'monthly'
+  const planIdParam = searchParams.get('planId') || 'monthly'
+  const planId = planIdParam === 'three_month' ? 'three_month' : 'monthly'
 
   const [student, setStudent] = useState<Student | null>(null)
   const [subjectName, setSubjectName] = useState('Selected subject')
@@ -93,26 +85,23 @@ function ScheduleContent() {
   const [slots, setSlots] = useState<Slot[]>([])
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([])
   const [notes, setNotes] = useState('')
-  const [frequency, setFrequency] =
-    useState<BookingFrequency>('WEEKLY_SAME_TIME')
+  const [frequency, setFrequency] = useState<BookingFrequency>('WEEKLY_SAME_TIME')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('Loading available tutor slots...')
 
-  const planName = planLabels[planId] || 'Monthly Plan'
-  const baseAmount = planBaseAmounts[planId] || 24
-  const weeksToBook = planWeeks[planId] || 4
+  const planName = planLabels[planId]
+  const weeksToBook = planWeeks[planId]
+  const pricePerClass = planPricePerClass[planId]
   const requiredSlotCount = frequency === 'TWO_DAYS_WEEKLY' ? 2 : 1
   const totalLessonsRequired = weeksToBook * requiredSlotCount
+  const totalAmount = pricePerClass * totalLessonsRequired
 
-  const totalAmount = useMemo(() => {
-    return frequency === 'TWO_DAYS_WEEKLY' ? baseAmount * 2 : baseAmount
-  }, [baseAmount, frequency])
-
-  const planDescription =
-    frequency === 'TWO_DAYS_WEEKLY'
-      ? `2 lessons weekly • ${totalLessonsRequired} total lessons`
-      : `1 lesson weekly • ${totalLessonsRequired} total lessons`
+  const earliestBookable = useMemo(() => {
+    const date = new Date()
+    date.setHours(date.getHours() + FIRST_LESSON_NOTICE_HOURS)
+    return date
+  }, [])
 
   const groupedSlots = useMemo(() => {
     const grouped: Record<string, Slot[]> = {}
@@ -127,30 +116,21 @@ function ScheduleContent() {
 
   const availableDates = Object.keys(groupedSlots)
 
-  const bookingPatternSummary: BookingPatternSummary[] = useMemo(() => {
-    if (selectedSlots.length === 0) return []
-
-    return selectedSlots.slice(0, requiredSlotCount).map((slot, index) => {
-      const dates = Array.from({ length: weeksToBook }).map((_, weekIndex) =>
-        addWeeks(slot.slot_date, weekIndex)
-      )
-
-      return {
-        id: slot.id,
-        label: `Weekly pattern ${index + 1}`,
-        dayTime: `Every ${getWeekdayName(slot.slot_date)}, ${formatTime(
-          slot.start_time
-        )} - ${formatTime(slot.end_time)}`,
-        tutor: slot.tutor_profiles?.full_name || 'Approved tutor',
-        dates,
-      }
-    })
+  const bookingSummary = useMemo(() => {
+    return selectedSlots.slice(0, requiredSlotCount).map((slot, index) => ({
+      id: slot.id,
+      label: `Weekly pattern ${index + 1}`,
+      tutor: slot.tutor_profiles?.full_name || 'Approved tutor',
+      time: `Every ${getWeekdayName(slot.slot_date)}, ${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`,
+      dates: Array.from({ length: weeksToBook }).map((_, i) =>
+        addWeeks(slot.slot_date, i)
+      ),
+    }))
   }, [selectedSlots, requiredSlotCount, weeksToBook])
 
   useEffect(() => {
-    async function loadScheduleData() {
+    async function loadData() {
       setLoading(true)
-      setMessage('Loading available tutor slots...')
 
       if (!studentId || !subjectIdParam || !planId) {
         setMessage('Missing booking details. Please start again.')
@@ -169,9 +149,7 @@ function ScheduleContent() {
 
       const { data: studentRow, error: studentError } = await supabase
         .from('student_profiles')
-        .select(
-          'id, full_name, child_age, country_system, country_class_label, learning_level_id'
-        )
+        .select('id, full_name, child_age, country_system, country_class_label, learning_level_id')
         .eq('id', studentId)
         .maybeSingle()
 
@@ -193,40 +171,40 @@ function ScheduleContent() {
       let realSubjectName = subjectLabels[subjectIdParam] || 'Selected subject'
 
       const looksLikeUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          subjectIdParam
-        )
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectIdParam)
 
       if (looksLikeUuid) {
-        const { data: subjectRow } = await supabase
+        const { data } = await supabase
           .from('subjects')
           .select('id, name')
           .eq('id', subjectIdParam)
           .maybeSingle()
 
-        if (subjectRow) {
-          realSubjectId = subjectRow.id
-          realSubjectName = subjectRow.name
+        if (data) {
+          realSubjectId = data.id
+          realSubjectName = data.name
         }
       } else {
         const label = subjectLabels[subjectIdParam] || subjectIdParam
 
-        const { data: subjectRow } = await supabase
+        const { data } = await supabase
           .from('subjects')
           .select('id, name')
           .ilike('name', label)
           .maybeSingle()
 
-        if (subjectRow) {
-          realSubjectId = subjectRow.id
-          realSubjectName = subjectRow.name
+        if (data) {
+          realSubjectId = data.id
+          realSubjectName = data.name
         }
       }
 
       setResolvedSubjectId(realSubjectId)
       setSubjectName(realSubjectName)
 
-      const today = new Date().toISOString().split('T')[0]
+      const minimumNoticeDate = new Date()
+      minimumNoticeDate.setHours(minimumNoticeDate.getHours() + FIRST_LESSON_NOTICE_HOURS)
+      const earliestBookableDate = minimumNoticeDate.toISOString().split('T')[0]
 
       const { data: slotRows, error: slotError } = await supabase
         .from('tutor_availability_slots')
@@ -251,7 +229,7 @@ function ScheduleContent() {
         .eq('learning_level_id', studentRow.learning_level_id)
         .eq('is_available', true)
         .eq('is_booked', false)
-        .gte('slot_date', today)
+        .gte('slot_date', earliestBookableDate)
         .order('slot_date', { ascending: true })
         .order('start_time', { ascending: true })
 
@@ -268,48 +246,53 @@ function ScheduleContent() {
           : row.tutor_profiles ?? null,
       })) as Slot[]
 
-      setSlots(cleanSlots)
+      const premiumSlots = cleanSlots.filter((slot) => {
+        const slotStart = slot.starts_at
+          ? new Date(slot.starts_at)
+          : new Date(`${slot.slot_date}T${slot.start_time}`)
+
+        const hour = Number(slot.start_time.slice(0, 2))
+
+        return (
+          slotStart >= minimumNoticeDate &&
+          hour >= EARLIEST_BOOKABLE_HOUR &&
+          hour <= LATEST_BOOKABLE_START_HOUR
+        )
+      })
+
+      setSlots(premiumSlots)
+
       setMessage(
-        cleanSlots.length
+        premiumSlots.length
           ? ''
-          : 'No available tutor slots found yet for this subject and level.'
+          : 'No available tutor slots found yet. First lessons require 72 hours notice and are available from 08:00 to 20:00.'
       )
+
       setLoading(false)
     }
 
-    loadScheduleData()
+    loadData()
   }, [router, studentId, subjectIdParam, planId])
 
   function toggleSlot(slot: Slot) {
     setSelectedSlots((prev) => {
-      const alreadySelected = prev.some((item) => item.id === slot.id)
-
-      if (alreadySelected) {
-        return prev.filter((item) => item.id !== slot.id)
-      }
-
-      if (frequency === 'WEEKLY_SAME_TIME') {
-        return [slot]
-      }
-
-      if (prev.length >= 2) {
-        return [prev[1], slot]
-      }
-
+      const selected = prev.some((s) => s.id === slot.id)
+      if (selected) return prev.filter((s) => s.id !== slot.id)
+      if (frequency === 'WEEKLY_SAME_TIME') return [slot]
+      if (prev.length >= 2) return [prev[1], slot]
       return [...prev, slot]
     })
   }
 
-  function changeFrequency(nextFrequency: BookingFrequency) {
-    setFrequency(nextFrequency)
-
-    if (nextFrequency === 'WEEKLY_SAME_TIME') {
+  function changeFrequency(next: BookingFrequency) {
+    setFrequency(next)
+    if (next === 'WEEKLY_SAME_TIME') {
       setSelectedSlots((prev) => prev.slice(0, 1))
     }
   }
 
   async function continueToPayment() {
-    if (!studentId || !subjectIdParam || !planId || !student || !resolvedSubjectId) {
+    if (!studentId || !subjectIdParam || !student || !resolvedSubjectId) {
       alert('Missing booking details. Please start again.')
       router.push('/parent/students')
       return
@@ -317,7 +300,7 @@ function ScheduleContent() {
 
     if (selectedSlots.length < requiredSlotCount) {
       alert(
-        frequency === 'TWO_DAYS_WEEKLY'
+        requiredSlotCount === 2
           ? 'Please choose two weekly lesson slots.'
           : 'Please choose one weekly lesson slot.'
       )
@@ -325,14 +308,13 @@ function ScheduleContent() {
     }
 
     setSaving(true)
-    setMessage('Creating weekly lesson bookings...')
+    setMessage('Creating your lesson bookings...')
 
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
     if (!user) {
-      setSaving(false)
       router.push('/login')
       return
     }
@@ -355,7 +337,7 @@ function ScheduleContent() {
         status: 'PENDING_PAYMENT',
         payment_status: 'UNPAID',
         amount_gbp: slotIndex === 0 && weekIndex === 0 ? totalAmount : 0,
-        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${slot.tutor_id}`,
+        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${slotIndex + 1}-${weekIndex + 1}`,
         notes,
         booking_frequency: frequency,
         repeat_weeks: weeksToBook,
@@ -374,25 +356,14 @@ function ScheduleContent() {
       return
     }
 
-    const selectedSlotIds = seedSlots.map((slot) => slot.id)
-
-    const { error: slotUpdateError } = await supabase
+    await supabase
       .from('tutor_availability_slots')
-      .update({
-        is_available: false,
-        is_booked: true,
-      })
-      .in('id', selectedSlotIds)
-
-    if (slotUpdateError) {
-      setMessage(slotUpdateError.message)
-      setSaving(false)
-      return
-    }
-
-    setSaving(false)
+      .update({ is_available: false, is_booked: true })
+      .in('id', seedSlots.map((slot) => slot.id))
 
     const firstBookingId = bookings?.[0]?.id
+
+    setSaving(false)
 
     if (!firstBookingId) {
       setMessage('Booking created but payment reference was not returned.')
@@ -404,179 +375,140 @@ function ScheduleContent() {
 
   function goBackToPricing() {
     const params = new URLSearchParams()
-
     if (studentId) params.set('studentId', studentId)
     if (subjectIdParam) params.set('subjectId', subjectIdParam)
     if (programId) params.set('programId', programId)
-
     router.push(`/pricing?${params.toString()}`)
   }
 
-  if (loading) {
-    return <ScheduleLoading message={message} />
-  }
+  if (loading) return <ScheduleLoading message={message} />
 
   return (
-    <main style={styles.page}>
-      <section style={styles.hero}>
-        <div style={styles.heroGlow} />
+    <main className="page">
+      <section className="hero">
+        <p className="eyebrow">Private 1-to-1 scheduling</p>
+        <h1>Choose your child’s weekly learning time.</h1>
 
-        <p style={styles.eyebrow}>Fountain Prep Schedule</p>
-
-        <h1 style={styles.title}>Choose your child’s weekly learning pattern</h1>
-
-        <p style={styles.subtitle}>
-          Select one weekly tutor slot, or choose two weekly slots. Fountain Prep
-          will create the full set of lesson bookings for the selected plan before
-          payment.
+        <p className="subtitle">
+          Select a weekly tutor slot and Fountain Prep will create the full lesson
+          plan for your chosen package.
         </p>
 
-        <div style={styles.summaryGrid}>
-          <SummaryCard
-            label="Child"
-            value={student?.full_name || 'Selected child'}
-            sub={`${student?.child_age ? `Age ${student.child_age}` : ''}${
-              student?.country_system ? ` • ${student.country_system}` : ''
-            }${student?.country_class_label ? ` • ${student.country_class_label}` : ''}`}
-          />
+        <div className="policyBox">
+          <strong>Premium Tutor Preparation Policy</strong>
+          <span>
+            First lessons must be booked at least 72 hours in advance. This gives
+            your tutor time to review your child’s profile, prepare the lesson,
+            and deliver a better first class.
+          </span>
+        </div>
 
-          <SummaryCard
-            label="Subject"
-            value={subjectName}
-            sub="Tutor-matched subject"
-          />
-
+        <div className="summaryGrid">
+          <SummaryCard label="Child" value={student?.full_name || 'Selected child'} />
+          <SummaryCard label="Subject" value={subjectName} />
           <SummaryCard
             label="Plan"
             value={planName}
-            sub={`${planDescription} • £${totalAmount}`}
+            sub={`${totalLessonsRequired} lessons • £${totalAmount}`}
           />
         </div>
       </section>
 
-      <section style={styles.contentGrid}>
-        <div style={styles.card}>
-          <p style={styles.sectionEyebrow}>Available Calendar</p>
+      <section className="layout">
+        <div className="mainCard">
+          <div className="sectionHead">
+  <p className="eyebrow">Available tutor slots</p>
+  <h2>Select weekly pattern</h2>
 
-          <h2 style={styles.sectionTitle}>Select weekly tutor slot</h2>
+  <div className="premiumInfo">
+    <strong>Choose one weekly lesson time.</strong>
+    <p>
+      Fountain Prep will automatically reserve this same time every week
+      for the duration of your plan.
+    </p>
+  </div>
+</div>
 
-          {message ? <Notice message={message} /> : null}
+          {message ? <div className="notice">{message}</div> : null}
 
-          <div style={styles.frequencyBox}>
-            <div style={styles.frequencyHeader}>
-              <div>
-                <p style={styles.frequencyTitle}>Choose lesson frequency</p>
-                <p style={styles.frequencySub}>
-                  Your selected day and time repeats weekly for the full plan.
-                </p>
-              </div>
+          <div className="frequencyBox">
+            <button
+              type="button"
+              onClick={() => changeFrequency('WEEKLY_SAME_TIME')}
+              className={frequency === 'WEEKLY_SAME_TIME' ? 'freq active' : 'freq'}
+            >
+              <strong>1 lesson weekly</strong>
+              <span>{weeksToBook} lessons • £{pricePerClass}/class</span>
+            </button>
 
-              <span style={styles.priceBadge}>From £24</span>
-            </div>
-
-            <div style={styles.frequencyGrid}>
-              <button
-                type="button"
-                onClick={() => changeFrequency('WEEKLY_SAME_TIME')}
-                style={{
-                  ...styles.frequencyButton,
-                  ...(frequency === 'WEEKLY_SAME_TIME'
-                    ? styles.frequencyActive
-                    : {}),
-                }}
-              >
-                <span style={styles.frequencyButtonTitle}>1 lesson weekly</span>
-                <span style={styles.frequencyButtonMeta}>
-                  £{baseAmount} • {weeksToBook} lessons
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => changeFrequency('TWO_DAYS_WEEKLY')}
-                style={{
-                  ...styles.frequencyButton,
-                  ...(frequency === 'TWO_DAYS_WEEKLY'
-                    ? styles.frequencyActive
-                    : {}),
-                }}
-              >
-                <span style={styles.frequencyButtonTitle}>2 lessons weekly</span>
-                <span style={styles.frequencyButtonMeta}>
-                  £{baseAmount * 2} • {weeksToBook * 2} lessons
-                </span>
-              </button>
-            </div>
-
-            <p style={styles.frequencyFootnote}>
-              {frequency === 'TWO_DAYS_WEEKLY'
-                ? 'Select two weekly patterns. Each selected day and time will repeat weekly.'
-                : 'Select one weekly pattern. The same day and time will repeat weekly.'}
-            </p>
+            <button
+              type="button"
+              onClick={() => changeFrequency('TWO_DAYS_WEEKLY')}
+              className={frequency === 'TWO_DAYS_WEEKLY' ? 'freq active' : 'freq'}
+            >
+              <strong>2 lessons weekly</strong>
+              <span>{weeksToBook * 2} lessons • £{pricePerClass}/class</span>
+            </button>
           </div>
 
           {availableDates.length === 0 ? (
-            <div style={styles.emptyBox}>
-              <h3 style={styles.emptyTitle}>No tutor slots available yet</h3>
-              <p style={styles.emptyText}>
-                Ask tutors to set availability for this subject and level, then
-                generate 1-hour slots again.
+            <div className="empty">
+              <h3>No tutor slots available yet</h3>
+              <p>
+                Please check again later or choose another subject. First lessons
+                require 72 hours notice.
               </p>
-
-              <button
-                type="button"
-                onClick={goBackToPricing}
-                style={styles.secondaryButton}
-              >
+              <button onClick={goBackToPricing} className="secondaryBtn">
                 Back to Pricing
               </button>
             </div>
           ) : (
-            <div style={styles.dateGrid}>
-              {availableDates.map((date) => (
-                <div key={date} style={styles.dateCard}>
-                  <div style={styles.dateHeader}>
+            <div className="dateList">
+              {availableDates.slice(0, 3).map((date) => (
+                <div key={date} className="dateCard">
+                  <div className="dateHeader">
                     <div>
-                      <p style={styles.dateDay}>{formatDate(date)}</p>
-                      <p style={styles.dateMeta}>
-                        {groupedSlots[date].length} slot(s) available
-                      </p>
+                      <h3>{formatDate(date)}</h3>
+                      <p>{groupedSlots[date].length} slot(s) available</p>
                     </div>
-
-                    <span style={styles.greenDot}>Available</span>
+                    <span>Available</span>
                   </div>
 
-                  <div style={styles.slotGrid}>
+                  {availableDates.length > 3 && (
+  <button
+    type="button"
+    className="secondaryBtn"
+    onClick={() =>
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
+  >
+    View More Available Dates
+  </button>
+)}
+
+                  <div className="slotGrid">
                     {groupedSlots[date].map((slot) => {
-                      const active = selectedSlots.some(
-                        (item) => item.id === slot.id
-                      )
+                      const active = selectedSlots.some((s) => s.id === slot.id)
 
                       return (
                         <button
                           key={slot.id}
                           type="button"
                           onClick={() => toggleSlot(slot)}
-                          style={{
-                            ...styles.slotButton,
-                            ...(active ? styles.slotButtonActive : {}),
-                          }}
+                          className={active ? 'slot activeSlot' : 'slot'}
                         >
-                          <span style={styles.slotTime}>
-                            {formatTime(slot.start_time)} -{' '}
-                            {formatTime(slot.end_time)}
-                          </span>
+                          <strong>
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </strong>
+                          <span>{slot.tutor_profiles?.full_name || 'Approved tutor'}</span>
 
-                          <span style={styles.slotTutor}>
-                            Tutor:{' '}
-                            {slot.tutor_profiles?.full_name || 'Approved tutor'}
-                          </span>
-
-                          <span style={styles.slotHint}>
-                            {active
-                              ? 'Selected weekly pattern'
-                              : 'Tap to select weekly pattern'}
-                          </span>
+<small className="tutorMeta">
+  ⭐ Experienced Tutor
+</small>
+                          <small>{active ? '✓ Selected' : 'Choose this time'}</small>
                         </button>
                       )
                     })}
@@ -587,37 +519,39 @@ function ScheduleContent() {
           )}
         </div>
 
-        <aside style={styles.sideCard}>
-          <p style={styles.sectionEyebrow}>Booking Summary</p>
+        <aside className="sideCard">
+          <p className="eyebrow">Booking summary</p>
+          <h2>Your selected plan</h2>
 
-          <div style={styles.selectedBox}>
-            {bookingPatternSummary.length === 0 ? (
-              <>
-                <p style={styles.selectedTitle}>No weekly slot selected</p>
-                <p style={styles.selectedMuted}>
-                  Choose{' '}
-                  {requiredSlotCount === 2 ? 'two weekly slots' : 'one weekly slot'}{' '}
-                  from the available calendar.
-                </p>
-              </>
+          <div className="totalBox">
+            <p>{planName}</p>
+            <strong>£{totalAmount}</strong>
+            <span>{totalLessonsRequired} private 1-to-1 lessons</span>
+          </div>
+
+          <div className="bookingPolicy">
+  <span>✓ Private 1-to-1 tutoring</span>
+  <span>✓ Weekly recurring lessons</span>
+  <span>✓ Dedicated tutor</span>
+  <span>✓ Same day and time every week</span>
+  <span>✓ Parent dashboard tracking</span>
+  <span>✓ 72-hour first lesson preparation notice</span>
+</div>
+
+          <div className="selectedBox">
+            {bookingSummary.length === 0 ? (
+              <p className="muted">
+                Choose {requiredSlotCount === 2 ? 'two weekly slots' : 'one weekly slot'} to continue.
+              </p>
             ) : (
-              bookingPatternSummary.map((pattern) => (
-                <div key={pattern.id} style={styles.selectedItem}>
-                  <p style={styles.selectedSmall}>{pattern.label}</p>
-
-                  <p style={styles.selectedTitle}>{pattern.dayTime}</p>
-
-                  <p style={styles.selectedLine}>Tutor: {pattern.tutor}</p>
-
-                  <p style={styles.selectedMuted}>
-                    This will create these lesson dates:
-                  </p>
-
-                  <div style={styles.lessonDateList}>
-                    {pattern.dates.map((date) => (
-                      <span key={date} style={styles.lessonDatePill}>
-                        {formatShortDate(date)}
-                      </span>
+              bookingSummary.map((item) => (
+                <div key={item.id} className="selectedItem">
+                  <small>{item.label}</small>
+                  <strong>{item.time}</strong>
+                  <p>Tutor: {item.tutor}</p>
+                  <div className="datePills">
+                    {item.dates.map((date) => (
+                      <span key={date}>{formatShortDate(date)}</span>
                     ))}
                   </div>
                 </div>
@@ -625,556 +559,550 @@ function ScheduleContent() {
             )}
           </div>
 
-          <div style={styles.totalBox}>
-            <p style={styles.totalLabel}>Selected plan</p>
-
-            <p style={styles.totalValue}>
-              {frequency === 'TWO_DAYS_WEEKLY'
-                ? '2 lessons weekly'
-                : '1 lesson weekly'}
-            </p>
-
-            <p style={styles.totalMeta}>{planName}</p>
-
-            <p style={styles.totalAmount}>£{totalAmount}</p>
-
-            <p style={styles.totalSmall}>
-              This will create {totalLessonsRequired} lesson booking
-              {totalLessonsRequired > 1 ? 's' : ''} for this plan.
-            </p>
-          </div>
-
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any note? e.g. needs reading support, prefers patient tutor..."
-            style={styles.textarea}
+            placeholder="Add a note for the tutor..."
           />
 
           <button
             type="button"
             onClick={continueToPayment}
             disabled={saving || selectedSlots.length < requiredSlotCount}
-            style={{
-              ...styles.primaryButton,
-              width: '100%',
-              opacity:
-                saving || selectedSlots.length < requiredSlotCount ? 0.65 : 1,
-              cursor:
-                saving || selectedSlots.length < requiredSlotCount
-                  ? 'not-allowed'
-                  : 'pointer',
-            }}
+            className="primaryBtn"
           >
-            {saving ? 'Creating Bookings...' : 'Continue to Payment'}
+            {saving ? 'Creating bookings...' : 'Continue to Payment'}
           </button>
 
-          <button
-            type="button"
-            onClick={goBackToPricing}
-            style={styles.secondaryButtonFull}
-          >
+          <button type="button" onClick={goBackToPricing} className="ghostBtn">
             Back to Pricing
           </button>
         </aside>
       </section>
+
+      <style jsx>{styles}</style>
     </main>
   )
 }
 
-function ScheduleLoading({
-  message = 'Preparing available tutor slots.',
-}: {
-  message?: string
-}) {
+function SummaryCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <main style={styles.page}>
-      <section style={styles.hero}>
-        <div style={styles.heroGlow} />
-        <p style={styles.eyebrow}>Fountain Prep Schedule</p>
-        <h1 style={styles.title}>Loading schedule...</h1>
-        <p style={styles.subtitle}>{message}</p>
-      </section>
-    </main>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string
-  value: string
-  sub: string
-}) {
-  return (
-    <div style={styles.summaryCard}>
-      <p style={styles.summaryLabel}>{label}</p>
-      <p style={styles.summaryValue}>{value}</p>
-      <p style={styles.summarySub}>{sub}</p>
+    <div className="summary">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {sub ? <small>{sub}</small> : null}
     </div>
   )
 }
 
-function Notice({ message }: { message: string }) {
-  return <div style={styles.notice}>{message}</div>
-}
+function ScheduleLoading({ message = 'Loading schedule...' }: { message?: string }) {
+  return (
+    <main className="page">
+      <section className="hero">
+        <p className="eyebrow">Fountain Prep Schedule</p>
+        <h1>Loading available tutor slots...</h1>
+        <p className="subtitle">{message}</p>
+      </section>
 
-function formatDate(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function formatShortDate(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
-function getWeekdayName(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', {
-    weekday: 'long',
-  })
-}
-
-function formatTime(time: string) {
-  const [hourString, minuteString] = time.slice(0, 5).split(':')
-  const hour = Number(hourString)
-  const minute = Number(minuteString)
-
-  const date = new Date()
-  date.setHours(hour)
-  date.setMinutes(minute)
-
-  return date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+      <style jsx>{styles}</style>
+    </main>
+  )
 }
 
 function addWeeks(dateString: string, weeks: number) {
-  const date = new Date(`${dateString}T12:00:00`)
+  const date = new Date(`${dateString}T00:00:00`)
   date.setDate(date.getDate() + weeks * 7)
   return date.toISOString().split('T')[0]
 }
 
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    background:
-      'radial-gradient(circle at top right, #eadcff 0, #faf7ff 34%, #f8f5ff 100%)',
-    padding: '42px 20px 90px',
-    color: '#21152d',
-  },
-  hero: {
-    position: 'relative',
-    maxWidth: 1180,
-    margin: '0 auto',
-    padding: '44px 36px',
-    borderRadius: 34,
-    overflow: 'hidden',
-    background:
-      'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,242,255,0.96))',
-    border: '1px solid rgba(126,87,194,0.16)',
-    boxShadow: '0 30px 90px rgba(88,52,150,0.12)',
-  },
-  heroGlow: {
-    position: 'absolute',
-    right: -120,
-    top: -120,
-    width: 360,
-    height: 360,
-    borderRadius: '50%',
-    background: 'rgba(124,58,237,0.18)',
-    filter: 'blur(20px)',
-  },
-  eyebrow: {
-    position: 'relative',
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 900,
-    fontSize: 15,
-  },
-  title: {
-    position: 'relative',
-    margin: '14px 0 0',
-    maxWidth: 920,
-    fontSize: 'clamp(34px, 5vw, 56px)',
-    lineHeight: 1.04,
-    fontWeight: 950,
-    letterSpacing: -1.2,
-  },
-  subtitle: {
-    position: 'relative',
-    maxWidth: 850,
-    margin: '18px 0 0',
-    color: '#6f637e',
-    fontSize: 17,
-    lineHeight: 1.7,
-  },
-  summaryGrid: {
-    position: 'relative',
-    marginTop: 30,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: 16,
-  },
-  summaryCard: {
-    padding: 20,
-    borderRadius: 24,
-    background: 'rgba(255,255,255,0.92)',
-    border: '1px solid rgba(124,58,237,0.14)',
-    boxShadow: '0 18px 45px rgba(71,43,117,0.07)',
-  },
-  summaryLabel: {
-    margin: 0,
-    color: '#7a7088',
-    fontWeight: 850,
-    fontSize: 14,
-  },
-  summaryValue: {
-    margin: '8px 0 0',
-    fontSize: 21,
-    fontWeight: 950,
-  },
-  summarySub: {
-    margin: '8px 0 0',
-    color: '#766b84',
-    fontSize: 14,
-  },
-  contentGrid: {
-    maxWidth: 1180,
-    margin: '30px auto 0',
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1.35fr) minmax(330px, 0.75fr)',
-    gap: 24,
-  },
-  card: {
-    padding: 30,
-    borderRadius: 30,
-    background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
-  },
-  sideCard: {
-    padding: 30,
-    borderRadius: 30,
-    background:
-      'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(249,245,255,0.98))',
-    border: '1px solid rgba(126,87,194,0.16)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.12)',
-    alignSelf: 'start',
-    position: 'sticky',
-    top: 105,
-    maxHeight: 'calc(100vh - 125px)',
-    overflowY: 'auto',
-  },
-  sectionEyebrow: {
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 950,
-    fontSize: 14,
-  },
-  sectionTitle: {
-    margin: '10px 0 22px',
-    fontSize: 30,
-    fontWeight: 950,
-    letterSpacing: -0.4,
-  },
-  frequencyBox: {
-    marginBottom: 22,
-    padding: 18,
-    borderRadius: 26,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-  frequencyHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 14,
-  },
-  frequencyTitle: {
-    margin: 0,
-    fontWeight: 950,
-    fontSize: 17,
-  },
-  frequencySub: {
-    margin: '6px 0 0',
-    color: '#766b84',
-    fontSize: 14,
-  },
-  priceBadge: {
-    padding: '9px 12px',
-    borderRadius: 999,
-    background: '#f0e7ff',
-    color: '#6f35d5',
-    fontWeight: 950,
-    fontSize: 13,
-    whiteSpace: 'nowrap',
-  },
-  frequencyGrid: {
-    marginTop: 16,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: 12,
-  },
-  frequencyButton: {
-    display: 'grid',
-    gap: 6,
-    textAlign: 'left',
-    border: '1px solid rgba(124,58,237,0.16)',
-    borderRadius: 18,
-    padding: '16px 18px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    cursor: 'pointer',
-  },
-  frequencyActive: {
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    border: '1px solid #6f35d5',
-    boxShadow: '0 16px 38px rgba(124,58,237,0.22)',
-  },
-  frequencyButtonTitle: {
-    fontSize: 16,
-    fontWeight: 950,
-  },
-  frequencyButtonMeta: {
-    fontSize: 14,
-    opacity: 0.9,
-  },
-  frequencyFootnote: {
-    margin: '14px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-    fontWeight: 750,
-  },
-  dateGrid: {
-    display: 'grid',
-    gap: 18,
-  },
-  dateCard: {
-    padding: 20,
-    borderRadius: 26,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-  dateHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginBottom: 16,
-  },
-  dateDay: {
-    margin: 0,
-    fontSize: 19,
-    fontWeight: 950,
-  },
-  dateMeta: {
-    margin: '5px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-  },
-  greenDot: {
-    padding: '8px 11px',
-    borderRadius: 999,
-    background: '#ecfdf3',
-    color: '#027a48',
-    fontWeight: 950,
-    fontSize: 12,
-  },
-  slotGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-    gap: 12,
-  },
-  slotButton: {
-    display: 'grid',
-    gap: 6,
-    textAlign: 'left',
-    padding: 16,
-    borderRadius: 20,
-    background: 'white',
-    border: '1px solid rgba(124,58,237,0.14)',
-    color: '#21152d',
-    cursor: 'pointer',
-  },
-  slotButtonActive: {
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    border: '1px solid #6f35d5',
-    boxShadow: '0 16px 38px rgba(124,58,237,0.28)',
-  },
-  slotTime: {
-    fontWeight: 950,
-    fontSize: 16,
-  },
-  slotTutor: {
-    fontWeight: 850,
-    fontSize: 14,
-  },
-  slotHint: {
-    fontSize: 13,
-    opacity: 0.85,
-  },
-  selectedBox: {
-    marginTop: 20,
-    padding: 22,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-  selectedItem: {
-    paddingBottom: 16,
-    marginBottom: 16,
-    borderBottom: '1px solid rgba(124,58,237,0.1)',
-  },
-  selectedSmall: {
-    margin: '0 0 8px',
-    color: '#7441d8',
-    fontSize: 13,
-    fontWeight: 950,
-  },
-  selectedTitle: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 950,
-  },
-  selectedLine: {
-    margin: '10px 0 0',
-    fontWeight: 850,
-  },
-  selectedMuted: {
-    margin: '10px 0 0',
-    color: '#6f637e',
-  },
-  lessonDateList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  lessonDatePill: {
-    padding: '7px 10px',
-    borderRadius: 999,
-    background: '#f0e7ff',
-    color: '#6f35d5',
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  totalBox: {
-    marginTop: 18,
-    padding: 20,
-    borderRadius: 24,
-    background: 'white',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-  totalLabel: {
-    margin: 0,
-    color: '#7a7088',
-    fontWeight: 850,
-  },
-  totalValue: {
-    margin: '8px 0 0',
-    fontWeight: 950,
-    fontSize: 17,
-  },
-  totalMeta: {
-    margin: '6px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-  },
-  totalAmount: {
-    margin: '12px 0 0',
-    fontSize: 38,
-    fontWeight: 950,
-    letterSpacing: -0.8,
-  },
-  totalSmall: {
-    margin: '6px 0 0',
-    color: '#6f637e',
-    fontSize: 13,
-    fontWeight: 750,
-  },
-  textarea: {
-    width: '100%',
-    minHeight: 130,
-    boxSizing: 'border-box',
-    marginTop: 18,
-    borderRadius: 20,
-    border: '1px solid rgba(124,58,237,0.2)',
-    padding: '16px 18px',
-    fontSize: 15,
-    outline: 'none',
-    resize: 'vertical',
-    color: '#21152d',
-    background: 'white',
-  },
-  primaryButton: {
-    marginTop: 20,
-    border: 0,
-    borderRadius: 18,
-    padding: '17px 22px',
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    fontWeight: 950,
-    fontSize: 15,
-    cursor: 'pointer',
-    boxShadow: '0 16px 38px rgba(124,58,237,0.28)',
-  },
-  secondaryButton: {
-    border: '1px solid rgba(124,58,237,0.18)',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    cursor: 'pointer',
-  },
-  secondaryButtonFull: {
-    width: '100%',
-    marginTop: 14,
-    border: '1px solid rgba(124,58,237,0.18)',
-    borderRadius: 18,
-    padding: '16px 22px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    fontSize: 15,
-    cursor: 'pointer',
-  },
-  notice: {
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
-    background: '#fff7ed',
-    border: '1px solid #fed7aa',
-    color: '#9a3412',
-    fontWeight: 850,
-  },
-  emptyBox: {
-    padding: 26,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-  emptyTitle: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 950,
-  },
-  emptyText: {
-    margin: '10px 0 20px',
-    color: '#6f637e',
-    lineHeight: 1.6,
-  },
+function formatDate(dateString: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(`${dateString}T00:00:00`))
 }
+
+function formatShortDate(dateString: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${dateString}T00:00:00`))
+}
+
+function getWeekdayName(dateString: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+  }).format(new Date(`${dateString}T00:00:00`))
+}
+
+function formatTime(time: string) {
+  return time.slice(0, 5)
+}
+
+const styles = `
+  .page {
+    min-height: 100vh;
+    padding: 44px 18px 90px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 30%),
+      linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff);
+    color: #201230;
+  }
+
+  .hero,
+  .layout {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .hero {
+    padding: 46px;
+    border-radius: 38px;
+    background: linear-gradient(135deg, #ffffff, #f4edff);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    box-shadow: 0 30px 90px rgba(47, 25, 80, 0.1);
+  }
+
+  .eyebrow {
+    margin: 0;
+    color: #6d28d9;
+    font-weight: 950;
+  }
+
+  h1 {
+    margin: 14px 0 0;
+    max-width: 850px;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 0.96;
+    letter-spacing: -0.06em;
+    font-weight: 950;
+  }
+
+  .subtitle {
+    max-width: 760px;
+    margin: 20px 0 0;
+    color: #6d647c;
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  .policyBox {
+    margin-top: 24px;
+    padding: 18px;
+    border-radius: 20px;
+    background: #f6f1ff;
+    border: 1px solid rgba(111, 66, 193, 0.18);
+  }
+
+  .policyBox strong {
+    display: block;
+    color: #6d28d9;
+    font-weight: 950;
+    margin-bottom: 7px;
+  }
+
+  .policyBox span {
+    display: block;
+    color: #5f5470;
+    line-height: 1.65;
+    font-weight: 700;
+  }
+
+  .summaryGrid {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .summary {
+    padding: 20px;
+    border-radius: 24px;
+    background: white;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .summary span {
+    color: #7a7088;
+    font-size: 13px;
+    font-weight: 850;
+  }
+
+  .summary strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 20px;
+  }
+
+  .summary small {
+    display: block;
+    margin-top: 6px;
+    color: #766b84;
+  }
+
+  .layout {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .mainCard,
+  .sideCard {
+    padding: 30px;
+    border-radius: 34px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(124, 58, 237, 0.1);
+    box-shadow: 0 24px 70px rgba(47, 25, 80, 0.09);
+  }
+
+  .sideCard {
+    position: sticky;
+    top: 24px;
+  }
+
+  .sectionHead h2,
+  .sideCard h2 {
+    margin: 8px 0 0;
+    font-size: 32px;
+    letter-spacing: -0.04em;
+  }
+
+  .notice {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 18px;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-weight: 750;
+    line-height: 1.6;
+  }
+
+  .frequencyBox {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .freq,
+  .slot,
+  .primaryBtn,
+  .secondaryBtn,
+  .ghostBtn {
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .freq {
+    text-align: left;
+    padding: 18px;
+    border-radius: 22px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+  }
+
+  .freq strong,
+  .freq span {
+    display: block;
+  }
+
+  .freq span {
+    margin-top: 6px;
+    color: #6d647c;
+    font-weight: 750;
+  }
+
+  .active {
+    border-color: #7c3aed;
+    background: #f1e8ff;
+    box-shadow: 0 16px 34px rgba(124, 58, 237, 0.12);
+  }
+
+  .dateList {
+    margin-top: 26px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .dateCard {
+    padding: 22px;
+    border-radius: 26px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .dateHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .dateHeader h3 {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .dateHeader p {
+    margin: 6px 0 0;
+    color: #7a7088;
+  }
+
+  .dateHeader span {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-weight: 900;
+    font-size: 13px;
+  }
+
+  .slotGrid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .slot {
+    text-align: left;
+    padding: 16px;
+    border-radius: 20px;
+    background: white;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .slot strong,
+  .slot span,
+  .slot small {
+    display: block;
+  }
+
+  .slot span {
+    margin-top: 7px;
+    color: #6d647c;
+  }
+
+  .slot small {
+    margin-top: 10px;
+    color: #6d28d9;
+    font-weight: 900;
+  }
+
+  .activeSlot {
+    border-color: #7c3aed;
+    background: #f1e8ff;
+  }
+
+  .totalBox {
+    margin-top: 20px;
+    padding: 22px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+  }
+
+  .totalBox p {
+    margin: 0;
+    font-weight: 850;
+  }
+
+  .totalBox strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 46px;
+    letter-spacing: -0.05em;
+  }
+
+  .totalBox span {
+    display: block;
+    margin-top: 6px;
+    opacity: 0.9;
+  }
+
+  .bookingPolicy {
+    margin-top: 16px;
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 20px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .bookingPolicy span {
+    color: #351e55;
+    font-weight: 850;
+    font-size: 14px;
+  }
+
+  .selectedBox {
+    margin-top: 18px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .muted {
+    color: #6d647c;
+    line-height: 1.7;
+  }
+
+  .selectedItem {
+    padding: 16px;
+    border-radius: 20px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .selectedItem small {
+    color: #6d28d9;
+    font-weight: 900;
+  }
+
+  .selectedItem strong {
+    display: block;
+    margin-top: 8px;
+  }
+
+  .selectedItem p {
+    margin: 8px 0 0;
+    color: #6d647c;
+  }
+
+  .datePills {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .datePills span {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: white;
+    color: #352145;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    resize: vertical;
+    font: inherit;
+  }
+
+  .primaryBtn,
+  .secondaryBtn,
+  .ghostBtn {
+    width: 100%;
+    margin-top: 14px;
+    min-height: 54px;
+    border-radius: 18px;
+    font-weight: 950;
+    border: 0;
+  }
+
+  .primaryBtn {
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 18px 42px rgba(109, 40, 217, 0.24);
+  }
+
+  .primaryBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .secondaryBtn,
+  .ghostBtn {
+    background: white;
+    color: #241535;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+  }
+
+  .empty {
+    margin-top: 24px;
+    padding: 26px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    text-align: center;
+  }
+
+  .empty h3 {
+    margin: 0;
+  }
+
+  .empty p {
+    color: #6d647c;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 980px) {
+    .page {
+      padding: 26px 12px 70px;
+    }
+
+    .hero {
+      padding: 30px 20px;
+      border-radius: 30px;
+    }
+
+    .summaryGrid,
+    .layout,
+    .frequencyBox,
+    .slotGrid {
+      grid-template-columns: 1fr;
+    }
+
+    .sideCard {
+      position: static;
+    }
+
+    h1 {
+      font-size: clamp(38px, 12vw, 56px);
+    }
+
+    .premiumInfo {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.premiumInfo strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.premiumInfo p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.tutorMeta {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+
+    .mainCard,
+    .sideCard {
+      padding: 22px;
+      border-radius: 28px;
+    }
+
+    .dateHeader {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+`

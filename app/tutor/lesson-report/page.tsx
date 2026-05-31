@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 type TutorProfile = {
@@ -12,7 +12,6 @@ type TutorProfile = {
 
 type LessonBooking = {
   id: string
-  parent_id: string
   student_id: string
   subject_id: string
   tutor_id: string
@@ -38,7 +37,7 @@ type ProgressNote = {
 
 type NameMap = Record<string, string>
 
-type NoteForm = {
+type ReportForm = {
   lesson_topic: string
   strengths: string
   improvement_area: string
@@ -47,7 +46,9 @@ type NoteForm = {
   attendance: string
 }
 
-function emptyForm(): NoteForm {
+const TUTOR_RATE_USD = 4
+
+function emptyForm(): ReportForm {
   return {
     lesson_topic: '',
     strengths: '',
@@ -58,18 +59,20 @@ function emptyForm(): NoteForm {
   }
 }
 
-export default function TutorSessionsPage() {
+export default function TutorLessonReportPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const selectedBookingId = searchParams.get('bookingId')
 
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState('')
-  const [message, setMessage] = useState('Loading tutor lessons...')
+  const [message, setMessage] = useState('Loading lesson reports...')
   const [tutor, setTutor] = useState<TutorProfile | null>(null)
   const [lessons, setLessons] = useState<LessonBooking[]>([])
   const [students, setStudents] = useState<NameMap>({})
   const [subjects, setSubjects] = useState<NameMap>({})
   const [notes, setNotes] = useState<Record<string, ProgressNote>>({})
-  const [forms, setForms] = useState<Record<string, NoteForm>>({})
+  const [forms, setForms] = useState<Record<string, ReportForm>>({})
 
   useEffect(() => {
     async function loadData() {
@@ -114,14 +117,13 @@ export default function TutorSessionsPage() {
     }
 
     loadData()
-  }, [router])
+  }, [router, selectedBookingId])
 
   async function loadLessons(tutorId: string) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('lesson_bookings')
       .select(`
         id,
-        parent_id,
         student_id,
         subject_id,
         tutor_id,
@@ -134,8 +136,15 @@ export default function TutorSessionsPage() {
         amount_gbp
       `)
       .eq('tutor_id', tutorId)
-      .order('lesson_date', { ascending: true })
-      .order('lesson_time', { ascending: true })
+      .in('status', ['CONFIRMED', 'COMPLETED'])
+      .order('lesson_date', { ascending: false })
+      .order('lesson_time', { ascending: false })
+
+    if (selectedBookingId) {
+      query = query.eq('id', selectedBookingId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       setMessage(error.message)
@@ -191,7 +200,7 @@ export default function TutorSessionsPage() {
         .in('lesson_booking_id', lessonIds)
 
       const noteMap: Record<string, ProgressNote> = {}
-      const formMap: Record<string, NoteForm> = {}
+      const formMap: Record<string, ReportForm> = {}
 
       ;((noteRows ?? []) as ProgressNote[]).forEach((note) => {
         noteMap[note.lesson_booking_id] = note
@@ -214,28 +223,17 @@ export default function TutorSessionsPage() {
     }
   }
 
-  const confirmedLessons = useMemo(() => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.status === 'CONFIRMED' ||
-        lesson.status === 'COMPLETED' ||
-        lesson.payment_status === 'PAID'
-    )
-  }, [lessons])
+  const completedCount = useMemo(
+    () => lessons.filter((lesson) => lesson.status === 'COMPLETED').length,
+    [lessons]
+  )
 
-  const completedLessons = useMemo(() => {
-    return lessons.filter((lesson) => lesson.status === 'COMPLETED')
-  }, [lessons])
+  const pendingReports = useMemo(
+    () => lessons.filter((lesson) => !notes[lesson.id]).length,
+    [lessons, notes]
+  )
 
-  const upcomingLessons = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-
-    return confirmedLessons.filter(
-      (lesson) => lesson.lesson_date && lesson.lesson_date >= today
-    )
-  }, [confirmedLessons])
-
-  function updateForm(lessonId: string, field: keyof NoteForm, value: string) {
+  function updateForm(lessonId: string, field: keyof ReportForm, value: string) {
     setForms((prev) => ({
       ...prev,
       [lessonId]: {
@@ -245,7 +243,7 @@ export default function TutorSessionsPage() {
     }))
   }
 
-  async function saveProgressNote(lesson: LessonBooking) {
+  async function saveLessonReport(lesson: LessonBooking) {
     if (!tutor) return
 
     const form = forms[lesson.id] ?? emptyForm()
@@ -256,11 +254,11 @@ export default function TutorSessionsPage() {
     }
 
     setSavingId(lesson.id)
-    setMessage('Saving progress note...')
+    setMessage('Saving lesson report...')
 
-    const existing = notes[lesson.id]
+    const existingNote = notes[lesson.id]
 
-    if (existing) {
+    if (existingNote) {
       const { error } = await supabase
         .from('lesson_progress_notes')
         .update({
@@ -270,9 +268,8 @@ export default function TutorSessionsPage() {
           homework: form.homework.trim(),
           tutor_comment: form.tutor_comment.trim(),
           attendance: form.attendance,
-          lesson_date: lesson.lesson_date || new Date().toISOString().split('T')[0],
         })
-        .eq('id', existing.id)
+        .eq('id', existingNote.id)
         .eq('tutor_id', tutor.id)
 
       if (error) {
@@ -291,8 +288,6 @@ export default function TutorSessionsPage() {
         homework: form.homework.trim(),
         tutor_comment: form.tutor_comment.trim(),
         attendance: form.attendance,
-        lesson_date: lesson.lesson_date || new Date().toISOString().split('T')[0],
-        
       })
 
       if (error) {
@@ -302,57 +297,43 @@ export default function TutorSessionsPage() {
       }
     }
 
-    const { error: completeError } = await supabase
-  .from('lesson_bookings')
-  .update({ status: 'COMPLETED' })
-  .eq('id', lesson.id)
-  .eq('tutor_id', tutor.id)
+    await supabase
+      .from('lesson_bookings')
+      .update({ status: 'COMPLETED' })
+      .eq('id', lesson.id)
+      .eq('tutor_id', tutor.id)
 
-if (completeError) {
-  setMessage(completeError.message)
-  setSavingId('')
-  return
-}
+    const { data: existingEarning } = await supabase
+      .from('tutor_earnings')
+      .select('id')
+      .eq('booking_id', lesson.id)
+      .eq('tutor_id', tutor.id)
+      .maybeSingle()
 
-const { data: existingEarning } = await supabase
-  .from('tutor_earnings')
-  .select('id')
-  .eq('booking_id', lesson.id)
-  .eq('tutor_id', tutor.id)
-  .maybeSingle()
+    if (!existingEarning) {
+      await supabase.from('tutor_earnings').insert({
+        tutor_id: tutor.id,
+        booking_id: lesson.id,
+        lesson_amount: lesson.amount_gbp || 0,
+        platform_fee: Math.max(Number(lesson.amount_gbp || 0) - TUTOR_RATE_USD, 0),
+        tutor_amount: TUTOR_RATE_USD,
+        status: 'pending',
+        lesson_date: lesson.lesson_date,
+      })
+    }
 
-if (!existingEarning) {
-  const { error: earningError } = await supabase
-    .from('tutor_earnings')
-    .insert({
-      tutor_id: tutor.id,
-      booking_id: lesson.id,
-      tutor_amount: 4,
-      status: 'pending',
-      lesson_date: lesson.lesson_date,
-    })
+    await loadLessons(tutor.id)
 
-  if (earningError) {
-    setMessage(earningError.message)
+    setMessage('Lesson report saved, lesson marked completed, and $4 tutor earning created.')
     setSavingId('')
-    return
-  }
-}
-
-await loadLessons(tutor.id)
-
-setMessage(
-  'Progress note saved, lesson marked as completed and tutor earning created.'
-)
-setSavingId('')
   }
 
   if (loading) {
     return (
       <main className="page">
         <section className="hero">
-          <p className="eyebrow">Tutor Lessons</p>
-          <h1>Loading your lessons...</h1>
+          <p className="eyebrow">Lesson Report</p>
+          <h1>Loading lesson reports...</h1>
           <p className="subtitle">{message}</p>
         </section>
 
@@ -364,18 +345,20 @@ setSavingId('')
   return (
     <main className="page">
       <section className="hero">
-        <p className="eyebrow">Tutor Lessons</p>
+        <p className="eyebrow">Tutor Lesson Report</p>
 
-        <h1>Manage lessons and progress notes.</h1>
+        <h1>Complete lessons and update parents.</h1>
 
         <p className="subtitle">
-          Join confirmed lessons, mark lessons as completed, and write parent-friendly progress notes after each class.
+          Submit a short parent-friendly report after each private 1-to-1 lesson.
+          Once saved, the lesson is marked completed and your <strong>$4 tutor earning</strong> is created.
         </p>
 
-        <div className="stats">
-          <Stat label="Upcoming" value={String(upcomingLessons.length)} />
-          <Stat label="Completed" value={String(completedLessons.length)} />
-          <Stat label="Progress Notes" value={String(Object.keys(notes).length)} />
+        <div className="kpiGrid">
+          <Kpi label="Lessons" value={String(lessons.length)} />
+          <Kpi label="Completed" value={String(completedCount)} />
+          <Kpi label="Pending Reports" value={String(pendingReports)} />
+          <Kpi label="Tutor Pay" value="$4/class" />
         </div>
 
         <div className="actions">
@@ -383,8 +366,8 @@ setSavingId('')
             Back to Dashboard
           </Link>
 
-          <Link href="/tutor/availability" className="primaryBtn">
-            Manage Availability
+          <Link href="/tutor/earnings" className="primaryBtn">
+            View Earnings
           </Link>
         </div>
       </section>
@@ -394,19 +377,22 @@ setSavingId('')
       <section className="card">
         <div className="sectionHead">
           <p className="eyebrow">Assigned Lessons</p>
-          <h2>Confirmed private 1-to-1 lessons</h2>
+          <h2>Write lesson reports</h2>
         </div>
 
-        {confirmedLessons.length === 0 ? (
+        {lessons.length === 0 ? (
           <div className="empty">
-            <h3>No confirmed lessons yet</h3>
+            <h3>No confirmed lessons found</h3>
             <p>
-              When parents book and pay for your available slots, confirmed lessons will appear here.
+              Confirmed parent bookings will appear here after payment has been completed.
             </p>
+            <Link href="/tutor/availability" className="primaryBtn">
+              Manage Availability
+            </Link>
           </div>
         ) : (
           <div className="lessonList">
-            {confirmedLessons.map((lesson) => (
+            {lessons.map((lesson) => (
               <article key={lesson.id} className="lessonCard">
                 <div className="lessonTop">
                   <div>
@@ -436,27 +422,10 @@ setSavingId('')
                   <Info label="Payment" value={lesson.payment_status} />
                 </div>
 
-                <div className="lessonActions">
-                  {lesson.meeting_link ? (
-                    <a
-                      href={lesson.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="primaryBtn"
-                    >
-                      Join Lesson
-                    </a>
-                  ) : (
-                    <button className="secondaryBtn" disabled>
-                      Meeting Link Pending
-                    </button>
-                  )}
-                </div>
-
-                <div className="noteBox">
+                <div className="reportBox">
                   <div className="sectionHead small">
-                    <p className="eyebrow">Lesson Report</p>
-                    <h2>Progress note for parent</h2>
+                    <p className="eyebrow">Parent Progress Update</p>
+                    <h2>{notes[lesson.id] ? 'Update report' : 'New report'}</h2>
                   </div>
 
                   <div className="formGrid">
@@ -534,13 +503,13 @@ setSavingId('')
                     type="button"
                     className="primaryBtn full"
                     disabled={savingId === lesson.id}
-                    onClick={() => saveProgressNote(lesson)}
+                    onClick={() => saveLessonReport(lesson)}
                   >
                     {savingId === lesson.id
                       ? 'Saving...'
                       : notes[lesson.id]
-                        ? 'Update Progress Note'
-                        : 'Save & Mark Completed'}
+                        ? 'Update Lesson Report'
+                        : 'Save Report & Complete Lesson'}
                   </button>
                 </div>
               </article>
@@ -554,9 +523,9 @@ setSavingId('')
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="stat">
+    <div className="kpi">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -620,7 +589,7 @@ const styles = `
 
   h1 {
     margin: 14px 0 0;
-    max-width: 840px;
+    max-width: 860px;
     font-size: clamp(42px, 6vw, 72px);
     line-height: 0.96;
     letter-spacing: -0.06em;
@@ -628,21 +597,25 @@ const styles = `
   }
 
   .subtitle {
-    max-width: 780px;
+    max-width: 820px;
     margin: 20px 0 0;
     color: #6f637e;
     font-size: 18px;
     line-height: 1.75;
   }
 
-  .stats {
-    margin-top: 30px;
+  .subtitle strong {
+    color: #241535;
+  }
+
+  .kpiGrid {
+    margin-top: 32px;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
   }
 
-  .stat {
+  .kpi {
     padding: 20px;
     border-radius: 24px;
     background: rgba(255,255,255,0.92);
@@ -650,14 +623,14 @@ const styles = `
     box-shadow: 0 18px 45px rgba(71,43,117,0.07);
   }
 
-  .stat span {
+  .kpi span {
     display: block;
     color: #7a7088;
     font-weight: 850;
     font-size: 14px;
   }
 
-  .stat strong {
+  .kpi strong {
     display: block;
     margin-top: 8px;
     font-size: 34px;
@@ -665,8 +638,7 @@ const styles = `
     letter-spacing: -0.05em;
   }
 
-  .actions,
-  .lessonActions {
+  .actions {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -700,7 +672,6 @@ const styles = `
     border: 1px solid rgba(124,58,237,0.16);
   }
 
-  .secondaryBtn:disabled,
   .primaryBtn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -825,7 +796,7 @@ const styles = `
     font-size: 14px;
   }
 
-  .noteBox {
+  .reportBox {
     margin-top: 24px;
     padding: 22px;
     border-radius: 26px;
@@ -890,7 +861,7 @@ const styles = `
   }
 
   .empty p {
-    margin: 10px 0 0;
+    margin: 10px 0 20px;
     color: #6f637e;
     line-height: 1.7;
   }
@@ -913,14 +884,13 @@ const styles = `
       font-size: 16px;
     }
 
-    .stats,
+    .kpiGrid,
     .infoGrid,
     .formGrid {
       grid-template-columns: 1fr;
     }
 
     .actions,
-    .lessonActions,
     .lessonTop {
       flex-direction: column;
     }
@@ -932,7 +902,7 @@ const styles = `
 
     .card,
     .lessonCard,
-    .noteBox {
+    .reportBox {
       padding: 22px 18px;
       border-radius: 28px;
     }
