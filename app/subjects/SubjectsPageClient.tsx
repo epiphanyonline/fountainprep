@@ -301,7 +301,7 @@ export default function SubjectsPageClient() {
   function filterDescription(category: string) {
     const normalised = category.toLowerCase()
 
-    if (normalised === 'all') return 'Explore the full TutorMe learning catalogue'
+    if (normalised === 'all') return 'Explore the full FountainPrep learning catalogue'
     if (normalised === 'academic') return 'Maths, English, Science and school support'
     if (normalised === 'skill') return 'Coding, Music and confidence-building skills'
     if (normalised === 'language') return 'Yoruba, Igbo, Hausa and cultural connection'
@@ -333,7 +333,7 @@ export default function SubjectsPageClient() {
 
           <div className="hero-main">
             <p className="hero-kicker">
-              {personalised ? 'Personalised learning pathway' : 'TutorMe subject catalogue'}
+              {personalised ? 'Personalised learning pathway' : 'FountainPrep subject catalogue'}
             </p>
 
             <h1 className="page-title hero-title">
@@ -344,7 +344,7 @@ export default function SubjectsPageClient() {
 
             <p className="page-subtitle hero-copy">
               {personalised
-                ? `We’ll use ${student?.full_name}’s age, class level, and learning stage to guide the next step in their TutorMe learning plan.`
+                ? `We’ll use ${student?.full_name}’s age, class level, and learning stage to guide the next step in their FountainPrep learning plan.`
                 : 'Explore structured learning areas across core academics, creative skills, and African languages. Each subject is designed to build confidence, consistency, and measurable progress.'}
             </p>
 
@@ -472,7 +472,7 @@ export default function SubjectsPageClient() {
               <h2 className="section-heading">
                 {personalised
                   ? `Available learning options for ${student?.full_name}`
-                  : 'Explore TutorMe learning areas'}
+                  : 'Explore FountainPrep learning areas'}
               </h2>
             </div>
 
