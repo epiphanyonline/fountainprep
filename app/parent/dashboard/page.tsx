@@ -43,6 +43,43 @@ const planLabels: Record<string, string> = {
   three_month: '3-Month Plan',
 }
 
+const quickActions = [
+  {
+    title: 'Manage Students',
+    text: 'Add or update your children’s learning profiles.',
+    href: '/parent/students',
+    tag: 'Child profiles',
+  },
+  {
+    title: 'Book Private Lesson',
+    text: 'Choose a child, subject, tutor and lesson time.',
+    href: '/parent/students',
+    tag: '1-to-1 tutoring',
+  },
+  {
+    title: 'Progress Reports',
+    text: 'View tutor feedback and learning updates.',
+    href: '/parent/progress',
+    tag: 'Parent updates',
+  },
+  {
+    title: 'My Sessions',
+    text: 'Manage upcoming and completed lessons.',
+    href: '/parent/sessions',
+    tag: 'Lesson centre',
+  },
+]
+
+const helpfulLinks = [
+  { label: 'Bookings', href: '/parent/bookings' },
+  { label: 'Payments', href: '/parent/payments' },
+  { label: 'Subjects', href: '/subjects' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Schedule', href: '/schedule' },
+]
+
+const recommendedSubjects = ['Yoruba', 'Maths', 'English', 'Science', 'Coding', 'Music']
+
 export default function ParentDashboardPage() {
   const router = useRouter()
 
@@ -126,16 +163,16 @@ export default function ParentDashboardPage() {
         .select(
           `
           id,
-student_id,
-subject_id,
-plan_id,
-lesson_date,
-lesson_time,
-timezone,
-status,
-payment_status,
-amount_gbp,
-meeting_link
+          student_id,
+          subject_id,
+          plan_id,
+          lesson_date,
+          lesson_time,
+          timezone,
+          status,
+          payment_status,
+          amount_gbp,
+          meeting_link
         `
         )
         .eq('parent_id', user.id)
@@ -187,17 +224,19 @@ meeting_link
   }, [bookings])
 
   const nextLesson = confirmedLessons[0]
+  const firstName = profile?.full_name?.split(' ')[0] || 'Parent'
+  const studentList = Object.entries(students)
 
   if (loading) {
     return (
       <main className="page">
         <section className="hero">
           <p className="eyebrow">Parent Portal</p>
-          <h1>Loading your learning dashboard...</h1>
+          <h1>Loading your learning centre...</h1>
           <p className="subtitle">{message}</p>
         </section>
 
-        <style jsx>{styles}</style>
+        <style jsx global>{styles}</style>
       </main>
     )
   }
@@ -205,50 +244,70 @@ meeting_link
   return (
     <main className="page">
       <section className="hero">
-        <div className="heroGlow" />
+        <div className="heroTop">
+          <p className="eyebrow">Parent Learning Centre</p>
 
-        <p className="eyebrow">Parent Portal</p>
+          <Link href="/parent/students" className="heroMiniLink">
+            Manage Children
+          </Link>
+        </div>
 
         <h1>
-          Welcome back
-          {profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+          {firstName}, <br />
+          your child’s learning centre
         </h1>
 
         <p className="subtitle">
-          Manage your child’s private 1-to-1 tutoring, upcoming lessons, payments,
-          and learning journey in one place.
+          Manage your children, book private 1-to-1 lessons, track progress
+          reports, handle payments, and stay informed about every step of their
+          learning journey.
         </p>
+
+        <div className="heroActions">
+          <Link href="/parent/students" className="primaryLink">
+            Book a Private Lesson
+          </Link>
+
+          <Link href="/parent/progress" className="secondaryLink">
+            View Progress
+          </Link>
+        </div>
 
         <div className="kpiGrid">
           <KpiCard label="Students" value={String(studentCount)} />
-          <KpiCard label="Upcoming Lessons" value={String(confirmedLessons.length)} />
-          <KpiCard label="Pending Payments" value={String(pendingPayments.length)} />
-          <KpiCard label="Learning Type" value="1-to-1" />
-        </div>
-
-        <div className="actions">
-          <Link href="/parent/students" className="primaryLink">
-            Book New Lesson
-          </Link>
-
-          <Link href="/parent/students" className="secondaryLink">
-            Add or Choose Child
-          </Link>
-
-          <Link href="/parent/bookings" className="secondaryLink">
-            My Bookings
-          </Link>
+          <KpiCard label="Upcoming" value={String(confirmedLessons.length)} />
+          <KpiCard label="Pending Pay" value={String(pendingPayments.length)} />
+          <KpiCard label="Lesson Type" value="1-to-1" />
         </div>
       </section>
 
-      <section className="topGrid">
-        <div className="card mainCard">
-          <p className="sectionEyebrow">Next Lesson</p>
+      <section className="quickGrid">
+        {quickActions.map((item) => (
+          <Link href={item.href} className="quickCard" key={item.title}>
+            <span>{item.tag}</span>
+            <h2>{item.title}</h2>
+            <p>{item.text}</p>
+          </Link>
+        ))}
+      </section>
+
+      <section className="mainGrid">
+        <div className="card nextCard">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Next Lesson</p>
+              <h2>Your next private class</h2>
+            </div>
+
+            <Link href="/parent/sessions" className="smallLink">
+              Sessions
+            </Link>
+          </div>
 
           {nextLesson ? (
             <div className="nextLesson">
               <div>
-                <h2>{subjects[nextLesson.subject_id] || 'Selected subject'}</h2>
+                <h3>{subjects[nextLesson.subject_id] || 'Selected subject'}</h3>
                 <p>
                   {students[nextLesson.student_id] || 'Selected child'} •{' '}
                   {planLabels[nextLesson.plan_id] || 'Learning Plan'}
@@ -256,47 +315,118 @@ meeting_link
               </div>
 
               <div className="lessonTimeBox">
-  <strong>{formatDate(nextLesson.lesson_date)}</strong>
-  <span>{nextLesson.lesson_time || 'Time pending'}</span>
+                <strong>{formatDate(nextLesson.lesson_date)}</strong>
+                <span>{nextLesson.lesson_time || 'Time pending'}</span>
 
-  {nextLesson.meeting_link ? (
-    <a
-      href={nextLesson.meeting_link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="joinBtn"
-    >
-      Join Lesson
-    </a>
-  ) : null}
-</div>
+                {nextLesson.meeting_link ? (
+                  <a
+                    href={nextLesson.meeting_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="joinBtn"
+                  >
+                    Join Lesson
+                  </a>
+                ) : null}
+              </div>
             </div>
           ) : (
             <EmptyState
-              title="No confirmed lessons yet"
-              text="Once payment is completed, your child's upcoming lessons will appear here."
+              title="No confirmed lesson yet"
+              text="Once payment is completed, your child’s upcoming private lesson will appear here."
               href="/parent/students"
               button="Start Learning"
             />
           )}
         </div>
 
-        <aside className="card profileCard">
-          <p className="sectionEyebrow">Family Profile</p>
+        <aside className="card valueCard">
+          <p className="sectionEyebrow">Progress Value</p>
+          <h2>Parents stay informed after learning.</h2>
 
-          {profile ? (
-            <div className="profileList">
-              <ProfileRow label="Name" value={profile.full_name} />
-              <ProfileRow label="Phone" value={profile.phone ?? '-'} />
-              <ProfileRow
-                label="Country"
-                value={profile.country_of_residence ?? '-'}
-              />
-              <ProfileRow label="Timezone" value={profile.timezone} />
-              <ProfileRow label="Currency" value={profile.preferred_currency} />
+          <div className="reportPreview">
+            <div>
+              <strong>Lesson summary</strong>
+              <span>What was covered</span>
             </div>
-          ) : null}
+            <div>
+              <strong>Improvement</strong>
+              <span>What your child is getting better at</span>
+            </div>
+            <div>
+              <strong>Next focus</strong>
+              <span>What the tutor will work on next</span>
+            </div>
+          </div>
+
+          <Link href="/parent/progress" className="primaryLink fullLink">
+            Open Progress Reports
+          </Link>
         </aside>
+      </section>
+
+      <section className="splitGrid">
+        <div className="card">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Children</p>
+              <h2>Student overview</h2>
+            </div>
+
+            <Link href="/parent/students" className="smallLink">
+              Manage
+            </Link>
+          </div>
+
+          {studentList.length === 0 ? (
+            <EmptyState
+              title="No child profile yet"
+              text="Add your child first so lessons can be matched to their level and learning needs."
+              href="/parent/students"
+              button="Add Child"
+            />
+          ) : (
+            <div className="studentList">
+              {studentList.map(([id, name]) => (
+                <div className="studentCard" key={id}>
+                  <div className="avatar">{name.charAt(0).toUpperCase()}</div>
+                  <div>
+                    <strong>{name}</strong>
+                    <span>Ready for private tutoring</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card paymentCard">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Payment Centre</p>
+              <h2>Bookings and payments</h2>
+            </div>
+
+            <Link href="/parent/payments" className="smallLink">
+              Open
+            </Link>
+          </div>
+
+          <div className="paymentSummary">
+            <div>
+              <span>Pending payments</span>
+              <strong>{pendingPayments.length}</strong>
+            </div>
+            <div>
+              <span>Confirmed lessons</span>
+              <strong>{confirmedLessons.length}</strong>
+            </div>
+          </div>
+
+          <Link href="/parent/payments" className="primaryLink fullLink">
+            Manage Payments
+          </Link>
+        </div>
       </section>
 
       <section className="cardWide">
@@ -314,7 +444,7 @@ meeting_link
         {confirmedLessons.length === 0 ? (
           <EmptyState
             title="No upcoming lessons yet"
-            text="Book a subject and complete payment to activate your private tutoring plan."
+            text="Book a subject and complete payment to activate your child’s private tutoring plan."
             href="/parent/students"
             button="Book a Lesson"
           />
@@ -335,58 +465,42 @@ meeting_link
       <section className="cardWide">
         <div className="sectionHeader">
           <div>
-            <p className="sectionEyebrow">Payments & Bookings</p>
-            <h2>Recent booking activity</h2>
+            <p className="sectionEyebrow">Recommended Subjects</p>
+            <h2>Continue your child’s learning journey</h2>
+          </div>
+
+          <Link href="/subjects" className="smallLink">
+            Explore
+          </Link>
+        </div>
+
+        <div className="subjectGrid">
+          {recommendedSubjects.map((subject) => (
+            <Link href="/subjects" key={subject} className="subjectPill">
+              {subject}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Helpful Navigation</p>
+            <h2>Everything parents need</h2>
           </div>
         </div>
 
-        {bookings.length === 0 ? (
-          <EmptyState
-            title="No bookings yet"
-            text="Start by choosing a child, subject, plan, and weekly lesson time."
-            href="/parent/students"
-            button="Start Learning"
-          />
-        ) : (
-          <div className="bookingGrid">
-            {bookings.map((booking) => (
-              <div key={booking.id} className="bookingCard">
-                <p className="bookingTitle">
-                  {subjects[booking.subject_id] || 'Selected subject'}
-                </p>
-
-                <p className="bookingText">
-                  {students[booking.student_id] || 'Selected child'} •{' '}
-                  {planLabels[booking.plan_id] || 'Learning Plan'}
-                </p>
-
-                <p className="bookingText">
-                  {formatDate(booking.lesson_date)} •{' '}
-                  {booking.lesson_time || 'Time pending'}
-                </p>
-
-                <span
-                  className={
-                    booking.payment_status === 'PAID'
-                      ? 'statusBadge statusPaid'
-                      : 'statusBadge statusPending'
-                  }
-                >
-                  {booking.payment_status === 'PAID' ? 'Paid' : 'Pending Payment'}
-                </span>
-
-                {booking.payment_status !== 'PAID' ? (
-                  <Link href={`/payment?bookingId=${booking.id}`} className="payLink">
-                    Complete Payment
-                  </Link>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="helpGrid">
+          {helpfulLinks.map((item) => (
+            <Link href={item.href} key={item.href} className="helpLink">
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </section>
 
-      <style jsx>{styles}</style>
+      <style jsx global>{styles}</style>
     </main>
   )
 }
@@ -396,15 +510,6 @@ function KpiCard({ label, value }: { label: string; value: string }) {
     <div className="kpiCard">
       <p>{label}</p>
       <h2>{value}</h2>
-    </div>
-  )
-}
-
-function ProfileRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="profileRow">
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   )
 }
@@ -422,7 +527,6 @@ function LessonRow({
     <div className="lessonRow">
       <div>
         <p className="lessonTitle">{subjectName}</p>
-
         <p className="lessonMeta">
           {childName} • {planLabels[booking.plan_id] || 'Learning Plan'}
         </p>
@@ -430,7 +534,6 @@ function LessonRow({
 
       <div className="lessonDate">
         <strong>{formatDate(booking.lesson_date)}</strong>
-
         <span>{booking.lesson_time || 'Time pending'}</span>
 
         {booking.meeting_link ? (
@@ -483,17 +586,20 @@ function formatDate(date: string | null) {
 const styles = `
   .page {
     min-height: 100vh;
-    padding: 42px 18px 90px;
-    background:
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 30%),
-      linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff);
+    padding: 34px 16px 90px;
     color: #21152d;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.14), transparent 30%),
+      radial-gradient(circle at 92% 5%, rgba(236, 72, 153, 0.09), transparent 28%),
+      linear-gradient(180deg, #fffaff 0%, #fbf8ff 44%, #f4edff 100%);
   }
 
   .hero,
-  .topGrid,
+  .quickGrid,
+  .mainGrid,
+  .splitGrid,
   .cardWide {
-    max-width: 1180px;
+    width: min(1180px, 100%);
     margin-left: auto;
     margin-right: auto;
   }
@@ -501,8 +607,8 @@ const styles = `
   .hero {
     position: relative;
     overflow: hidden;
-    padding: 48px;
-    border-radius: 40px;
+    padding: 42px;
+    border-radius: 38px;
     background:
       radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 34%),
       linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.96));
@@ -510,157 +616,220 @@ const styles = `
     box-shadow: 0 30px 90px rgba(71,43,117,0.12);
   }
 
-  .heroGlow {
-    position: absolute;
-    right: -120px;
-    top: -120px;
-    width: 360px;
-    height: 360px;
-    border-radius: 999px;
-    background: rgba(124,58,237,0.18);
-    filter: blur(24px);
+  .heroTop,
+  .sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
   }
 
   .eyebrow,
   .sectionEyebrow {
-    position: relative;
     margin: 0;
     color: #6d28d9;
-    font-weight: 950;
     font-size: 14px;
+    font-weight: 950;
   }
 
   .hero h1 {
-    position: relative;
-    margin: 14px 0 0;
-    max-width: 850px;
-    font-size: clamp(40px, 6vw, 72px);
-    line-height: 0.96;
-    letter-spacing: -0.06em;
+    margin: 16px 0 0;
+    max-width: 890px;
+    font-size: clamp(42px, 6.4vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.065em;
     font-weight: 950;
   }
 
   .subtitle {
-    position: relative;
-    max-width: 760px;
+    max-width: 780px;
     margin: 20px 0 0;
     color: #6f637e;
-    font-size: 18px;
+    font-size: 17.5px;
     line-height: 1.75;
   }
 
+  .heroActions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 28px;
+  }
+
+  .primaryLink,
+  .secondaryLink,
+  .smallLink,
+  .heroMiniLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 950;
+  }
+
+  .primaryLink,
+  .secondaryLink {
+    min-height: 54px;
+    padding: 0 22px;
+    border-radius: 18px;
+  }
+
+  .primaryLink {
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
+  }
+
+  .secondaryLink,
+  .smallLink,
+  .heroMiniLink {
+    color: #351e55;
+    background: white;
+    border: 1px solid rgba(124,58,237,0.16);
+  }
+
+  .smallLink,
+  .heroMiniLink {
+    min-height: 42px;
+    padding: 0 15px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
   .kpiGrid {
-    position: relative;
-    margin-top: 32px;
+    margin-top: 30px;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
+  }
+
+  .kpiCard,
+  .quickCard,
+  .card,
+  .cardWide {
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(126,87,194,0.12);
+    box-shadow: 0 22px 62px rgba(71,43,117,0.08);
   }
 
   .kpiCard {
-    padding: 20px;
-    border-radius: 24px;
-    background: rgba(255,255,255,0.92);
-    border: 1px solid rgba(124,58,237,0.12);
-    box-shadow: 0 18px 45px rgba(71,43,117,0.07);
+    padding: 19px;
+    border-radius: 23px;
   }
 
   .kpiCard p {
     margin: 0;
     color: #7a7088;
+    font-size: 13px;
     font-weight: 850;
-    font-size: 14px;
   }
 
   .kpiCard h2 {
     margin: 8px 0 0;
-    font-size: 34px;
+    font-size: 31px;
     line-height: 1;
     letter-spacing: -0.05em;
     font-weight: 950;
   }
 
-  .actions {
-    position: relative;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 30px;
+  .quickGrid {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
   }
 
-  .primaryLink,
-  .secondaryLink,
-  .smallLink {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 18px;
-    min-height: 52px;
-    padding: 0 22px;
-    font-weight: 950;
+  .quickCard {
+    min-height: 190px;
+    padding: 23px;
+    border-radius: 28px;
+    color: inherit;
     text-decoration: none;
+    transition: transform 180ms ease, box-shadow 180ms ease;
   }
 
-  .primaryLink {
-    background: linear-gradient(135deg, #7c3aed, #6d28d9);
-    color: white;
-    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
+  .quickCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 28px 72px rgba(71,43,117,0.12);
   }
 
-  .secondaryLink,
-  .smallLink {
-    background: white;
-    color: #351e55;
-    border: 1px solid rgba(124,58,237,0.16);
+  .quickCard span {
+    display: inline-flex;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: rgba(124,58,237,0.09);
+    color: #6d28d9;
+    font-size: 12px;
+    font-weight: 950;
   }
 
-  .topGrid {
-    margin-top: 28px;
+  .quickCard h2 {
+    margin: 18px 0 0;
+    font-size: 22px;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    font-weight: 950;
+  }
+
+  .quickCard p {
+    margin: 10px 0 0;
+    color: #6f637e;
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
+  .mainGrid,
+  .splitGrid {
+    margin-top: 24px;
     display: grid;
     grid-template-columns: 1.25fr 0.75fr;
     gap: 24px;
   }
 
+  .splitGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .card,
   .cardWide {
-    padding: 32px;
-    border-radius: 34px;
-    background: rgba(255,255,255,0.96);
-    border: 1px solid rgba(126,87,194,0.12);
-    box-shadow: 0 24px 70px rgba(71,43,117,0.09);
+    padding: 30px;
+    border-radius: 32px;
   }
 
   .cardWide {
-    margin-top: 28px;
+    margin-top: 24px;
   }
 
   .sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    gap: 18px;
-    align-items: center;
     margin-bottom: 22px;
   }
 
   .sectionHeader h2,
-  .nextLesson h2 {
-    margin: 10px 0 0;
-    font-size: clamp(28px, 4vw, 44px);
+  .valueCard h2 {
+    margin: 8px 0 0;
+    font-size: clamp(26px, 3.3vw, 42px);
     line-height: 1.05;
     letter-spacing: -0.045em;
     font-weight: 950;
   }
 
   .nextLesson {
-    margin-top: 22px;
     display: flex;
     justify-content: space-between;
-    gap: 24px;
     align-items: center;
+    gap: 22px;
     padding: 24px;
-    border-radius: 28px;
+    border-radius: 26px;
     background: linear-gradient(135deg, #fbf8ff, #f3ecff);
     border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .nextLesson h3 {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    font-weight: 950;
   }
 
   .nextLesson p {
@@ -670,7 +839,7 @@ const styles = `
   }
 
   .lessonTimeBox {
-    min-width: 180px;
+    min-width: 185px;
     padding: 18px;
     border-radius: 22px;
     background: white;
@@ -683,31 +852,147 @@ const styles = `
     display: block;
   }
 
-  .lessonTimeBox span {
-    margin-top: 8px;
+  .lessonTimeBox span,
+  .lessonDate span {
+    margin-top: 7px;
     color: #6d28d9;
     font-weight: 950;
   }
 
-  .profileList {
-    margin-top: 22px;
+  .joinBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 15px;
+    margin-top: 12px;
+    border-radius: 15px;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 950;
+    box-shadow: 0 14px 30px rgba(124,58,237,0.22);
   }
 
-  .profileRow {
+  .smallJoin {
+    min-height: 38px;
+  }
+
+  .valueCard {
+    background:
+      radial-gradient(circle at top right, rgba(124,58,237,0.12), transparent 38%),
+      rgba(255,255,255,0.94);
+  }
+
+  .reportPreview {
+    margin: 22px 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .reportPreview div,
+  .studentCard,
+  .lessonRow,
+  .bookingCard,
+  .emptyState {
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .reportPreview div {
+    padding: 15px;
+    border-radius: 20px;
+  }
+
+  .reportPreview strong,
+  .reportPreview span {
+    display: block;
+  }
+
+  .reportPreview strong {
+    font-weight: 950;
+  }
+
+  .reportPreview span {
+    margin-top: 4px;
+    color: #6f637e;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  .fullLink {
+    width: 100%;
+  }
+
+  .studentList {
+    display: grid;
+    gap: 12px;
+  }
+
+  .studentCard {
     display: flex;
-    justify-content: space-between;
-    gap: 18px;
-    padding: 16px 0;
-    border-bottom: 1px solid rgba(124,58,237,0.1);
+    gap: 13px;
+    align-items: center;
+    padding: 16px;
+    border-radius: 22px;
   }
 
-  .profileRow span {
-    color: #7a7088;
+  .avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    font-weight: 950;
+  }
+
+  .studentCard strong,
+  .studentCard span {
+    display: block;
+  }
+
+  .studentCard strong {
+    font-weight: 950;
+  }
+
+  .studentCard span {
+    margin-top: 4px;
+    color: #6f637e;
+    font-size: 13.5px;
+  }
+
+  .paymentSummary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .paymentSummary div {
+    padding: 18px;
+    border-radius: 22px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .paymentSummary span,
+  .paymentSummary strong {
+    display: block;
+  }
+
+  .paymentSummary span {
+    color: #6f637e;
+    font-size: 13px;
     font-weight: 850;
   }
 
-  .profileRow strong {
-    text-align: right;
+  .paymentSummary strong {
+    margin-top: 8px;
+    font-size: 30px;
+    line-height: 1;
     font-weight: 950;
   }
 
@@ -722,14 +1007,12 @@ const styles = `
     gap: 18px;
     padding: 18px;
     border-radius: 22px;
-    background: #fbf8ff;
-    border: 1px solid rgba(124,58,237,0.12);
   }
 
   .lessonTitle {
     margin: 0;
-    font-weight: 950;
     font-size: 19px;
+    font-weight: 950;
   }
 
   .lessonMeta {
@@ -745,70 +1028,34 @@ const styles = `
     gap: 6px;
   }
 
-  .lessonDate span {
-    color: #6d28d9;
-    font-weight: 950;
-  }
-
-  .bookingGrid {
+  .subjectGrid,
+  .helpGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
   }
 
-  .bookingCard {
-    padding: 20px;
-    border-radius: 24px;
+  .subjectPill,
+  .helpLink {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
     background: #fbf8ff;
     border: 1px solid rgba(124,58,237,0.12);
-  }
-
-  .bookingTitle {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 950;
-  }
-
-  .bookingText {
-    margin: 8px 0 0;
-    color: #6f637e;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .statusBadge {
-    display: inline-flex;
-    margin-top: 14px;
-    padding: 8px 11px;
-    border-radius: 999px;
-    font-weight: 950;
-    font-size: 12px;
-  }
-
-  .statusPaid {
-    background: #ecfdf3;
-    color: #027a48;
-  }
-
-  .statusPending {
-    background: #fff7ed;
-    color: #9a3412;
-  }
-
-  .payLink {
-    display: inline-flex;
-    margin-top: 14px;
-    color: #6d28d9;
-    font-weight: 950;
+    color: #351e55;
     text-decoration: none;
+    font-weight: 950;
+  }
+
+  .helpGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .emptyState {
-    margin-top: 22px;
     padding: 24px;
     border-radius: 24px;
-    background: #fbf8ff;
-    border: 1px solid rgba(124,58,237,0.12);
   }
 
   .emptyState h3 {
@@ -823,30 +1070,32 @@ const styles = `
     line-height: 1.7;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 980px) {
     .page {
-      padding: 26px 12px 70px;
+      padding: 20px 10px 70px;
     }
 
     .hero {
-      padding: 32px 20px;
+      padding: 28px 20px;
       border-radius: 30px;
+    }
+
+    .heroTop {
+      align-items: flex-start;
+      flex-direction: column;
     }
 
     .hero h1 {
       font-size: clamp(38px, 12vw, 56px);
+      line-height: 0.98;
     }
 
     .subtitle {
       font-size: 16px;
+      line-height: 1.7;
     }
 
-    .kpiGrid,
-    .topGrid {
-      grid-template-columns: 1fr;
-    }
-
-    .actions {
+    .heroActions {
       flex-direction: column;
     }
 
@@ -855,9 +1104,22 @@ const styles = `
       width: 100%;
     }
 
+    .kpiGrid,
+    .quickGrid,
+    .mainGrid,
+    .splitGrid,
+    .subjectGrid,
+    .helpGrid {
+      grid-template-columns: 1fr;
+    }
+
+    .quickCard {
+      min-height: auto;
+    }
+
     .card,
     .cardWide {
-      padding: 24px 20px;
+      padding: 23px 18px;
       border-radius: 28px;
     }
 
@@ -874,50 +1136,8 @@ const styles = `
       text-align: left;
     }
 
-    .profileRow {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .joinBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 54px;
-  padding: 0 22px;
-  margin-top: 14px;
-  border-radius: 18px;
-  text-decoration: none;
-  font-weight: 900;
-  color: white;
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  box-shadow: 0 16px 38px rgba(124,58,237,0.25);
-}
-
-    .profileRow strong {
-      text-align: left;
+    .paymentSummary {
+      grid-template-columns: 1fr;
     }
   }
-
-  .joinBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
-  margin-top: 12px;
-  border-radius: 15px;
-  text-decoration: none;
-  font-weight: 950;
-  color: white;
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  box-shadow: 0 14px 30px rgba(124,58,237,0.22);
-}
-
-.smallJoin {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 13px;
-}
 `

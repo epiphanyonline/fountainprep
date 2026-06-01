@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
@@ -59,6 +59,33 @@ const planLabels: Record<string, string> = {
   three_month: '3-Month Plan',
   six_month: '6-Month Plan',
 }
+
+const quickActions = [
+  {
+    title: 'Manage Availability',
+    text: 'Keep your weekly teaching slots updated for parents.',
+    href: '/tutor/availability',
+    tag: 'Schedule',
+  },
+  {
+    title: 'My Sessions',
+    text: 'View upcoming, completed and assigned lessons.',
+    href: '/tutor/sessions',
+    tag: 'Lessons',
+  },
+  {
+    title: 'Lesson Reports',
+    text: 'Submit progress updates after each class.',
+    href: '/tutor/lesson-report',
+    tag: 'Reports',
+  },
+  {
+    title: 'Earnings',
+    text: 'Track lesson income and tutor payout activity.',
+    href: '/tutor/earnings',
+    tag: 'Payouts',
+  },
+]
 
 export default function TutorDashboardPage() {
   const router = useRouter()
@@ -180,96 +207,201 @@ export default function TutorDashboardPage() {
     return confirmedLessons.filter((lesson) => lesson.lesson_date === today)
   }, [confirmedLessons])
 
+  const nextLesson = confirmedLessons[0]
+  const firstName = profile?.full_name?.split(' ')[0] || 'Tutor'
+
   if (loading) {
     return (
-      <main style={styles.page}>
-        <section style={styles.hero}>
-          <p style={styles.eyebrow}>Tutor Portal</p>
-          <h1 style={styles.title}>Loading dashboard...</h1>
-          <p style={styles.subtitle}>{message}</p>
+      <main className="page">
+        <section className="hero">
+          <p className="eyebrow">Tutor Portal</p>
+          <h1>Loading tutor operations centre...</h1>
+          <p className="subtitle">{message}</p>
         </section>
+
+        <style jsx global>{styles}</style>
       </main>
     )
   }
 
   return (
-    <main style={styles.page}>
-      <section style={styles.hero}>
-        <div style={styles.heroGlow} />
+    <main className="page">
+      <section className="hero">
+        <div className="heroTop">
+          <p className="eyebrow">Tutor Operations Centre</p>
 
-        <p style={styles.eyebrow}>Tutor Portal</p>
-
-        <h1 style={styles.title}>
-          Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
-        </h1>
-
-        <p style={styles.subtitle}>
-          Track assigned lessons, join scheduled classes, and manage your availability.
-        </p>
-
-        <div style={styles.kpiGrid}>
-          <KpiCard label="Today’s Lessons" value={String(todayLessons.length)} />
-          <KpiCard label="Upcoming Lessons" value={String(confirmedLessons.length)} />
-          <KpiCard label="Pending Payment" value={String(pendingLessons.length)} />
-          <KpiCard label="Rating" value={profile ? profile.average_rating.toFixed(1) : '0.0'} />
+          <Link href="/tutor/onboarding" className="miniLink">
+            Edit Profile
+          </Link>
         </div>
 
-        <div style={styles.actions}>
-          <Link href="/tutor/availability" style={styles.primaryLink}>
+        <h1>
+          {firstName}, <br />
+          manage your tutoring work with confidence.
+        </h1>
+
+        <p className="subtitle">
+          Track assigned lessons, join classes, submit progress reports, manage
+          availability, and keep your tutor profile ready for parent bookings.
+        </p>
+
+        <div className="heroActions">
+          <Link href="/tutor/availability" className="primaryLink">
             Manage Availability
           </Link>
 
-          <Link href="/tutor/sessions" style={styles.secondaryLink}>
-            View Sessions
+          <Link href="/tutor/lesson-report" className="secondaryLink">
+            Submit Lesson Report
           </Link>
+        </div>
 
-          <Link href="/account" style={styles.secondaryLink}>
-            Account
-          </Link>
+        <div className="kpiGrid">
+          <KpiCard label="Today" value={String(todayLessons.length)} />
+          <KpiCard label="Upcoming" value={String(confirmedLessons.length)} />
+          <KpiCard label="Pending" value={String(pendingLessons.length)} />
+          <KpiCard
+            label="Rating"
+            value={profile ? profile.average_rating.toFixed(1) : '0.0'}
+          />
         </div>
       </section>
 
-      <section style={styles.grid}>
-        <div style={styles.card}>
-          <p style={styles.sectionEyebrow}>Assigned Lessons</p>
-          <h2 style={styles.sectionTitle}>Upcoming classes</h2>
+      <section className="quickGrid">
+        {quickActions.map((item) => (
+          <Link href={item.href} className="quickCard" key={item.title}>
+            <span>{item.tag}</span>
+            <h2>{item.title}</h2>
+            <p>{item.text}</p>
+          </Link>
+        ))}
+      </section>
 
-          {confirmedLessons.length === 0 ? (
+      <section className="mainGrid">
+        <div className="card nextCard">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Next Class</p>
+              <h2>Your next assigned lesson</h2>
+            </div>
+
+            <Link href="/tutor/sessions" className="smallLink">
+              View Sessions
+            </Link>
+          </div>
+
+          {nextLesson ? (
+            <LessonCard lesson={nextLesson} featured />
+          ) : (
             <EmptyState
-              title="No assigned lessons yet"
-              text="When parents book and pay for your available slots, lessons will appear here."
+              title="No confirmed lesson yet"
+              text="When parents book and pay for your available slots, your next class will appear here."
+            />
+          )}
+        </div>
+
+        <aside className="card profileCard">
+          <p className="sectionEyebrow">Tutor Status</p>
+          <h2>Profile readiness</h2>
+
+          {message ? <p className="message">{message}</p> : null}
+
+          {profile ? (
+            <div className="statusList">
+              <StatusRow label="Approval" value={profile.approval_status} />
+              <StatusRow label="Verification" value={profile.verification_status} />
+              <StatusRow label="Listed" value={profile.is_listed ? 'Yes' : 'No'} />
+              <StatusRow label="Experience" value={`${profile.years_of_experience} yrs`} />
+              <StatusRow label="Timezone" value={profile.timezone} />
+            </div>
+          ) : null}
+
+          <Link href="/tutor/onboarding" className="primaryLink fullLink">
+            Update Tutor Profile
+          </Link>
+        </aside>
+      </section>
+
+      <section className="splitGrid">
+        <div className="card">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Today</p>
+              <h2>Today’s lessons</h2>
+            </div>
+          </div>
+
+          {todayLessons.length === 0 ? (
+            <EmptyState
+              title="No lesson today"
+              text="You have no confirmed class scheduled for today."
             />
           ) : (
-            <div style={styles.lessonList}>
-              {confirmedLessons.map((lesson) => (
+            <div className="lessonList">
+              {todayLessons.map((lesson) => (
                 <LessonCard key={lesson.id} lesson={lesson} />
               ))}
             </div>
           )}
         </div>
 
-        <aside style={styles.card}>
-          <p style={styles.sectionEyebrow}>Profile Summary</p>
+        <div className="card reportCard">
+          <p className="sectionEyebrow">After Each Lesson</p>
+          <h2>Submit progress updates parents can value.</h2>
 
-          {message ? <p style={styles.message}>{message}</p> : null}
-
-          {profile ? (
-            <div style={styles.profileList}>
-              <ProfileRow label="Name" value={profile.full_name} />
-              <ProfileRow label="Phone" value={profile.phone ?? '-'} />
-              <ProfileRow label="Country" value={profile.country} />
-              <ProfileRow label="Timezone" value={profile.timezone} />
-              <ProfileRow label="Experience" value={`${profile.years_of_experience} yrs`} />
-              <ProfileRow label="Approval" value={profile.approval_status} />
-              <ProfileRow label="Verification" value={profile.verification_status} />
-              <ProfileRow label="Listed" value={profile.is_listed ? 'Yes' : 'No'} />
+          <div className="reportPreview">
+            <div>
+              <strong>What was covered</strong>
+              <span>Lesson topic, exercises and learning activity.</span>
             </div>
-          ) : null}
-        </aside>
+            <div>
+              <strong>Child’s progress</strong>
+              <span>Confidence, participation and improvement.</span>
+            </div>
+            <div>
+              <strong>Next focus</strong>
+              <span>What the next class should build on.</span>
+            </div>
+          </div>
+
+          <Link href="/tutor/lesson-report" className="primaryLink fullLink">
+            Open Lesson Reports
+          </Link>
+        </div>
       </section>
 
-      <section style={styles.cardWide}>
-        <p style={styles.sectionEyebrow}>Pending / Awaiting Payment</p>
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Assigned Lessons</p>
+            <h2>Upcoming classes</h2>
+          </div>
+
+          <Link href="/tutor/sessions" className="smallLink">
+            View all
+          </Link>
+        </div>
+
+        {confirmedLessons.length === 0 ? (
+          <EmptyState
+            title="No assigned lessons yet"
+            text="When parents book and pay for your available slots, confirmed lessons will appear here."
+          />
+        ) : (
+          <div className="lessonList">
+            {confirmedLessons.map((lesson) => (
+              <LessonCard key={lesson.id} lesson={lesson} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Pending / Awaiting Payment</p>
+            <h2>Parent bookings not yet confirmed</h2>
+          </div>
+        </div>
 
         {pendingLessons.length === 0 ? (
           <EmptyState
@@ -277,93 +409,110 @@ export default function TutorDashboardPage() {
             text="You currently have no parent bookings awaiting payment."
           />
         ) : (
-          <div style={styles.pendingGrid}>
+          <div className="pendingGrid">
             {pendingLessons.map((lesson) => (
-              <div key={lesson.id} style={styles.pendingCard}>
-                <p style={styles.pendingTitle}>
+              <div key={lesson.id} className="pendingCard">
+                <p className="pendingTitle">
                   {subjectLabels[lesson.subject_id] || lesson.subject_id}
                 </p>
 
-                <p style={styles.pendingText}>
+                <p className="pendingText">
                   {lesson.student_profiles?.full_name || 'Student'} •{' '}
                   {planLabels[lesson.plan_id] || lesson.plan_id}
                 </p>
 
-                <p style={styles.pendingText}>
-                  {lesson.lesson_date || 'Date pending'} • {lesson.lesson_time || 'Time pending'}
+                <p className="pendingText">
+                  {formatDate(lesson.lesson_date)} •{' '}
+                  {lesson.lesson_time || 'Time pending'}
                 </p>
 
-                <span style={styles.pendingBadge}>Awaiting Payment</span>
+                <span className="pendingBadge">Awaiting Payment</span>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      <style jsx global>{styles}</style>
     </main>
   )
 }
 
-function LessonCard({ lesson }: { lesson: LessonBooking }) {
+function LessonCard({
+  lesson,
+  featured = false,
+}: {
+  lesson: LessonBooking
+  featured?: boolean
+}) {
   const child = lesson.student_profiles
 
   return (
-    <div style={styles.lessonCard}>
-      <div style={styles.lessonTop}>
+    <div className={featured ? 'lessonCard lessonCardFeatured' : 'lessonCard'}>
+      <div className="lessonTop">
         <div>
-          <p style={styles.lessonSubject}>
+          <p className="lessonSubject">
             {subjectLabels[lesson.subject_id] || lesson.subject_id}
           </p>
 
-          <p style={styles.lessonMeta}>
+          <p className="lessonMeta">
             {child?.full_name || 'Student'} • {planLabels[lesson.plan_id] || lesson.plan_id}
           </p>
 
-          <p style={styles.lessonMeta}>
-            {[child?.child_age ? `Age ${child.child_age}` : null, child?.country_system, child?.country_class_label]
+          <p className="lessonMeta">
+            {[
+              child?.child_age ? `Age ${child.child_age}` : null,
+              child?.country_system,
+              child?.country_class_label,
+            ]
               .filter(Boolean)
               .join(' • ') || 'Student profile'}
           </p>
         </div>
 
-        <span style={styles.paidBadge}>Confirmed</span>
+        <span className="paidBadge">Confirmed</span>
       </div>
 
-      <div style={styles.lessonDetails}>
-        <Detail label="Date" value={lesson.lesson_date || '-'} />
+      <div className="lessonDetails">
+        <Detail label="Date" value={formatDate(lesson.lesson_date)} />
         <Detail label="Time" value={lesson.lesson_time || '-'} />
         <Detail label="Timezone" value={lesson.timezone || 'Europe/London'} />
       </div>
 
       {lesson.notes ? (
-        <div style={styles.noteBox}>
-          <p style={styles.noteLabel}>Parent note</p>
-          <p style={styles.noteText}>{lesson.notes}</p>
+        <div className="noteBox">
+          <p className="noteLabel">Parent note</p>
+          <p className="noteText">{lesson.notes}</p>
         </div>
       ) : null}
 
-      <div style={styles.lessonActions}>
+      <div className="lessonActions">
         {lesson.meeting_link ? (
           <a
             href={lesson.meeting_link}
             target="_blank"
             rel="noreferrer"
-            style={styles.primaryLink}
+            className="primaryLink actionBtn"
           >
             Join Lesson
           </a>
         ) : (
-          <span style={styles.disabledButton}>No meeting link yet</span>
+          <span className="disabledButton">No meeting link yet</span>
         )}
 
         {lesson.meeting_link ? (
           <button
             type="button"
             onClick={() => navigator.clipboard.writeText(lesson.meeting_link || '')}
-            style={styles.secondaryButton}
+            className="secondaryButton"
           >
             Copy Link
           </button>
         ) : null}
+
+        <Link href="/tutor/lesson-report" className="secondaryButton">
+          Add Report
+        </Link>
       </div>
     </div>
   )
@@ -371,395 +520,580 @@ function LessonCard({ lesson }: { lesson: LessonBooking }) {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.detailBox}>
-      <p style={styles.detailLabel}>{label}</p>
-      <p style={styles.detailValue}>{value}</p>
+    <div className="detailBox">
+      <p>{label}</p>
+      <strong>{value}</strong>
     </div>
   )
 }
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.kpiCard}>
-      <p style={styles.kpiLabel}>{label}</p>
-      <h2 style={styles.kpiValue}>{value}</h2>
+    <div className="kpiCard">
+      <p>{label}</p>
+      <h2>{value}</h2>
     </div>
   )
 }
 
-function ProfileRow({ label, value }: { label: string; value: string }) {
+function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.profileRow}>
-      <span style={styles.profileLabel}>{label}</span>
-      <span style={styles.profileValue}>{value}</span>
+    <div className="statusRow">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
 
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div style={styles.emptyState}>
-      <h3 style={styles.emptyTitle}>{title}</h3>
-      <p style={styles.emptyText}>{text}</p>
+    <div className="emptyState">
+      <h3>{title}</h3>
+      <p>{text}</p>
     </div>
   )
 }
 
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    padding: '42px 20px 90px',
-    background:
-      'radial-gradient(circle at top right, #efe4ff 0, #faf7ff 34%, #f8f5ff 100%)',
-    color: '#21152d',
-  },
+function formatDate(date: string | null) {
+  if (!date) return 'Date pending'
 
-  hero: {
-    position: 'relative',
-    maxWidth: 1180,
-    margin: '0 auto',
-    padding: '44px 36px',
-    borderRadius: 34,
-    overflow: 'hidden',
-    background:
-      'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(248,242,255,0.96))',
-    border: '1px solid rgba(126,87,194,0.16)',
-    boxShadow: '0 30px 90px rgba(88,52,150,0.12)',
-  },
-
-  heroGlow: {
-    position: 'absolute',
-    right: -120,
-    top: -120,
-    width: 360,
-    height: 360,
-    borderRadius: '50%',
-    background: 'rgba(124,58,237,0.18)',
-    filter: 'blur(20px)',
-  },
-
-  eyebrow: {
-    position: 'relative',
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 900,
-    fontSize: 15,
-  },
-
-  title: {
-    position: 'relative',
-    margin: '14px 0 0',
-    fontSize: 'clamp(34px, 5vw, 54px)',
-    lineHeight: 1.05,
-    fontWeight: 950,
-    letterSpacing: -1.2,
-  },
-
-  subtitle: {
-    position: 'relative',
-    maxWidth: 760,
-    margin: '18px 0 0',
-    color: '#6f637e',
-    fontSize: 17,
-    lineHeight: 1.7,
-  },
-
-  kpiGrid: {
-    position: 'relative',
-    marginTop: 30,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: 16,
-  },
-
-  kpiCard: {
-    padding: 20,
-    borderRadius: 24,
-    background: 'rgba(255,255,255,0.9)',
-    border: '1px solid rgba(124,58,237,0.14)',
-    boxShadow: '0 18px 45px rgba(71,43,117,0.07)',
-  },
-
-  kpiLabel: {
-    margin: 0,
-    color: '#7a7088',
-    fontWeight: 850,
-    fontSize: 14,
-  },
-
-  kpiValue: {
-    margin: '8px 0 0',
-    fontSize: 30,
-    fontWeight: 950,
-  },
-
-  actions: {
-    position: 'relative',
-    display: 'flex',
-    gap: 12,
-    flexWrap: 'wrap',
-    marginTop: 28,
-  },
-
-  primaryLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'linear-gradient(135deg, #6f35d5, #8b5cf6)',
-    color: 'white',
-    fontWeight: 950,
-    textDecoration: 'none',
-    boxShadow: '0 16px 38px rgba(124,58,237,0.28)',
-  },
-
-  secondaryLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    textDecoration: 'none',
-    border: '1px solid rgba(124,58,237,0.18)',
-  },
-
-  grid: {
-    maxWidth: 1180,
-    margin: '30px auto 0',
-    display: 'grid',
-    gridTemplateColumns: '1.3fr 0.7fr',
-    gap: 24,
-  },
-
-  card: {
-    padding: 30,
-    borderRadius: 30,
-    background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
-  },
-
-  cardWide: {
-    maxWidth: 1180,
-    margin: '30px auto 0',
-    padding: 30,
-    borderRadius: 30,
-    background: 'rgba(255,255,255,0.96)',
-    border: '1px solid rgba(126,87,194,0.14)',
-    boxShadow: '0 25px 70px rgba(71,43,117,0.10)',
-  },
-
-  sectionEyebrow: {
-    margin: 0,
-    color: '#7441d8',
-    fontWeight: 950,
-    fontSize: 14,
-  },
-
-  sectionTitle: {
-    margin: '10px 0 22px',
-    fontSize: 28,
-    fontWeight: 950,
-  },
-
-  lessonList: {
-    display: 'grid',
-    gap: 18,
-  },
-
-  lessonCard: {
-    padding: 22,
-    borderRadius: 26,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  lessonTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'flex-start',
-  },
-
-  lessonSubject: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 950,
-  },
-
-  lessonMeta: {
-    margin: '7px 0 0',
-    color: '#6f637e',
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-
-  paidBadge: {
-    padding: '8px 12px',
-    borderRadius: 999,
-    background: '#ecfdf3',
-    color: '#027a48',
-    fontWeight: 950,
-    fontSize: 12,
-    whiteSpace: 'nowrap',
-  },
-
-  lessonDetails: {
-    marginTop: 18,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: 12,
-  },
-
-  detailBox: {
-    padding: 14,
-    borderRadius: 18,
-    background: 'white',
-    border: '1px solid rgba(124,58,237,0.1)',
-  },
-
-  detailLabel: {
-    margin: 0,
-    color: '#7a7088',
-    fontWeight: 850,
-    fontSize: 13,
-  },
-
-  detailValue: {
-    margin: '7px 0 0',
-    fontWeight: 950,
-  },
-
-  noteBox: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 18,
-    background: 'rgba(124,58,237,0.06)',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  noteLabel: {
-    margin: 0,
-    fontWeight: 950,
-  },
-
-  noteText: {
-    margin: '8px 0 0',
-    color: '#6f637e',
-    lineHeight: 1.6,
-  },
-
-  lessonActions: {
-    display: 'flex',
-    gap: 12,
-    flexWrap: 'wrap',
-    marginTop: 18,
-  },
-
-  secondaryButton: {
-    border: '1px solid rgba(124,58,237,0.18)',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: 'white',
-    color: '#351e55',
-    fontWeight: 950,
-    cursor: 'pointer',
-  },
-
-  disabledButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    padding: '15px 22px',
-    background: '#f3f0f8',
-    color: '#7a7088',
-    fontWeight: 950,
-  },
-
-  profileList: {
-    marginTop: 20,
-  },
-
-  profileRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 18,
-    padding: '16px 0',
-    borderBottom: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  profileLabel: {
-    color: '#7a7088',
-    fontWeight: 850,
-  },
-
-  profileValue: {
-    fontWeight: 950,
-    textAlign: 'right',
-  },
-
-  pendingGrid: {
-    marginTop: 20,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: 16,
-  },
-
-  pendingCard: {
-    padding: 20,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  pendingTitle: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 950,
-  },
-
-  pendingText: {
-    margin: '8px 0 0',
-    color: '#6f637e',
-    lineHeight: 1.5,
-  },
-
-  pendingBadge: {
-    display: 'inline-flex',
-    marginTop: 14,
-    padding: '8px 11px',
-    borderRadius: 999,
-    background: '#fff7ed',
-    color: '#9a3412',
-    fontWeight: 950,
-    fontSize: 12,
-  },
-
-  emptyState: {
-    padding: 24,
-    borderRadius: 24,
-    background: '#fbf8ff',
-    border: '1px solid rgba(124,58,237,0.12)',
-  },
-
-  emptyTitle: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 950,
-  },
-
-  emptyText: {
-    margin: '10px 0 0',
-    color: '#6f637e',
-    lineHeight: 1.6,
-  },
-
-  message: {
-    color: '#6f637e',
-  },
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${date}T00:00:00`))
 }
+
+const styles = `
+  .page {
+    min-height: 100vh;
+    padding: 34px 16px 90px;
+    color: #21152d;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.14), transparent 30%),
+      radial-gradient(circle at 92% 5%, rgba(236, 72, 153, 0.08), transparent 28%),
+      linear-gradient(180deg, #fffaff 0%, #fbf8ff 44%, #f4edff 100%);
+  }
+
+  .hero,
+  .quickGrid,
+  .mainGrid,
+  .splitGrid,
+  .cardWide {
+    width: min(1180px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 42px;
+    border-radius: 38px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 34%),
+      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.96));
+    border: 1px solid rgba(126,87,194,0.14);
+    box-shadow: 0 30px 90px rgba(71,43,117,0.12);
+  }
+
+  .heroTop,
+  .sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .eyebrow,
+  .sectionEyebrow {
+    margin: 0;
+    color: #6d28d9;
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .hero h1 {
+    margin: 16px 0 0;
+    max-width: 900px;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 0.96;
+    letter-spacing: -0.064em;
+    font-weight: 950;
+  }
+
+  .subtitle {
+    max-width: 780px;
+    margin: 20px 0 0;
+    color: #6f637e;
+    font-size: 17px;
+    line-height: 1.75;
+  }
+
+  .heroActions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 28px;
+  }
+
+  .primaryLink,
+  .secondaryLink,
+  .smallLink,
+  .miniLink,
+  .secondaryButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 950;
+  }
+
+  .primaryLink,
+  .secondaryLink {
+    min-height: 54px;
+    padding: 0 22px;
+    border-radius: 18px;
+  }
+
+  .primaryLink {
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
+  }
+
+  .secondaryLink,
+  .smallLink,
+  .miniLink,
+  .secondaryButton {
+    color: #351e55;
+    background: white;
+    border: 1px solid rgba(124,58,237,0.16);
+  }
+
+  .smallLink,
+  .miniLink {
+    min-height: 42px;
+    padding: 0 15px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .kpiGrid {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .kpiCard,
+  .quickCard,
+  .card,
+  .cardWide {
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(126,87,194,0.12);
+    box-shadow: 0 22px 62px rgba(71,43,117,0.08);
+  }
+
+  .kpiCard {
+    padding: 19px;
+    border-radius: 23px;
+  }
+
+  .kpiCard p {
+    margin: 0;
+    color: #7a7088;
+    font-size: 13px;
+    font-weight: 850;
+  }
+
+  .kpiCard h2 {
+    margin: 8px 0 0;
+    font-size: 31px;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    font-weight: 950;
+  }
+
+  .quickGrid {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .quickCard {
+    min-height: 190px;
+    padding: 23px;
+    border-radius: 28px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .quickCard span {
+    display: inline-flex;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: rgba(124,58,237,0.09);
+    color: #6d28d9;
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .quickCard h2 {
+    margin: 18px 0 0;
+    font-size: 22px;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    font-weight: 950;
+  }
+
+  .quickCard p {
+    margin: 10px 0 0;
+    color: #6f637e;
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
+  .mainGrid,
+  .splitGrid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1.25fr 0.75fr;
+    gap: 24px;
+  }
+
+  .splitGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card,
+  .cardWide {
+    padding: 30px;
+    border-radius: 32px;
+  }
+
+  .cardWide {
+    margin-top: 24px;
+  }
+
+  .sectionHeader {
+    margin-bottom: 22px;
+  }
+
+  .sectionHeader h2,
+  .profileCard h2,
+  .reportCard h2 {
+    margin: 8px 0 0;
+    font-size: clamp(26px, 3.3vw, 42px);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+    font-weight: 950;
+  }
+
+  .lessonList {
+    display: grid;
+    gap: 16px;
+  }
+
+  .lessonCard {
+    padding: 22px;
+    border-radius: 26px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .lessonCardFeatured {
+    background: linear-gradient(135deg, #fbf8ff, #f3ecff);
+  }
+
+  .lessonTop {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .lessonSubject {
+    margin: 0;
+    font-size: 23px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-weight: 950;
+  }
+
+  .lessonMeta {
+    margin: 7px 0 0;
+    color: #6f637e;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .paidBadge {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #ecfdf3;
+    color: #027a48;
+    font-weight: 950;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .lessonDetails {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .detailBox {
+    padding: 14px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid rgba(124,58,237,0.1);
+  }
+
+  .detailBox p {
+    margin: 0;
+    color: #7a7088;
+    font-weight: 850;
+    font-size: 13px;
+  }
+
+  .detailBox strong {
+    display: block;
+    margin-top: 7px;
+    font-weight: 950;
+  }
+
+  .noteBox {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(124,58,237,0.06);
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .noteLabel {
+    margin: 0;
+    font-weight: 950;
+  }
+
+  .noteText {
+    margin: 8px 0 0;
+    color: #6f637e;
+    line-height: 1.6;
+  }
+
+  .lessonActions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  .actionBtn,
+  .secondaryButton,
+  .disabledButton {
+    min-height: 46px;
+    padding: 0 17px;
+    border-radius: 16px;
+  }
+
+  .secondaryButton {
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .disabledButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f0f8;
+    color: #7a7088;
+    font-weight: 950;
+  }
+
+  .statusList {
+    margin: 22px 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .statusRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .statusRow span {
+    color: #7a7088;
+    font-weight: 850;
+  }
+
+  .statusRow strong {
+    text-align: right;
+    font-weight: 950;
+  }
+
+  .fullLink {
+    width: 100%;
+  }
+
+  .reportPreview {
+    margin: 22px 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .reportPreview div {
+    padding: 15px;
+    border-radius: 20px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .reportPreview strong,
+  .reportPreview span {
+    display: block;
+  }
+
+  .reportPreview strong {
+    font-weight: 950;
+  }
+
+  .reportPreview span {
+    margin-top: 4px;
+    color: #6f637e;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  .pendingGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .pendingCard {
+    padding: 20px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .pendingTitle {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 950;
+  }
+
+  .pendingText {
+    margin: 8px 0 0;
+    color: #6f637e;
+    line-height: 1.5;
+  }
+
+  .pendingBadge {
+    display: inline-flex;
+    margin-top: 14px;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-weight: 950;
+    font-size: 12px;
+  }
+
+  .emptyState {
+    padding: 24px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .emptyState h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 950;
+  }
+
+  .emptyState p {
+    margin: 10px 0 0;
+    color: #6f637e;
+    line-height: 1.6;
+  }
+
+  .message {
+    color: #6f637e;
+  }
+
+  @media (max-width: 980px) {
+    .page {
+      padding: 20px 10px 70px;
+    }
+
+    .hero {
+      padding: 28px 20px;
+      border-radius: 30px;
+    }
+
+    .heroTop,
+    .sectionHeader,
+    .lessonTop,
+    .lessonActions {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .hero h1 {
+      font-size: clamp(38px, 12vw, 56px);
+      line-height: 0.98;
+    }
+
+    .subtitle {
+      font-size: 16px;
+    }
+
+    .heroActions {
+      flex-direction: column;
+    }
+
+    .primaryLink,
+    .secondaryLink,
+    .secondaryButton,
+    .disabledButton {
+      width: 100%;
+    }
+
+    .kpiGrid,
+    .quickGrid,
+    .mainGrid,
+    .splitGrid,
+    .lessonDetails {
+      grid-template-columns: 1fr;
+    }
+
+    .quickCard {
+      min-height: auto;
+    }
+
+    .card,
+    .cardWide {
+      padding: 23px 18px;
+      border-radius: 28px;
+    }
+
+    .statusRow {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .statusRow strong {
+      text-align: left;
+    }
+  }
+`
