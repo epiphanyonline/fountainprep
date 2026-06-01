@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -59,7 +59,7 @@ function emptyForm(): ReportForm {
   }
 }
 
-export default function TutorLessonReportPage() {
+function TutorLessonReportContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const selectedBookingId = searchParams.get('bookingId')
@@ -908,3 +908,19 @@ const styles = `
     }
   }
 `
+export default function TutorLessonReportPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page">
+          <section className="hero">
+            <p className="eyebrow">Lesson Report</p>
+            <h1>Loading lesson reports...</h1>
+          </section>
+        </main>
+      }
+    >
+      <TutorLessonReportContent />
+    </Suspense>
+  )
+}
