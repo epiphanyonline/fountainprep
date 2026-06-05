@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import SupportWidget from './components/SupportWidget'
 
 const subjects = ['Maths', 'English', 'Science', 'Coding', 'Yoruba', 'Igbo', 'Hausa', 'Music']
 
@@ -754,6 +755,7 @@ export default function HomePage() {
           }
         }
       `}</style>
+      <SupportWidget />
     </main>
   )
 }

@@ -62,6 +62,12 @@ const subjectLabels: Record<string, string> = {
 
 const adminActions = [
   {
+    title: 'Messages & Support',
+    text: 'Handle enquiries, complaints, tutor applications and safeguarding reports.',
+    href: '/admin/messages',
+    tag: 'Support',
+  },
+  {
     title: 'Tutor Approval',
     text: 'Review tutor applications, verification and listing status.',
     href: '/admin/tutors',
@@ -88,12 +94,14 @@ const adminActions = [
 ]
 
 const controlLinks = [
+  { label: 'Messages', href: '/admin/messages' },
   { label: 'Parents', href: '/admin/parents' },
   { label: 'Students', href: '/admin/students' },
   { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
   { label: 'Bookings', href: '/admin/bookings' },
   { label: 'Payments', href: '/admin/payments' },
   { label: 'Reports', href: '/admin/reports' },
+  { label: 'Tutors', href: '/admin/tutors' },
 ]
 
 export default function AdminDashboardPage() {
@@ -107,6 +115,9 @@ export default function AdminDashboardPage() {
   const [tutorEarnings, setTutorEarnings] = useState<TutorEarning[]>([])
   const [parentCount, setParentCount] = useState(0)
   const [studentCount, setStudentCount] = useState(0)
+  const [openMessages, setOpenMessages] = useState(0)
+  const [highPriorityMessages, setHighPriorityMessages] = useState(0)
+  const [safeguardingMessages, setSafeguardingMessages] = useState(0)
 
   useEffect(() => {
     async function loadAdminDashboard() {
@@ -159,14 +170,15 @@ export default function AdminDashboardPage() {
         .limit(20)
 
       const { data: tutorEarningRows, error: tutorEarningError } = await supabase
-  .from('tutor_earnings')
-  .select('id, tutor_id, booking_id, tutor_amount, status, created_at, paid_at, lesson_date')
-  .order('created_at', { ascending: false })
-  .limit(50)
+        .from('tutor_earnings')
+        .select('id, tutor_id, booking_id, tutor_amount, status, created_at, paid_at, lesson_date')
+        .order('created_at', { ascending: false })
+        .limit(50)
 
-if (tutorEarningError) {
-  console.error('Tutor earnings error:', tutorEarningError.message)
-}
+      if (tutorEarningError) {
+        console.warn('Tutor earnings error:', tutorEarningError.message)
+      }
+
       const { data: tutorRows } = await supabase
         .from('tutor_profiles')
         .select('id, full_name, approval_status, verification_status, is_listed')
@@ -180,12 +192,32 @@ if (tutorEarningError) {
         .from('student_profiles')
         .select('*', { count: 'exact', head: true })
 
+      const { count: openMessagesTotal } = await supabase
+        .from('support_threads')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'open')
+
+      const { count: highPriorityMessagesTotal } = await supabase
+        .from('support_threads')
+        .select('*', { count: 'exact', head: true })
+        .in('priority', ['high', 'urgent'])
+        .in('status', ['open', 'pending'])
+
+      const { count: safeguardingMessagesTotal } = await supabase
+        .from('support_threads')
+        .select('*', { count: 'exact', head: true })
+        .eq('category', 'safeguarding')
+        .in('status', ['open', 'pending'])
+
       setBookings((bookingRows ?? []) as Booking[])
       setPayments((paymentRows ?? []) as Payment[])
       setTutorEarnings((tutorEarningRows ?? []) as TutorEarning[])
       setTutors((tutorRows ?? []) as Tutor[])
       setParentCount(parentsTotal ?? 0)
       setStudentCount(studentsTotal ?? 0)
+      setOpenMessages(openMessagesTotal ?? 0)
+      setHighPriorityMessages(highPriorityMessagesTotal ?? 0)
+      setSafeguardingMessages(safeguardingMessagesTotal ?? 0)
       setMessage('')
       setLoading(false)
     }
@@ -225,20 +257,20 @@ if (tutorEarningError) {
   )
 
   const pendingTutorPayouts = useMemo(
-  () =>
-    tutorEarnings.filter(
-      (earning) => String(earning.status || '').trim().toLowerCase() === 'pending'
-    ),
-  [tutorEarnings]
-)
+    () =>
+      tutorEarnings.filter(
+        (earning) => String(earning.status || '').trim().toLowerCase() === 'pending'
+      ),
+    [tutorEarnings]
+  )
 
   const paidTutorPayouts = useMemo(
-  () =>
-    tutorEarnings.filter(
-      (earning) => String(earning.status || '').trim().toLowerCase() === 'paid'
-    ),
-  [tutorEarnings]
-)
+    () =>
+      tutorEarnings.filter(
+        (earning) => String(earning.status || '').trim().toLowerCase() === 'paid'
+      ),
+    [tutorEarnings]
+  )
 
   const pendingTutorPayoutAmount = useMemo(() => {
     return pendingTutorPayouts.reduce(
@@ -279,40 +311,39 @@ if (tutorEarningError) {
       <section className="hero">
         <div className="heroTop">
           <p className="eyebrow">Admin Control Centre</p>
-          <Link href="/admin/tutor-payouts" className="miniLink">
-            Tutor Payouts
+          <Link href="/admin/messages" className="miniLink">
+            Messages
           </Link>
         </div>
 
         <h1>Platform command centre</h1>
 
         <p className="subtitle">
-          Monitor bookings, payments, tutor payouts, reports, parents, students
-          and operational activity from one premium admin workspace.
+          Monitor bookings, payments, tutor payouts, support messages, reports,
+          parents, students and operational activity from one premium admin workspace.
         </p>
 
         <div className="heroActions">
-          <Link href="/admin/tutor-payouts" className="primaryLink">
+          <Link href="/admin/messages" className="primaryLink">
+            Open Messages
+          </Link>
+          <Link href="/admin/tutor-payouts" className="secondaryLink">
             Review Tutor Payouts
           </Link>
           <Link href="/admin/tutors" className="secondaryLink">
             Review Tutors
           </Link>
-          <Link href="/admin/bookings" className="secondaryLink">
-            Manage Bookings
-          </Link>
         </div>
 
         <div className="kpiGrid">
+          <Kpi label="Open Messages" value={String(openMessages)} />
+          <Kpi label="Safeguarding" value={String(safeguardingMessages)} />
           <Kpi label="Bookings" value={String(bookings.length)} />
           <Kpi label="Confirmed" value={String(paidBookings.length)} />
-          <Kpi label="Parent Pending" value={String(pendingParentPayments.length)} />
           <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
           <Kpi label="Tutor Payouts" value={`$${pendingTutorPayoutAmount.toFixed(2)}`} />
-          <Kpi label="Payout Items" value={String(pendingTutorPayouts.length)} />
           <Kpi label="Parents" value={String(parentCount)} />
           <Kpi label="Students" value={String(studentCount)} />
-          <Kpi label="Earning Rows" value={String(tutorEarnings.length)} />
         </div>
       </section>
 
@@ -327,6 +358,44 @@ if (tutorEarningError) {
       </section>
 
       <section className="mainGrid">
+        <div className="card">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Support Inbox</p>
+              <h2>Messages requiring attention</h2>
+            </div>
+
+            <Link href="/admin/messages" className="smallLink">
+              Open inbox
+            </Link>
+          </div>
+
+          <div className="healthList">
+            <HealthRow label="Open enquiries" value={openMessages} tone="warning" />
+            <HealthRow label="High priority messages" value={highPriorityMessages} tone="warning" />
+            <HealthRow label="Safeguarding alerts" value={safeguardingMessages} tone="danger" />
+          </div>
+        </div>
+
+        <aside className="card">
+          <div className="sectionHeader">
+            <div>
+              <p className="sectionEyebrow">Platform Health</p>
+              <h2>Action checks</h2>
+            </div>
+          </div>
+
+          <div className="healthList">
+            <HealthRow label="Pending tutor payouts" value={pendingTutorPayouts.length} tone="warning" />
+            <HealthRow label="Tutor reviews" value={pendingTutors.length} tone="warning" />
+            <HealthRow label="Parent pending payments" value={pendingParentPayments.length} tone="warning" />
+            <HealthRow label="Missing meeting links" value={missingMeetingLinks.length} tone="danger" />
+            <HealthRow label="Listed tutors" value={approvedTutors.length} tone="good" />
+          </div>
+        </aside>
+      </section>
+
+      <section className="splitGrid">
         <div className="card">
           <div className="sectionHeader">
             <div>
@@ -346,36 +415,13 @@ if (tutorEarningError) {
             />
           ) : (
             <div className="list">
-              {pendingTutorPayouts.slice(0, 8).map((earning) => (
+              {pendingTutorPayouts.slice(0, 6).map((earning) => (
                 <PayoutRow key={earning.id} earning={earning} />
               ))}
             </div>
           )}
         </div>
 
-        <aside className="card">
-          <div className="sectionHeader">
-            <div>
-              <p className="sectionEyebrow">Platform Health</p>
-              <h2>Action checks</h2>
-            </div>
-          </div>
-
-          <div className="healthList">
-            <HealthRow label="Pending tutor payouts" value={pendingTutorPayouts.length} tone="warning" />
-            <HealthRow label="Tutor reviews" value={pendingTutors.length} tone="warning" />
-            <HealthRow label="Parent pending payments" value={pendingParentPayments.length} tone="warning" />
-            <HealthRow label="Missing meeting links" value={missingMeetingLinks.length} tone="danger" />
-            <HealthRow label="Listed tutors" value={approvedTutors.length} tone="good" />
-          </div>
-
-          <Link href="/admin/tutor-payouts" className="primaryLink fullLink">
-            Open Payout Review
-          </Link>
-        </aside>
-      </section>
-
-      <section className="splitGrid">
         <div className="card">
           <div className="sectionHeader">
             <div>
@@ -401,7 +447,9 @@ if (tutorEarningError) {
             </div>
           )}
         </div>
+      </section>
 
+      <section className="splitGrid">
         <div className="card">
           <div className="sectionHeader">
             <div>
@@ -419,37 +467,6 @@ if (tutorEarningError) {
             <ProfileRow label="Approved + Listed" value={String(approvedTutors.length)} />
             <ProfileRow label="Needs Review" value={String(pendingTutors.length)} />
             <ProfileRow label="Paid Payouts" value={`$${paidTutorPayoutAmount.toFixed(2)}`} />
-          </div>
-        </div>
-      </section>
-
-      <section className="splitGrid">
-        <div className="card">
-          <div className="sectionHeader">
-            <div>
-              <p className="sectionEyebrow">Families</p>
-              <h2>Parent and student growth</h2>
-            </div>
-          </div>
-
-          <div className="familyGrid">
-            <div>
-              <span>Parents</span>
-              <strong>{parentCount}</strong>
-            </div>
-            <div>
-              <span>Students</span>
-              <strong>{studentCount}</strong>
-            </div>
-          </div>
-
-          <div className="dualActions">
-            <Link href="/admin/parents" className="secondaryLink">
-              Parents
-            </Link>
-            <Link href="/admin/students" className="secondaryLink">
-              Students
-            </Link>
           </div>
         </div>
 
@@ -542,9 +559,7 @@ function BookingRow({ booking }: { booking: Booking }) {
   return (
     <div className="rowCard">
       <div>
-        <p className="rowTitle">
-          {subjectLabels[booking.subject_id] || booking.subject_id}
-        </p>
+        <p className="rowTitle">{subjectLabels[booking.subject_id] || booking.subject_id}</p>
         <p className="rowMeta">
           {formatDate(booking.lesson_date)} • {booking.lesson_time || 'Time pending'}
         </p>
@@ -804,7 +819,7 @@ const styles = `
   .quickGrid {
     margin-top: 22px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 14px;
   }
 
@@ -845,12 +860,8 @@ const styles = `
   .splitGrid {
     margin-top: 24px;
     display: grid;
-    grid-template-columns: 1.25fr 0.75fr;
-    gap: 24px;
-  }
-
-  .splitGrid {
     grid-template-columns: 1fr 1fr;
+    gap: 24px;
   }
 
   .card,
@@ -990,37 +1001,27 @@ const styles = `
     font-weight: 950;
   }
 
-  .familyGrid,
   .financeGrid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 14px;
   }
 
-  .financeGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .familyGrid div,
   .financeGrid div {
     padding: 22px;
     border-radius: 24px;
   }
 
-  .familyGrid span,
-  .familyGrid strong,
   .financeGrid span,
   .financeGrid strong {
     display: block;
   }
 
-  .familyGrid span,
   .financeGrid span {
     color: #6f637e;
     font-weight: 850;
   }
 
-  .familyGrid strong,
   .financeGrid strong {
     margin-top: 8px;
     font-size: 34px;
@@ -1047,7 +1048,7 @@ const styles = `
 
   .controlGrid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
   }
 
@@ -1107,8 +1108,7 @@ const styles = `
       font-size: 16px;
     }
 
-    .heroActions,
-    .dualActions {
+    .heroActions {
       flex-direction: column;
     }
 
@@ -1118,11 +1118,8 @@ const styles = `
     }
 
     .kpiGrid,
-    .quickGrid,
     .mainGrid,
-    .splitGrid,
-    .familyGrid,
-    .controlGrid {
+    .splitGrid {
       grid-template-columns: 1fr;
     }
 
