@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
@@ -102,12 +103,20 @@ export default function Navbar() {
     <header className="site-header">
       <div className="site-nav container">
         <Link href="/" className="brand-link" aria-label="Fountain Prep home">
-          <span className="brand-mark">F</span>
-          <span className="brand-text">
-            <span className="brand-main">Fountain</span>
-            <span className="brand-accent">Prep</span>
-          </span>
-        </Link>
+  <Image
+    src="/icons/icon-192.png"
+    alt="Fountain Prep"
+    width={46}
+    height={46}
+    priority
+    className="brand-logo"
+  />
+
+  <span className="brand-text">
+    <span className="brand-main">Fountain</span>
+    <span className="brand-accent">Prep</span>
+  </span>
+</Link>
 
         <nav className="desktop-nav" aria-label="Main navigation">
           {links.map((item) => (
@@ -214,19 +223,12 @@ export default function Navbar() {
           min-width: 0;
         }
 
-        .brand-mark {
-          width: 42px;
-          height: 42px;
-          border-radius: 16px;
-          display: none;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #7c3aed, #6d28d9);
-          color: white;
-          font-size: 20px;
-          font-weight: 950;
-          box-shadow: 0 12px 28px rgba(109, 40, 217, 0.22);
-        }
+        .brand-logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 
         .brand-text {
           display: inline-flex;
@@ -372,18 +374,14 @@ export default function Navbar() {
         @media (max-width: 420px) {
           .site-nav {
             min-height: 64px;
+            .brand-logo {
+  width: 40px;
+  height: 40px;
+}
           }
 
           .brand-text {
             font-size: 25px;
-          }
-
-          .brand-mark {
-            display: inline-flex;
-            width: 38px;
-            height: 38px;
-            border-radius: 15px;
-            font-size: 18px;
           }
 
           .mobile-menu-btn {
