@@ -74,6 +74,12 @@ const adminActions = [
     tag: 'Tutors',
   },
   {
+  title: 'Curriculum Manager',
+  text: 'Manage subjects, stages, strands, modules and lessons.',
+  href: '/admin/curriculum',
+  tag: 'Learning',
+},
+  {
     title: 'Bookings Control',
     text: 'Track parent bookings, lesson status and meeting links.',
     href: '/admin/bookings',
@@ -97,6 +103,8 @@ const controlLinks = [
   { label: 'Messages', href: '/admin/messages' },
   { label: 'Parents', href: '/admin/parents' },
   { label: 'Students', href: '/admin/students' },
+  { label: 'Curriculum', href: '/admin/curriculum' },
+  { label: 'Curriculum Builder', href: '/admin/curriculum-builder' },
   { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
   { label: 'Bookings', href: '/admin/bookings' },
   { label: 'Payments', href: '/admin/payments' },

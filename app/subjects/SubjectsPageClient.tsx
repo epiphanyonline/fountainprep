@@ -116,6 +116,23 @@ const catalogueSubjects = [
   },
 ]
 
+function toSubjectSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function curriculumLink(subjectName: string, studentId?: string | null) {
+  const slug = toSubjectSlug(subjectName)
+
+  return `/subjects/curriculum/${slug}${
+    studentId ? `?studentId=${studentId}` : ''
+  }`
+}
+
 export default function SubjectsPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -420,8 +437,8 @@ export default function SubjectsPageClient() {
               <div className="journey-step">
                 <span>02</span>
                 <div>
-                  <strong>Select a learning area</strong>
-                  <p>Pick the subject your child needs support with.</p>
+                  <strong>Review the curriculum</strong>
+                  <p>See what your child will learn before choosing a plan.</p>
                 </div>
               </div>
 
@@ -874,7 +891,8 @@ function CatalogueGrid({
   return (
     <div className="subject-grid">
       {subjects.map((subject) => {
-        const subjectSlug = subject.name.toLowerCase()
+        const subjectSlug = toSubjectSlug(subject.name)
+        const viewCurriculumHref = curriculumLink(subject.name, studentId)
 
         return (
           <div key={subject.name} className="subject-card">
@@ -899,6 +917,10 @@ function CatalogueGrid({
             </div>
 
             <div className="subject-actions">
+              <Link href={viewCurriculumHref} className="btn-curriculum">
+                View Curriculum
+              </Link>
+
               {!isLoggedIn ? (
                 <>
                   <Link href="/signup/parent" className="btn-secondary">
@@ -1002,6 +1024,31 @@ function CatalogueGrid({
           flex-wrap: wrap;
         }
 
+        .btn-curriculum {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 44px;
+          padding: 12px 18px;
+          border-radius: 999px;
+          background: #f5f0ff;
+          color: #6f42c1;
+          border: 1px solid rgba(111, 66, 193, 0.18);
+          box-shadow: 0 10px 26px rgba(111, 66, 193, 0.08);
+          font-weight: 900;
+          text-decoration: none;
+          transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease,
+            background 0.18s ease;
+        }
+
+        .btn-curriculum:hover {
+          transform: translateY(-1px);
+          background: #efe7ff;
+          box-shadow: 0 14px 34px rgba(111, 66, 193, 0.12);
+        }
+
         @media (max-width: 1000px) {
           .subject-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1048,59 +1095,68 @@ function ProgramGrid({
 }) {
   return (
     <div className="program-grid">
-      {programs.map((program) => (
-        <div key={program.id} className="program-card">
-          <div>
-            <div className="program-topline">
-              <span>{categoryLabel(program.subjects?.category)}</span>
+      {programs.map((program) => {
+        const subjectName = program.subjects?.name || program.title
+        const viewCurriculumHref = curriculumLink(subjectName, studentId)
+
+        return (
+          <div key={program.id} className="program-card">
+            <div>
+              <div className="program-topline">
+                <span>{categoryLabel(program.subjects?.category)}</span>
+              </div>
+
+              <h2>{subjectName}</h2>
+
+              {!personalised && program.learning_levels ? (
+                <p className="program-level">{program.learning_levels.name}</p>
+              ) : null}
+
+              <p className="program-description">
+                {program.description || program.title}
+              </p>
+
+              <div className="program-panel">
+                <p>Learning focus</p>
+                <span>
+                  {program.what_will_be_taught || 'Structured learning support.'}
+                </span>
+              </div>
+
+              <div className="program-panel">
+                <p>Expected progress</p>
+                <span>
+                  {program.learning_outcomes ||
+                    'Improved confidence, stronger understanding, better study habits, and clearer progress over time.'}
+                </span>
+              </div>
             </div>
 
-            <h2>{program.subjects?.name || program.title}</h2>
+            <div className="program-actions">
+              <Link href={viewCurriculumHref} className="btn-curriculum">
+                View Curriculum
+              </Link>
 
-            {!personalised && program.learning_levels ? (
-              <p className="program-level">{program.learning_levels.name}</p>
-            ) : null}
-
-            <p className="program-description">
-              {program.description || program.title}
-            </p>
-
-            <div className="program-panel">
-              <p>Learning focus</p>
-              <span>
-                {program.what_will_be_taught || 'Structured learning support.'}
-              </span>
-            </div>
-
-            <div className="program-panel">
-              <p>Expected progress</p>
-              <span>
-                {program.learning_outcomes ||
-                  'Improved confidence, stronger understanding, better study habits, and clearer progress over time.'}
-              </span>
+              {!isLoggedIn ? (
+                <Link href="/signup/parent" className="btn-primary">
+                  Create Parent Profile
+                </Link>
+              ) : personalised && studentId ? (
+                <Link
+                  href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
+                  className="btn-primary"
+                >
+                  Continue to Learning Plans
+                </Link>
+              ) : (
+                <Link href="/parent/students" className="btn-primary">
+                  Start Learning Plan
+                </Link>
+              )}
             </div>
           </div>
-
-          <div className="program-actions">
-            {!isLoggedIn ? (
-              <Link href="/signup/parent" className="btn-primary">
-                Create Parent Profile
-              </Link>
-            ) : personalised && studentId ? (
-              <Link
-                href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
-                className="btn-primary"
-              >
-                Continue to Learning Plans
-              </Link>
-            ) : (
-              <Link href="/parent/students" className="btn-primary">
-                Start Learning Plan
-              </Link>
-            )}
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
       <style jsx>{`
         .program-grid {
@@ -1180,6 +1236,52 @@ function ProgramGrid({
           flex-wrap: wrap;
         }
 
+        .btn-curriculum {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 44px;
+          padding: 12px 18px;
+          border-radius: 999px;
+          background: #f5f0ff;
+          color: #6f42c1;
+          border: 1px solid rgba(111, 66, 193, 0.18);
+          box-shadow: 0 10px 26px rgba(111, 66, 193, 0.08);
+          font-weight: 900;
+          text-decoration: none;
+          transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease,
+            background 0.18s ease;
+        }
+
+        '.btn-curriculum': {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '10px 16px',
+  borderRadius: '12px',
+  background: '#ffffff',
+  border: '1px solid #d8cffc',
+  color: '#6d28d9',
+  fontWeight: '700',
+  fontSize: '0.9rem',
+  textDecoration: 'none',
+  transition: 'all 0.2s ease',
+  cursor: 'pointer',
+},
+'.btn-curriculum:hover': {
+  background: '#f5f3ff',
+  borderColor: '#7c3aed',
+  transform: 'translateY(-1px)',
+},
+
+        .btn-curriculum:hover {
+          transform: translateY(-1px);
+          background: #efe7ff;
+          box-shadow: 0 14px 34px rgba(111, 66, 193, 0.12);
+        }
+
         @media (max-width: 1000px) {
           .program-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1194,6 +1296,10 @@ function ProgramGrid({
           .program-card {
             min-height: auto;
             padding: 22px;
+          }
+
+          .program-actions {
+            flex-direction: column;
           }
 
           .program-actions a {
