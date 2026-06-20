@@ -7,22 +7,22 @@ const subjects = ['Maths', 'English', 'Science', 'Coding', 'Yoruba', 'Igbo', 'Ha
 
 const trustItems = [
   'Private 1-to-1 lessons',
+  'Structured curriculum',
   'Parent progress updates',
-  'Flexible online booking',
 ]
 
 const features = [
   {
     title: 'Private attention',
-    text: 'Your child is not sharing lesson time with other students. The tutor focuses fully on their pace, gaps, and confidence.',
+    text: 'Your child gets focused support from a tutor who can adapt to their pace, confidence and learning gaps.',
+  },
+  {
+    title: 'Structured curriculum',
+    text: 'Lessons follow clear learning pathways, so parents can see progression instead of random tutoring sessions.',
   },
   {
     title: 'Progress you can see',
-    text: 'Parents get clearer updates so they know what was covered, what improved, and what needs more practice.',
-  },
-  {
-    title: 'Built around your child',
-    text: 'Lessons can be adjusted for school support, confidence building, language learning, coding, or creative skills.',
+    text: 'Parents receive clearer updates on what was taught, what improved and what needs more practice.',
   },
 ]
 
@@ -30,17 +30,17 @@ const steps = [
   {
     number: '01',
     title: 'Add your child',
-    text: 'Create a simple profile with their age, level, and learning need.',
+    text: 'Create a simple profile with their age, class level and learning need.',
   },
   {
     number: '02',
     title: 'Choose a subject',
-    text: 'Pick academic tutoring, African languages, coding, music, or confidence support.',
+    text: 'Select academic tutoring, African languages, coding, music or creative learning.',
   },
   {
     number: '03',
     title: 'Book privately',
-    text: 'Choose a tutor and time that works for your family.',
+    text: 'Choose a learning plan and book a convenient lesson time.',
   },
 ]
 
@@ -57,9 +57,9 @@ export default function HomePage() {
           <h1>Private tutoring that helps your child learn with confidence.</h1>
 
           <p className="fp-lead">
-            Fountain Prep offers focused private lessons in academics, African
-            languages, coding, music, and confidence building — with structured
-            curriculum pathways and progress updates.
+            Fountain Prep gives children focused private lessons in academics,
+            African languages, coding, music and confidence-building skills —
+            supported by structured curriculum pathways and parent progress updates.
           </p>
 
           <div className="fp-actions">
@@ -81,7 +81,7 @@ export default function HomePage() {
         <div className="fp-hero-image-wrap">
           <img
             src="/yoruba-tutoring.png"
-            alt="Child learning Yoruba online with a private tutor"
+            alt="Child learning online with a private tutor"
             className="fp-hero-image"
           />
 
@@ -104,11 +104,11 @@ export default function HomePage() {
         </div>
         <div>
           <strong>Structured</strong>
-          <span>Lessons feel purposeful, not random.</span>
+          <span>Lessons follow clear learning pathways.</span>
         </div>
         <div>
-          <strong>Trusted</strong>
-          <span>Designed to give parents confidence.</span>
+          <strong>Visible</strong>
+          <span>Parents can follow progress more clearly.</span>
         </div>
       </section>
 
@@ -133,8 +133,9 @@ export default function HomePage() {
           <p>Parent confidence</p>
           <h2>A better tutoring experience.</h2>
           <span>
-            Parents pay for value. That is why Fountain Prep is positioned around
-            private attention, structured learning, and feedback parents can understand.
+            Parents want to know that tutoring is making a difference. Fountain Prep
+            combines private teaching, curriculum structure and progress visibility
+            so every lesson feels purposeful.
           </span>
         </div>
 
@@ -146,7 +147,7 @@ export default function HomePage() {
 
           <div className="fp-report-row">
             <b>Covered today</b>
-            <span>Reading practice, vocabulary, pronunciation</span>
+            <span>Reading practice, vocabulary and pronunciation</span>
           </div>
 
           <div className="fp-report-row">
@@ -180,7 +181,7 @@ export default function HomePage() {
 
       <section className="fp-subjects">
         <p>Popular learning areas</p>
-        <h2>Academic subjects, African languages, coding, and creative skills.</h2>
+        <h2>Academic subjects, African languages, coding and creative skills.</h2>
 
         <div className="fp-subject-grid">
           {subjects.map((subject) => (
@@ -191,31 +192,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="fp-contact">
+      <section className="fp-support-strip">
         <div>
-          <p>Need help?</p>
-          <h2>Contact Fountain Prep directly.</h2>
+          <p>Need help before booking?</p>
+          <h2>Use the in-app support chat.</h2>
           <span>
-            Parents, tutors, and visitors can use the support form or email us directly.
-            We aim to respond as quickly as possible.
+            Parents, tutors and visitors can reach Fountain Prep through the support
+            button on this page. Replies are handled securely through our support inbox.
           </span>
         </div>
 
-        <div className="fp-contact-card">
-          <strong>Official support email</strong>
-          <a href="mailto:support@fountainprep.com">support@fountainprep.com</a>
-          <small>
-            Use this for tutor applications, parent enquiries, booking issues, payment
-            questions, or general support.
-          </small>
-        </div>
+        <button
+          type="button"
+          className="fp-support-hint"
+          onClick={() => {
+            const supportButton = document.querySelector<HTMLButtonElement>('.supportButton')
+            supportButton?.click()
+          }}
+        >
+          Open Support
+        </button>
       </section>
 
       <section className="fp-final">
         <p>Start today</p>
         <h2>Give your child focused private tutoring they can grow with.</h2>
         <span>
-          Add your child, choose a subject, and book a trusted private tutor online.
+          Add your child, choose a subject and book a trusted private tutor online.
         </span>
 
         <div className="fp-actions centered-actions">
@@ -245,7 +248,7 @@ export default function HomePage() {
         .fp-section,
         .fp-value,
         .fp-subjects,
-        .fp-contact,
+        .fp-support-strip,
         .fp-final {
           width: min(1160px, 100%);
           margin-left: auto;
@@ -293,7 +296,7 @@ export default function HomePage() {
         .fp-section h2,
         .fp-value h2,
         .fp-subjects h2,
-        .fp-contact h2,
+        .fp-support-strip h2,
         .fp-final h2 {
           margin: 0;
           color: #1f1230;
@@ -443,7 +446,7 @@ export default function HomePage() {
         .fp-step,
         .fp-report,
         .fp-subjects,
-        .fp-contact,
+        .fp-support-strip,
         .fp-final {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(124, 58, 237, 0.1);
@@ -485,7 +488,7 @@ export default function HomePage() {
         .fp-section-head p,
         .fp-value p,
         .fp-subjects p,
-        .fp-contact p,
+        .fp-support-strip p,
         .fp-final p {
           margin: 0 0 10px;
           color: #6d28d9;
@@ -496,7 +499,7 @@ export default function HomePage() {
         .fp-section h2,
         .fp-value h2,
         .fp-subjects h2,
-        .fp-contact h2,
+        .fp-support-strip h2,
         .fp-final h2 {
           font-size: clamp(34px, 4.3vw, 56px);
           line-height: 1.04;
@@ -589,6 +592,8 @@ export default function HomePage() {
 
         .fp-report-row span {
           margin-top: 4px;
+          display: block;
+          color: #6d647c;
           font-size: 14.5px;
           line-height: 1.55;
         }
@@ -609,7 +614,7 @@ export default function HomePage() {
         }
 
         .fp-subjects,
-        .fp-contact,
+        .fp-support-strip,
         .fp-final {
           margin-top: 78px;
           border-radius: 38px;
@@ -640,52 +645,32 @@ export default function HomePage() {
           box-shadow: 0 12px 28px rgba(55, 35, 95, 0.05);
         }
 
-        .fp-contact {
+        .fp-support-strip {
           display: grid;
-          grid-template-columns: 1fr 0.8fr;
-          gap: 28px;
+          grid-template-columns: 1fr auto;
+          gap: 24px;
           align-items: center;
         }
 
-        .fp-contact span {
+        .fp-support-strip span {
           display: block;
-          margin-top: 18px;
+          margin-top: 16px;
           color: #6d647c;
-          font-size: 16.5px;
-          line-height: 1.75;
+          font-size: 16px;
+          line-height: 1.7;
         }
 
-        .fp-contact-card {
-          padding: 26px;
-          border-radius: 28px;
-          background: #fff;
-          border: 1px solid rgba(124, 58, 237, 0.12);
-          box-shadow: 0 18px 48px rgba(55, 35, 95, 0.08);
-        }
-
-        .fp-contact-card strong {
-          display: block;
-          color: #241535;
-          font-size: 18px;
+        .fp-support-hint {
+          border: 0;
+          min-height: 56px;
+          padding: 0 24px;
+          border-radius: 18px;
+          color: #fff;
+          background: linear-gradient(135deg, #7c3aed, #5b21b6);
+          box-shadow: 0 18px 42px rgba(109, 40, 217, 0.24);
           font-weight: 950;
-        }
-
-        .fp-contact-card a {
-          display: inline-flex;
-          margin-top: 12px;
-          color: #6d28d9;
-          font-size: 22px;
-          font-weight: 950;
-          text-decoration: none;
-          word-break: break-word;
-        }
-
-        .fp-contact-card small {
-          display: block;
-          margin-top: 14px;
-          color: #6d647c;
-          font-size: 14px;
-          line-height: 1.65;
+          cursor: pointer;
+          white-space: nowrap;
         }
 
         .fp-final {
@@ -777,21 +762,21 @@ export default function HomePage() {
           .fp-feature-grid,
           .fp-step-grid,
           .fp-value,
-          .fp-contact {
+          .fp-support-strip {
             grid-template-columns: 1fr;
           }
 
           .fp-section,
           .fp-value,
           .fp-subjects,
-          .fp-contact,
+          .fp-support-strip,
           .fp-final {
             margin-top: 56px;
           }
 
           .fp-value,
           .fp-subjects,
-          .fp-contact,
+          .fp-support-strip,
           .fp-final {
             padding: 26px 20px;
             border-radius: 30px;
@@ -800,7 +785,7 @@ export default function HomePage() {
           .fp-section h2,
           .fp-value h2,
           .fp-subjects h2,
-          .fp-contact h2,
+          .fp-support-strip h2,
           .fp-final h2 {
             font-size: clamp(31px, 8.6vw, 42px);
             line-height: 1.06;
@@ -818,8 +803,8 @@ export default function HomePage() {
             grid-template-columns: repeat(2, 1fr);
           }
 
-          .fp-contact-card a {
-            font-size: 18px;
+          .fp-support-hint {
+            width: 100%;
           }
         }
 

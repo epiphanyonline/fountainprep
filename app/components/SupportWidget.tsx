@@ -101,13 +101,7 @@ export default function SupportWidget() {
 
             {!status.toLowerCase().includes('sent') ? (
               <div className="form">
-                <div className="directEmail">
-                  <strong>Email us directly</strong>
-                  <a href="mailto:support@fountainprep.com">
-                    support@fountainprep.com
-                  </a>
-                </div>
-
+                
                 <input
                   value={visitorName}
                   onChange={(e) => setVisitorName(e.target.value)}
@@ -245,29 +239,7 @@ export default function SupportWidget() {
           display: grid;
           gap: 11px;
         }
-
-        .directEmail {
-          padding: 14px;
-          border-radius: 18px;
-          background: #faf5ff;
-          border: 1px solid rgba(124, 58, 237, 0.16);
-        }
-
-        .directEmail strong {
-          display: block;
-          margin-bottom: 4px;
-          color: #241438;
-          font-size: 13px;
-          font-weight: 950;
-        }
-
-        .directEmail a {
-          color: #6d28d9;
-          font-weight: 950;
-          text-decoration: none;
-          word-break: break-word;
-        }
-
+        
         input,
         select,
         textarea {

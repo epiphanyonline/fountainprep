@@ -125,52 +125,41 @@ export default function AdminMessagesPage() {
   }
 
   async function sendReply() {
-    if (!selectedThread || !adminUserId || !reply.trim()) return
+  if (!selectedThread || !adminUserId || !reply.trim()) return
 
-    setNotice('Sending reply...')
+  setNotice('Sending reply...')
 
-    const { error: insertError } = await supabase.from('support_messages').insert({
-      thread_id: selectedThread.id,
-      sender_id: adminUserId,
-      sender_role: 'ADMIN',
-      message: reply.trim(),
-    })
+  const res = await fetch('/api/support/reply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threadId: selectedThread.id,
+      adminUserId,
+      reply: reply.trim(),
+    }),
+  })
 
-    if (insertError) {
-      setNotice(insertError.message)
-      return
-    }
+  const result = await res.json()
 
-    const now = new Date().toISOString()
-
-    const { error: updateError } = await supabase
-      .from('support_threads')
-      .update({
-        status: 'pending',
-        updated_at: now,
-        last_message_at: now,
-        admin_read: true,
-        admin_read_at: now,
-      })
-      .eq('id', selectedThread.id)
-
-    if (updateError) {
-      setNotice(updateError.message)
-      return
-    }
-
-    setReply('')
-    setNotice('')
-    await loadAdminMessages()
-    await openThread({
-      ...selectedThread,
-      status: 'pending',
-      updated_at: now,
-      last_message_at: now,
-      admin_read: true,
-      admin_read_at: now,
-    })
+  if (!res.ok) {
+    setNotice(result.error || 'Unable to send reply.')
+    return
   }
+
+  const now = new Date().toISOString()
+
+  setReply('')
+  setNotice('Reply saved and email sent.')
+  await loadAdminMessages()
+  await openThread({
+    ...selectedThread,
+    status: 'pending',
+    updated_at: now,
+    last_message_at: now,
+    admin_read: true,
+    admin_read_at: now,
+  })
+}
 
   async function updateThreadStatus(status: string) {
     if (!selectedThread) return
