@@ -70,7 +70,7 @@ export default function SupportWidget() {
       return
     }
 
-    setStatus('Message sent. Fountain Prep will respond as soon as possible.')
+    setStatus('Thank you for contacting Fountain Prep. Our team typically responds within 24 hours.')
     setSubject('')
     setMessage('')
     setVisitorName('')
@@ -155,8 +155,8 @@ export default function SupportWidget() {
               </div>
             ) : (
               <div className="successBox">
-                <strong>Message sent successfully.</strong>
-                <p>We have received your message and will respond as soon as possible.</p>
+                <strong>Thank you for contacting Fountain Prep.</strong>
+<p>Our team has received your message and typically responds within 24 hours.</p>
                 <button onClick={() => setOpen(false)}>Close</button>
               </div>
             )}
