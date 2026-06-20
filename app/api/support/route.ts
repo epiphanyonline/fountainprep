@@ -121,11 +121,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, threadId: thread.id })
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'Something went wrong.' },
-      { status: 500 }
-    )
-  }
+  console.error('SUPPORT API ERROR:', error)
+
+  return NextResponse.json(
+    {
+      error: error?.message,
+      stack: error?.stack,
+    },
+    { status: 500 }
+  )
+}
 }
 
 async function sendAdminNotification({
