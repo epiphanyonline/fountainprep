@@ -1255,27 +1255,6 @@ function ProgramGrid({
             background 0.18s ease;
         }
 
-        '.btn-curriculum': {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '10px 16px',
-  borderRadius: '12px',
-  background: '#ffffff',
-  border: '1px solid #d8cffc',
-  color: '#6d28d9',
-  fontWeight: '700',
-  fontSize: '0.9rem',
-  textDecoration: 'none',
-  transition: 'all 0.2s ease',
-  cursor: 'pointer',
-},
-'.btn-curriculum:hover': {
-  background: '#f5f3ff',
-  borderColor: '#7c3aed',
-  transform: 'translateY(-1px)',
-},
-
         .btn-curriculum:hover {
           transform: translateY(-1px);
           background: #efe7ff;

@@ -19,61 +19,66 @@ export default function SupportWidget() {
   const [open, setOpen] = useState(false)
   const [visitorName, setVisitorName] = useState('')
   const [visitorEmail, setVisitorEmail] = useState('')
+  const [visitorPhone, setVisitorPhone] = useState('')
   const [role, setRole] = useState('VISITOR')
   const [category, setCategory] = useState('general')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('')
+  const [sending, setSending] = useState(false)
 
   async function submitEnquiry() {
-    setStatus('Sending...')
+    setStatus('')
 
-    if (!subject || !message) {
+    if (!subject.trim() || !message.trim()) {
       setStatus('Please enter a subject and message.')
       return
     }
+
+    if (!visitorEmail.trim()) {
+      setStatus('Please enter your email so we can reply.')
+      return
+    }
+
+    setSending(true)
+    setStatus('Sending...')
 
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { data: thread, error: threadError } = await supabase
-      .from('support_threads')
-      .insert({
-        created_by: user?.id ?? null,
-        role: user ? role : 'VISITOR',
-        visitor_name: user ? null : visitorName,
-        visitor_email: user ? null : visitorEmail,
-        subject,
+    const res = await fetch('/api/support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visitorName,
+        visitorEmail,
+        visitorPhone,
+        role: user ? role : role || 'VISITOR',
         category,
-        status: 'open',
-        priority: category === 'safeguarding' || category === 'complaint' ? 'high' : 'normal',
-      })
-      .select('id')
-      .single()
-
-    if (threadError || !thread) {
-      setStatus(threadError?.message || 'Unable to create enquiry.')
-      return
-    }
-
-    const { error: messageError } = await supabase.from('support_messages').insert({
-      thread_id: thread.id,
-      sender_id: user?.id ?? null,
-      sender_role: user ? role : 'VISITOR',
-      message,
+        subject,
+        message,
+        userId: user?.id ?? null,
+      }),
     })
 
-    if (messageError) {
-      setStatus(messageError.message)
+    const result = await res.json()
+
+    if (!res.ok) {
+      setStatus(result.error || 'Unable to send message.')
+      setSending(false)
       return
     }
 
-    setStatus('Message sent. FountainPrep will respond as soon as possible.')
+    setStatus('Message sent. Fountain Prep will respond as soon as possible.')
     setSubject('')
     setMessage('')
     setVisitorName('')
     setVisitorEmail('')
+    setVisitorPhone('')
+    setCategory('general')
+    setRole('VISITOR')
+    setSending(false)
   }
 
   return (
@@ -87,15 +92,22 @@ export default function SupportWidget() {
           <div className="panel">
             <div className="top">
               <div>
-                <p>FountainPrep Support</p>
+                <p>Fountain Prep Support</p>
                 <h2>How can we help?</h2>
               </div>
 
               <button onClick={() => setOpen(false)}>×</button>
             </div>
 
-            {!status.includes('sent') ? (
+            {!status.toLowerCase().includes('sent') ? (
               <div className="form">
+                <div className="directEmail">
+                  <strong>Email us directly</strong>
+                  <a href="mailto:support@fountainprep.com">
+                    support@fountainprep.com
+                  </a>
+                </div>
+
                 <input
                   value={visitorName}
                   onChange={(e) => setVisitorName(e.target.value)}
@@ -106,6 +118,14 @@ export default function SupportWidget() {
                   value={visitorEmail}
                   onChange={(e) => setVisitorEmail(e.target.value)}
                   placeholder="Your email"
+                  type="email"
+                />
+
+                <input
+                  value={visitorPhone}
+                  onChange={(e) => setVisitorPhone(e.target.value)}
+                  placeholder="Phone number optional"
+                  type="tel"
                 />
 
                 <select value={role} onChange={(e) => setRole(e.target.value)}>
@@ -135,11 +155,17 @@ export default function SupportWidget() {
                   rows={5}
                 />
 
-                <button className="sendBtn" onClick={submitEnquiry}>
-                  Send Message
+                <button className="sendBtn" onClick={submitEnquiry} disabled={sending}>
+                  {sending ? 'Sending...' : 'Send Message'}
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <div className="successBox">
+                <strong>Message sent successfully.</strong>
+                <p>We have received your message and will respond as soon as possible.</p>
+                <button onClick={() => setOpen(false)}>Close</button>
+              </div>
+            )}
 
             {status ? <p className="status">{status}</p> : null}
           </div>
@@ -174,7 +200,9 @@ export default function SupportWidget() {
         }
 
         .panel {
-          width: min(440px, 100%);
+          width: min(460px, 100%);
+          max-height: calc(100vh - 36px);
+          overflow-y: auto;
           border-radius: 28px;
           padding: 22px;
           background: white;
@@ -218,6 +246,28 @@ export default function SupportWidget() {
           gap: 11px;
         }
 
+        .directEmail {
+          padding: 14px;
+          border-radius: 18px;
+          background: #faf5ff;
+          border: 1px solid rgba(124, 58, 237, 0.16);
+        }
+
+        .directEmail strong {
+          display: block;
+          margin-bottom: 4px;
+          color: #241438;
+          font-size: 13px;
+          font-weight: 950;
+        }
+
+        .directEmail a {
+          color: #6d28d9;
+          font-weight: 950;
+          text-decoration: none;
+          word-break: break-word;
+        }
+
         input,
         select,
         textarea {
@@ -227,6 +277,13 @@ export default function SupportWidget() {
           padding: 14px;
           font: inherit;
           outline: none;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+          border-color: #7c3aed;
+          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.08);
         }
 
         textarea {
@@ -240,6 +297,40 @@ export default function SupportWidget() {
           color: white;
           background: linear-gradient(135deg, #7c3aed, #6d28d9);
           font-weight: 950;
+          cursor: pointer;
+        }
+
+        .sendBtn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+        }
+
+        .successBox {
+          padding: 18px;
+          border-radius: 22px;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+        }
+
+        .successBox strong {
+          display: block;
+          color: #166534;
+          font-size: 18px;
+          font-weight: 950;
+        }
+
+        .successBox p {
+          color: #166534;
+          line-height: 1.55;
+        }
+
+        .successBox button {
+          border: 0;
+          border-radius: 14px;
+          padding: 12px 16px;
+          background: #166534;
+          color: white;
+          font-weight: 900;
           cursor: pointer;
         }
 
@@ -258,6 +349,7 @@ export default function SupportWidget() {
 
           .panel {
             border-radius: 24px;
+            max-height: calc(100vh - 20px);
           }
         }
       `}</style>

@@ -99,19 +99,6 @@ const adminActions = [
   },
 ]
 
-const controlLinks = [
-  { label: 'Messages', href: '/admin/messages' },
-  { label: 'Parents', href: '/admin/parents' },
-  { label: 'Students', href: '/admin/students' },
-  { label: 'Curriculum', href: '/admin/curriculum' },
-  { label: 'Curriculum Builder', href: '/admin/curriculum-builder' },
-  { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
-  { label: 'Bookings', href: '/admin/bookings' },
-  { label: 'Payments', href: '/admin/payments' },
-  { label: 'Reports', href: '/admin/reports' },
-  { label: 'Tutors', href: '/admin/tutors' },
-]
-
 export default function AdminDashboardPage() {
   const router = useRouter()
 
@@ -124,8 +111,29 @@ export default function AdminDashboardPage() {
   const [parentCount, setParentCount] = useState(0)
   const [studentCount, setStudentCount] = useState(0)
   const [openMessages, setOpenMessages] = useState(0)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const [highPriorityMessages, setHighPriorityMessages] = useState(0)
   const [safeguardingMessages, setSafeguardingMessages] = useState(0)
+
+  
+const controlLinks = [
+  {
+    label:
+      unreadMessages > 0
+        ? `Messages (${unreadMessages})`
+        : 'Messages',
+    href: '/admin/messages',
+  },
+  { label: 'Parents', href: '/admin/parents' },
+  { label: 'Students', href: '/admin/students' },
+  { label: 'Curriculum', href: '/admin/curriculum' },
+  { label: 'Curriculum Builder', href: '/admin/curriculum-builder' },
+  { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
+  { label: 'Bookings', href: '/admin/bookings' },
+  { label: 'Payments', href: '/admin/payments' },
+  { label: 'Reports', href: '/admin/reports' },
+  { label: 'Tutors', href: '/admin/tutors' },
+]
 
   useEffect(() => {
     async function loadAdminDashboard() {
@@ -205,6 +213,11 @@ export default function AdminDashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'open')
 
+        const { count: unreadMessagesTotal } = await supabase
+  .from('support_threads')
+  .select('*', { count: 'exact', head: true })
+  .eq('admin_read', false)
+
       const { count: highPriorityMessagesTotal } = await supabase
         .from('support_threads')
         .select('*', { count: 'exact', head: true })
@@ -224,6 +237,7 @@ export default function AdminDashboardPage() {
       setParentCount(parentsTotal ?? 0)
       setStudentCount(studentsTotal ?? 0)
       setOpenMessages(openMessagesTotal ?? 0)
+      setUnreadMessages(unreadMessagesTotal ?? 0)
       setHighPriorityMessages(highPriorityMessagesTotal ?? 0)
       setSafeguardingMessages(safeguardingMessagesTotal ?? 0)
       setMessage('')
@@ -344,15 +358,16 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="kpiGrid">
-          <Kpi label="Open Messages" value={String(openMessages)} />
-          <Kpi label="Safeguarding" value={String(safeguardingMessages)} />
-          <Kpi label="Bookings" value={String(bookings.length)} />
-          <Kpi label="Confirmed" value={String(paidBookings.length)} />
-          <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
-          <Kpi label="Tutor Payouts" value={`$${pendingTutorPayoutAmount.toFixed(2)}`} />
-          <Kpi label="Parents" value={String(parentCount)} />
-          <Kpi label="Students" value={String(studentCount)} />
-        </div>
+  <Kpi label="Unread Messages" value={String(unreadMessages)} />
+  <Kpi label="Open Messages" value={String(openMessages)} />
+  <Kpi label="Safeguarding" value={String(safeguardingMessages)} />
+  <Kpi label="Bookings" value={String(bookings.length)} />
+  <Kpi label="Confirmed" value={String(paidBookings.length)} />
+  <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
+  <Kpi label="Tutor Payouts" value={`$${pendingTutorPayoutAmount.toFixed(2)}`} />
+  <Kpi label="Parents" value={String(parentCount)} />
+  <Kpi label="Students" value={String(studentCount)} />
+</div>
       </section>
 
       <section className="quickGrid">

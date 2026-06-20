@@ -57,9 +57,9 @@ export default function HomePage() {
           <h1>Private tutoring that helps your child learn with confidence.</h1>
 
           <p className="fp-lead">
-            Fountain Prep offers focused private
-            lessons in academics, African languages, coding, music, and confidence
-            building — with progress updates after learning.
+            Fountain Prep offers focused private lessons in academics, African
+            languages, coding, music, and confidence building — with structured
+            curriculum pathways and progress updates.
           </p>
 
           <div className="fp-actions">
@@ -191,6 +191,26 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="fp-contact">
+        <div>
+          <p>Need help?</p>
+          <h2>Contact Fountain Prep directly.</h2>
+          <span>
+            Parents, tutors, and visitors can use the support form or email us directly.
+            We aim to respond as quickly as possible.
+          </span>
+        </div>
+
+        <div className="fp-contact-card">
+          <strong>Official support email</strong>
+          <a href="mailto:support@fountainprep.com">support@fountainprep.com</a>
+          <small>
+            Use this for tutor applications, parent enquiries, booking issues, payment
+            questions, or general support.
+          </small>
+        </div>
+      </section>
+
       <section className="fp-final">
         <p>Start today</p>
         <h2>Give your child focused private tutoring they can grow with.</h2>
@@ -225,6 +245,7 @@ export default function HomePage() {
         .fp-section,
         .fp-value,
         .fp-subjects,
+        .fp-contact,
         .fp-final {
           width: min(1160px, 100%);
           margin-left: auto;
@@ -272,6 +293,7 @@ export default function HomePage() {
         .fp-section h2,
         .fp-value h2,
         .fp-subjects h2,
+        .fp-contact h2,
         .fp-final h2 {
           margin: 0;
           color: #1f1230;
@@ -421,6 +443,7 @@ export default function HomePage() {
         .fp-step,
         .fp-report,
         .fp-subjects,
+        .fp-contact,
         .fp-final {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(124, 58, 237, 0.1);
@@ -462,6 +485,7 @@ export default function HomePage() {
         .fp-section-head p,
         .fp-value p,
         .fp-subjects p,
+        .fp-contact p,
         .fp-final p {
           margin: 0 0 10px;
           color: #6d28d9;
@@ -472,6 +496,7 @@ export default function HomePage() {
         .fp-section h2,
         .fp-value h2,
         .fp-subjects h2,
+        .fp-contact h2,
         .fp-final h2 {
           font-size: clamp(34px, 4.3vw, 56px);
           line-height: 1.04;
@@ -584,6 +609,7 @@ export default function HomePage() {
         }
 
         .fp-subjects,
+        .fp-contact,
         .fp-final {
           margin-top: 78px;
           border-radius: 38px;
@@ -612,6 +638,54 @@ export default function HomePage() {
           font-weight: 950;
           border: 1px solid rgba(124, 58, 237, 0.1);
           box-shadow: 0 12px 28px rgba(55, 35, 95, 0.05);
+        }
+
+        .fp-contact {
+          display: grid;
+          grid-template-columns: 1fr 0.8fr;
+          gap: 28px;
+          align-items: center;
+        }
+
+        .fp-contact span {
+          display: block;
+          margin-top: 18px;
+          color: #6d647c;
+          font-size: 16.5px;
+          line-height: 1.75;
+        }
+
+        .fp-contact-card {
+          padding: 26px;
+          border-radius: 28px;
+          background: #fff;
+          border: 1px solid rgba(124, 58, 237, 0.12);
+          box-shadow: 0 18px 48px rgba(55, 35, 95, 0.08);
+        }
+
+        .fp-contact-card strong {
+          display: block;
+          color: #241535;
+          font-size: 18px;
+          font-weight: 950;
+        }
+
+        .fp-contact-card a {
+          display: inline-flex;
+          margin-top: 12px;
+          color: #6d28d9;
+          font-size: 22px;
+          font-weight: 950;
+          text-decoration: none;
+          word-break: break-word;
+        }
+
+        .fp-contact-card small {
+          display: block;
+          margin-top: 14px;
+          color: #6d647c;
+          font-size: 14px;
+          line-height: 1.65;
         }
 
         .fp-final {
@@ -702,19 +776,22 @@ export default function HomePage() {
           .fp-proof,
           .fp-feature-grid,
           .fp-step-grid,
-          .fp-value {
+          .fp-value,
+          .fp-contact {
             grid-template-columns: 1fr;
           }
 
           .fp-section,
           .fp-value,
           .fp-subjects,
+          .fp-contact,
           .fp-final {
             margin-top: 56px;
           }
 
           .fp-value,
           .fp-subjects,
+          .fp-contact,
           .fp-final {
             padding: 26px 20px;
             border-radius: 30px;
@@ -723,6 +800,7 @@ export default function HomePage() {
           .fp-section h2,
           .fp-value h2,
           .fp-subjects h2,
+          .fp-contact h2,
           .fp-final h2 {
             font-size: clamp(31px, 8.6vw, 42px);
             line-height: 1.06;
@@ -738,6 +816,10 @@ export default function HomePage() {
 
           .fp-subject-grid {
             grid-template-columns: repeat(2, 1fr);
+          }
+
+          .fp-contact-card a {
+            font-size: 18px;
           }
         }
 
@@ -755,6 +837,7 @@ export default function HomePage() {
           }
         }
       `}</style>
+
       <SupportWidget />
     </main>
   )

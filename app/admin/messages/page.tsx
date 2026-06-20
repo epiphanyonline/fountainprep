@@ -15,6 +15,9 @@ type SupportThread = {
   visitor_name: string | null
   visitor_email: string | null
   visitor_phone: string | null
+  admin_read: boolean | null
+  admin_read_at: string | null
+  last_message_at: string | null
   created_at: string
   updated_at: string
 }
@@ -32,7 +35,7 @@ export default function AdminMessagesPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState('')
   const [adminUserId, setAdminUserId] = useState<string | null>(null)
   const [threads, setThreads] = useState<SupportThread[]>([])
   const [selectedThread, setSelectedThread] = useState<SupportThread | null>(null)
@@ -46,7 +49,7 @@ export default function AdminMessagesPage() {
 
   async function loadAdminMessages() {
     setLoading(true)
-    setMessage('')
+    setNotice('')
 
     const {
       data: { user },
@@ -73,10 +76,10 @@ export default function AdminMessagesPage() {
     const { data, error } = await supabase
       .from('support_threads')
       .select('*')
-      .order('updated_at', { ascending: false })
+      .order('last_message_at', { ascending: false })
 
     if (error) {
-      setMessage(error.message)
+      setNotice(error.message)
       setLoading(false)
       return
     }
@@ -86,8 +89,8 @@ export default function AdminMessagesPage() {
   }
 
   async function openThread(thread: SupportThread) {
-    setSelectedThread(thread)
-    setMessage('')
+    setSelectedThread({ ...thread, admin_read: true })
+    setNotice('')
 
     const { data, error } = await supabase
       .from('support_messages')
@@ -96,17 +99,35 @@ export default function AdminMessagesPage() {
       .order('created_at', { ascending: true })
 
     if (error) {
-      setMessage(error.message)
+      setNotice(error.message)
       return
     }
 
     setMessages((data || []) as SupportMessage[])
+
+    if (!thread.admin_read) {
+      await supabase
+        .from('support_threads')
+        .update({
+          admin_read: true,
+          admin_read_at: new Date().toISOString(),
+        })
+        .eq('id', thread.id)
+
+      setThreads((current) =>
+        current.map((item) =>
+          item.id === thread.id
+            ? { ...item, admin_read: true, admin_read_at: new Date().toISOString() }
+            : item
+        )
+      )
+    }
   }
 
   async function sendReply() {
     if (!selectedThread || !adminUserId || !reply.trim()) return
 
-    setMessage('Sending reply...')
+    setNotice('Sending reply...')
 
     const { error: insertError } = await supabase.from('support_messages').insert({
       thread_id: selectedThread.id,
@@ -116,58 +137,73 @@ export default function AdminMessagesPage() {
     })
 
     if (insertError) {
-      setMessage(insertError.message)
+      setNotice(insertError.message)
       return
     }
+
+    const now = new Date().toISOString()
 
     const { error: updateError } = await supabase
       .from('support_threads')
       .update({
         status: 'pending',
-        updated_at: new Date().toISOString(),
+        updated_at: now,
+        last_message_at: now,
+        admin_read: true,
+        admin_read_at: now,
       })
       .eq('id', selectedThread.id)
 
     if (updateError) {
-      setMessage(updateError.message)
+      setNotice(updateError.message)
       return
     }
 
     setReply('')
-    setMessage('')
+    setNotice('')
     await loadAdminMessages()
-    await openThread({ ...selectedThread, status: 'pending' })
+    await openThread({
+      ...selectedThread,
+      status: 'pending',
+      updated_at: now,
+      last_message_at: now,
+      admin_read: true,
+      admin_read_at: now,
+    })
   }
 
   async function updateThreadStatus(status: string) {
     if (!selectedThread) return
 
+    const now = new Date().toISOString()
+
     const { error } = await supabase
       .from('support_threads')
       .update({
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq('id', selectedThread.id)
 
     if (error) {
-      setMessage(error.message)
+      setNotice(error.message)
       return
     }
 
-    const updated = { ...selectedThread, status }
+    const updated = { ...selectedThread, status, updated_at: now }
     setSelectedThread(updated)
     await loadAdminMessages()
   }
 
   const filteredThreads = useMemo(() => {
     if (filter === 'all') return threads
+    if (filter === 'unread') return threads.filter((thread) => !thread.admin_read)
     return threads.filter((thread) => thread.status === filter)
   }, [threads, filter])
 
+  const unreadCount = threads.filter((t) => !t.admin_read).length
   const openCount = threads.filter((t) => t.status === 'open').length
   const urgentCount = threads.filter((t) => t.priority === 'urgent' || t.priority === 'high').length
-  const complaintCount = threads.filter((t) => t.category === 'complaint').length
   const safeguardingCount = threads.filter((t) => t.category === 'safeguarding').length
 
   return (
@@ -176,11 +212,11 @@ export default function AdminMessagesPage() {
         <p className="eyebrow">Admin Messages</p>
         <h1>Support inbox</h1>
         <p className="subtitle">
-          Manage public enquiries, parent support, tutor questions, complaints and safeguarding messages.
+          Manage enquiries, tutor messages, parent support, complaints and safeguarding messages.
         </p>
 
         <div className="kpiGrid">
-          <Kpi label="All Threads" value={String(threads.length)} />
+          <Kpi label="Unread" value={String(unreadCount)} highlight />
           <Kpi label="Open" value={String(openCount)} />
           <Kpi label="High Priority" value={String(urgentCount)} />
           <Kpi label="Safeguarding" value={String(safeguardingCount)} />
@@ -188,16 +224,17 @@ export default function AdminMessagesPage() {
       </section>
 
       <section className="content">
-        {message ? <p className="notice">{message}</p> : null}
+        {notice ? <p className="notice">{notice}</p> : null}
 
         <div className="filterBar">
-          {['open', 'pending', 'resolved', 'closed', 'all'].map((item) => (
+          {['unread', 'open', 'pending', 'resolved', 'closed', 'all'].map((item) => (
             <button
               key={item}
               className={filter === item ? 'filter active' : 'filter'}
               onClick={() => setFilter(item)}
             >
               {item}
+              {item === 'unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
             </button>
           ))}
         </div>
@@ -219,7 +256,10 @@ export default function AdminMessagesPage() {
                 onClick={() => openThread(thread)}
               >
                 <div className="threadTop">
-                  <strong>{thread.subject}</strong>
+                  <div className="threadTitleWrap">
+                    {!thread.admin_read ? <span className="unreadDot" /> : null}
+                    <strong>{thread.subject}</strong>
+                  </div>
                   <Status status={thread.status} />
                 </div>
 
@@ -227,7 +267,11 @@ export default function AdminMessagesPage() {
                   {thread.visitor_name || thread.role} • {thread.category}
                 </p>
 
-                <span>{formatDate(thread.updated_at || thread.created_at)}</span>
+                {thread.visitor_email ? (
+                  <small className="emailLine">{thread.visitor_email}</small>
+                ) : null}
+
+                <span>{formatDate(thread.last_message_at || thread.updated_at || thread.created_at)}</span>
               </button>
             ))}
           </aside>
@@ -236,7 +280,7 @@ export default function AdminMessagesPage() {
             {!selectedThread ? (
               <div className="emptyPanel">
                 <h2>Select a message</h2>
-                <p>Choose a support thread to view the conversation and reply.</p>
+                <p>Choose a support thread to view contact details, conversation and reply.</p>
               </div>
             ) : (
               <>
@@ -244,10 +288,51 @@ export default function AdminMessagesPage() {
                   <div>
                     <p className="eyebrow">{selectedThread.category}</p>
                     <h2>{selectedThread.subject}</h2>
-                    <p>
-                      From: {selectedThread.visitor_name || selectedThread.role}
-                      {selectedThread.visitor_email ? ` • ${selectedThread.visitor_email}` : ''}
-                    </p>
+
+                    <div className="contactBox">
+                      <div>
+                        <span>Name</span>
+                        <strong>{selectedThread.visitor_name || selectedThread.role}</strong>
+                      </div>
+
+                      <div>
+                        <span>Role</span>
+                        <strong>{selectedThread.role}</strong>
+                      </div>
+
+                      <div>
+                        <span>Email</span>
+                        {selectedThread.visitor_email ? (
+                          <a href={`mailto:${selectedThread.visitor_email}`}>
+                            {selectedThread.visitor_email}
+                          </a>
+                        ) : (
+                          <strong>-</strong>
+                        )}
+                      </div>
+
+                      <div>
+                        <span>Phone</span>
+                        {selectedThread.visitor_phone ? (
+                          <a href={`tel:${selectedThread.visitor_phone}`}>
+                            {selectedThread.visitor_phone}
+                          </a>
+                        ) : (
+                          <strong>-</strong>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedThread.visitor_email ? (
+                      <a
+                        className="replyEmail"
+                        href={`mailto:${selectedThread.visitor_email}?subject=Re: ${encodeURIComponent(
+                          selectedThread.subject
+                        )}`}
+                      >
+                        Reply by Email
+                      </a>
+                    ) : null}
                   </div>
 
                   <div className="statusActions">
@@ -274,11 +359,11 @@ export default function AdminMessagesPage() {
                   <textarea
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
-                    placeholder="Write your reply..."
+                    placeholder="Write your internal admin reply..."
                     rows={5}
                   />
 
-                  <button onClick={sendReply}>Send Reply</button>
+                  <button onClick={sendReply}>Save Admin Reply</button>
                 </div>
               </>
             )}
@@ -291,9 +376,9 @@ export default function AdminMessagesPage() {
   )
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="kpiCard">
+    <div className={highlight ? 'kpiCard highlight' : 'kpiCard'}>
       <p>{label}</p>
       <h2>{value}</h2>
     </div>
@@ -385,9 +470,15 @@ const styles = `
     border: 1px solid rgba(124,58,237,0.12);
   }
 
+  .kpiCard.highlight {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+  }
+
   .kpiCard p {
     margin: 0;
-    color: #7a7088;
+    color: inherit;
+    opacity: 0.78;
     font-size: 13px;
     font-weight: 850;
   }
@@ -477,6 +568,21 @@ const styles = `
     gap: 10px;
   }
 
+  .threadTitleWrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .unreadDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 5px rgba(239,68,68,0.1);
+    flex-shrink: 0;
+  }
+
   .threadTop strong {
     font-weight: 950;
   }
@@ -487,12 +593,18 @@ const styles = `
     font-size: 14px;
   }
 
-  .threadCard span {
+  .threadCard span,
+  .emailLine {
     display: inline-flex;
     margin-top: 8px;
     color: #7a7088;
     font-size: 12px;
     font-weight: 850;
+  }
+
+  .emailLine {
+    display: block;
+    color: #6d28d9;
   }
 
   .status {
@@ -524,8 +636,7 @@ const styles = `
   }
 
   .empty,
-  .emptyPanel p,
-  .conversationHeader p {
+  .emptyPanel p {
     color: #6f637e;
   }
 
@@ -552,6 +663,49 @@ const styles = `
     align-items: flex-start;
     padding-bottom: 18px;
     border-bottom: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .contactBox {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .contactBox div {
+    padding: 12px;
+    border-radius: 16px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.1);
+  }
+
+  .contactBox span {
+    display: block;
+    margin-bottom: 4px;
+    color: #7a7088;
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .contactBox strong,
+  .contactBox a {
+    color: #241438;
+    font-size: 13px;
+    font-weight: 950;
+    text-decoration: none;
+    word-break: break-word;
+  }
+
+  .replyEmail {
+    display: inline-flex;
+    margin-top: 14px;
+    padding: 11px 14px;
+    border-radius: 999px;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 950;
   }
 
   .statusActions {
@@ -650,7 +804,8 @@ const styles = `
     }
 
     .kpiGrid,
-    .inboxGrid {
+    .inboxGrid,
+    .contactBox {
       grid-template-columns: 1fr;
     }
 
