@@ -26,9 +26,12 @@ export default function SupportWidget() {
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('')
   const [sending, setSending] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [ticketNumber, setTicketNumber] = useState('')
 
   async function submitEnquiry() {
     setStatus('')
+    setTicketNumber('')
 
     if (!subject.trim() || !message.trim()) {
       setStatus('Please enter a subject and message.')
@@ -43,42 +46,57 @@ export default function SupportWidget() {
     setSending(true)
     setStatus('Sending...')
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    const res = await fetch('/api/support', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        visitorName,
-        visitorEmail,
-        visitorPhone,
-        role: user ? role : role || 'VISITOR',
-        category,
-        subject,
-        message,
-        userId: user?.id ?? null,
-      }),
-    })
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitorName,
+          visitorEmail,
+          visitorPhone,
+          role: user ? role : role || 'VISITOR',
+          category,
+          subject,
+          message,
+          userId: user?.id ?? null,
+        }),
+      })
 
-    const result = await res.json()
+      const result = await res.json()
 
-    if (!res.ok) {
-      setStatus(result.error || 'Unable to send message.')
+      if (!res.ok) {
+        setStatus(result.error || 'Unable to send message.')
+        setSending(false)
+        return
+      }
+
+      setTicketNumber(result.ticketNumber || '')
+      setSubmitted(true)
+      setStatus('')
+
+      setSubject('')
+      setMessage('')
+      setVisitorName('')
+      setVisitorEmail('')
+      setVisitorPhone('')
+      setCategory('general')
+      setRole('VISITOR')
+    } catch {
+      setStatus('Unable to send message right now. Please try again.')
+    } finally {
       setSending(false)
-      return
     }
+  }
 
-    setStatus('Thank you for contacting Fountain Prep. Our team typically responds within 24 hours.')
-    setSubject('')
-    setMessage('')
-    setVisitorName('')
-    setVisitorEmail('')
-    setVisitorPhone('')
-    setCategory('general')
-    setRole('VISITOR')
-    setSending(false)
+  function closePanel() {
+    setOpen(false)
+    setSubmitted(false)
+    setStatus('')
+    setTicketNumber('')
   }
 
   return (
@@ -96,31 +114,14 @@ export default function SupportWidget() {
                 <h2>How can we help?</h2>
               </div>
 
-              <button onClick={() => setOpen(false)}>×</button>
+              <button onClick={closePanel}>×</button>
             </div>
 
-            {!status.toLowerCase().includes('sent') ? (
+            {!submitted ? (
               <div className="form">
-                
-                <input
-                  value={visitorName}
-                  onChange={(e) => setVisitorName(e.target.value)}
-                  placeholder="Your name"
-                />
-
-                <input
-                  value={visitorEmail}
-                  onChange={(e) => setVisitorEmail(e.target.value)}
-                  placeholder="Your email"
-                  type="email"
-                />
-
-                <input
-                  value={visitorPhone}
-                  onChange={(e) => setVisitorPhone(e.target.value)}
-                  placeholder="Phone number optional"
-                  type="tel"
-                />
+                <input value={visitorName} onChange={(e) => setVisitorName(e.target.value)} placeholder="Your name" />
+                <input value={visitorEmail} onChange={(e) => setVisitorEmail(e.target.value)} placeholder="Your email" type="email" />
+                <input value={visitorPhone} onChange={(e) => setVisitorPhone(e.target.value)} placeholder="Phone number optional" type="tel" />
 
                 <select value={role} onChange={(e) => setRole(e.target.value)}>
                   <option value="VISITOR">Visitor</option>
@@ -130,24 +131,13 @@ export default function SupportWidget() {
 
                 <select value={category} onChange={(e) => setCategory(e.target.value)}>
                   {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
+                    <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
 
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Subject"
-                />
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
 
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write your message..."
-                  rows={5}
-                />
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your message..." rows={5} />
 
                 <button className="sendBtn" onClick={submitEnquiry} disabled={sending}>
                   {sending ? 'Sending...' : 'Send Message'}
@@ -156,8 +146,19 @@ export default function SupportWidget() {
             ) : (
               <div className="successBox">
                 <strong>Thank you for contacting Fountain Prep.</strong>
-<p>Our team has received your message and typically responds within 24 hours.</p>
-                <button onClick={() => setOpen(false)}>Close</button>
+
+                <p>Your enquiry has been received successfully and assigned a support reference number.</p>
+
+                {ticketNumber ? (
+                  <div className="ticketBox">
+                    <span>Reference Number</span>
+                    <strong>{ticketNumber}</strong>
+                  </div>
+                ) : null}
+
+                <p>Our team typically responds within 24 hours. Please keep your reference number for future enquiries.</p>
+
+                <button onClick={closePanel}>Close</button>
               </div>
             )}
 
@@ -239,7 +240,7 @@ export default function SupportWidget() {
           display: grid;
           gap: 11px;
         }
-        
+
         input,
         select,
         textarea {
@@ -278,8 +279,8 @@ export default function SupportWidget() {
         }
 
         .successBox {
-          padding: 18px;
-          border-radius: 22px;
+          padding: 20px;
+          border-radius: 24px;
           background: #f0fdf4;
           border: 1px solid #bbf7d0;
         }
@@ -287,13 +288,41 @@ export default function SupportWidget() {
         .successBox strong {
           display: block;
           color: #166534;
-          font-size: 18px;
+          font-size: 20px;
           font-weight: 950;
         }
 
         .successBox p {
           color: #166534;
           line-height: 1.55;
+          font-weight: 650;
+        }
+
+        .ticketBox {
+          margin: 16px 0;
+          padding: 16px;
+          border-radius: 16px;
+          background: white;
+          border: 2px solid #bbf7d0;
+          text-align: center;
+        }
+
+        .ticketBox span {
+          display: block;
+          color: #166534;
+          font-size: 12px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 6px;
+        }
+
+        .ticketBox strong {
+          display: block;
+          color: #166534;
+          font-size: 22px;
+          font-weight: 950;
+          letter-spacing: 0.04em;
         }
 
         .successBox button {

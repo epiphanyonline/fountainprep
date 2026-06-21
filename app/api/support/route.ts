@@ -62,6 +62,7 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString()
+    const ticketNumber = makeTicketNumber()
 
     const { data: thread, error: threadError } = await supabaseAdmin
       .from('support_threads')
@@ -81,6 +82,7 @@ export async function POST(req: Request) {
         admin_read: false,
         last_message_at: now,
         updated_at: now,
+        ticket_number: ticketNumber,
       })
       .select('id')
       .single()
@@ -117,20 +119,29 @@ export async function POST(req: Request) {
       subject,
       message,
       threadId: thread.id,
+      ticketNumber,
     })
 
-    return NextResponse.json({ success: true, threadId: thread.id })
-  } catch (error: any) {
-  console.error('SUPPORT API ERROR:', error)
+    await sendCustomerAcknowledgement({
+      visitorName: visitorName || role,
+      visitorEmail,
+      subject,
+      ticketNumber,
+    })
 
-  return NextResponse.json(
-    {
-      error: error?.message,
-      stack: error?.stack,
-    },
-    { status: 500 }
-  )
-}
+    return NextResponse.json({
+      success: true,
+      threadId: thread.id,
+      ticketNumber,
+    })
+  } catch (error: any) {
+    console.error('SUPPORT API ERROR:', error)
+
+    return NextResponse.json(
+      { error: 'Unable to send message right now. Please try again.' },
+      { status: 500 }
+    )
+  }
 }
 
 async function sendAdminNotification({
@@ -142,6 +153,7 @@ async function sendAdminNotification({
   subject,
   message,
   threadId,
+  ticketNumber,
 }: {
   visitorName?: string
   visitorEmail?: string
@@ -151,15 +163,13 @@ async function sendAdminNotification({
   subject?: string
   message?: string
   threadId?: string
+  ticketNumber?: string
 }) {
   const apiKey = process.env.RESEND_API_KEY
   const adminEmail =
     process.env.ADMIN_SUPPORT_EMAIL || 'support@fountainprep.com'
 
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY is missing. Support email alert was not sent.')
-    return
-  }
+  if (!apiKey) return
 
   const fromAddress =
     process.env.RESEND_FROM_EMAIL ||
@@ -169,7 +179,7 @@ async function sendAdminNotification({
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
     'https://www.fountainprep.com'
 
-  const response = await fetch('https://api.resend.com/emails', {
+  await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -179,12 +189,13 @@ async function sendAdminNotification({
       from: fromAddress,
       to: adminEmail,
       reply_to: visitorEmail || undefined,
-      subject: `New Fountain Prep Message: ${subject || 'Support enquiry'}`,
+      subject: `New Fountain Prep Message (${ticketNumber}): ${subject}`,
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241438;background:#faf7ff;padding:24px">
           <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #eadcff;border-radius:20px;padding:24px">
-            <h2 style="margin:0 0 16px;color:#241438">New Fountain Prep Support Message</h2>
+            <h2>New Fountain Prep Support Message</h2>
 
+            <p><strong>Ticket:</strong> ${escapeHtml(ticketNumber || '-')}</p>
             <p><strong>Subject:</strong> ${escapeHtml(subject || '-')}</p>
             <p><strong>Category:</strong> ${escapeHtml(category || '-')}</p>
             <p><strong>Role:</strong> ${escapeHtml(role || 'VISITOR')}</p>
@@ -192,16 +203,12 @@ async function sendAdminNotification({
             <p><strong>Email:</strong> ${escapeHtml(visitorEmail || '-')}</p>
             <p><strong>Phone:</strong> ${escapeHtml(visitorPhone || '-')}</p>
 
-            <hr style="border:none;border-top:1px solid #eadcff;margin:20px 0" />
+            <hr />
 
             <p><strong>Message:</strong></p>
             <div style="background:#fbf8ff;border:1px solid #eadcff;border-radius:14px;padding:16px">
               ${escapeHtml(message || '').replace(/\n/g, '<br />')}
             </div>
-
-            <hr style="border:none;border-top:1px solid #eadcff;margin:20px 0" />
-
-            <p><strong>Thread ID:</strong> ${escapeHtml(threadId || '-')}</p>
 
             <p style="margin-top:20px">
               <a href="${adminUrl}/admin/messages" style="display:inline-block;background:#6d28d9;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:999px">
@@ -211,29 +218,103 @@ async function sendAdminNotification({
           </div>
         </div>
       `,
+    }),
+  })
+}
+
+async function sendCustomerAcknowledgement({
+  visitorName,
+  visitorEmail,
+  subject,
+  ticketNumber,
+}: {
+  visitorName?: string
+  visitorEmail?: string
+  subject?: string
+  ticketNumber?: string
+}) {
+  const apiKey = process.env.RESEND_API_KEY
+
+  if (!apiKey || !visitorEmail) return
+
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL ||
+    'Fountain Prep Support <onboarding@resend.dev>'
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: visitorEmail,
+      subject: `Fountain Prep Support Request Received (${ticketNumber})`,
+      html: `
+        <div style="font-family:Arial,sans-serif;background:#faf7ff;padding:24px;color:#241438">
+          <div style="max-width:650px;margin:0 auto;background:#ffffff;border:1px solid #eadcff;border-radius:20px;padding:32px">
+            <h2 style="margin-top:0;color:#241438">Thank you for contacting Fountain Prep</h2>
+
+            <p>Hello ${escapeHtml(visitorName || 'there')},</p>
+
+            <p>We have received your support request successfully.</p>
+
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;padding:20px;margin:24px 0;text-align:center">
+              <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#166534;font-weight:700">
+                Reference Number
+              </div>
+              <div style="margin-top:8px;font-size:28px;font-weight:900;color:#166534">
+                ${escapeHtml(ticketNumber || '-')}
+              </div>
+            </div>
+
+            <p><strong>Subject:</strong> ${escapeHtml(subject || '-')}</p>
+
+            <p>A member of our team will normally respond within <strong>24 hours</strong>.</p>
+
+            <p>Please keep your reference number for future enquiries.</p>
+
+            <hr style="border:none;border-top:1px solid #eadcff;margin:24px 0" />
+
+            <p style="font-size:14px;color:#6f637e">
+              Fountain Prep Support Team<br />
+              support@fountainprep.com
+            </p>
+          </div>
+        </div>
+      `,
       text: `
-New Fountain Prep Support Message
+Thank you for contacting Fountain Prep.
 
-Subject: ${subject || '-'}
-Category: ${category || '-'}
-Role: ${role || 'VISITOR'}
-Name: ${visitorName || '-'}
-Email: ${visitorEmail || '-'}
-Phone: ${visitorPhone || '-'}
+Reference Number:
+${ticketNumber}
 
-Message:
-${message || ''}
+Subject:
+${subject}
 
-Thread ID: ${threadId || '-'}
-Open Admin Messages: ${adminUrl}/admin/messages
+We have received your enquiry successfully.
+
+A member of our team will normally respond within 24 hours.
+
+Fountain Prep Support
+support@fountainprep.com
       `,
     }),
   })
+}
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('Resend support notification failed:', errorText)
-  }
+function makeTicketNumber() {
+  const now = new Date()
+
+  const datePart =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0')
+
+  const randomPart = Math.floor(100 + Math.random() * 900)
+
+  return `FP-${datePart}-${randomPart}`
 }
 
 function cleanText(value?: string | null) {
