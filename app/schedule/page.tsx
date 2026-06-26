@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import TutorCard from '../components/TutorCard'
 
 type Student = {
   id: string
@@ -11,6 +12,17 @@ type Student = {
   country_system: string | null
   country_class_label: string | null
   learning_level_id: string | null
+}
+
+type TutorProfile = {
+  full_name: string
+  photo_url: string | null
+  bio: string | null
+  years_of_experience: number | null
+  qualification_summary: string | null
+  languages_spoken: string[] | null
+  average_rating: number | null
+  rating_count: number | null
 }
 
 type Slot = {
@@ -26,7 +38,7 @@ type Slot = {
   timezone: string
   is_available: boolean
   is_booked: boolean
-  tutor_profiles: { full_name: string } | null
+  tutor_profiles: TutorProfile | null
 }
 
 type BookingFrequency = 'WEEKLY_SAME_TIME' | 'TWO_DAYS_WEEKLY'
@@ -63,7 +75,7 @@ const subjectLabels: Record<string, string> = {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<ScheduleLoading />}>
+    <Suspense fallback={<ScheduleLoading message="Loading available tutor slots..." />}>
       <ScheduleContent />
     </Suspense>
   )
@@ -89,6 +101,7 @@ function ScheduleContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('Loading available tutor slots...')
+  const [profileTutor, setProfileTutor] = useState<TutorProfile | null>(null)
 
   const planName = planLabels[planId]
   const weeksToBook = planWeeks[planId]
@@ -96,12 +109,6 @@ function ScheduleContent() {
   const requiredSlotCount = frequency === 'TWO_DAYS_WEEKLY' ? 2 : 1
   const totalLessonsRequired = weeksToBook * requiredSlotCount
   const totalAmount = pricePerClass * totalLessonsRequired
-
-  const earliestBookable = useMemo(() => {
-    const date = new Date()
-    date.setHours(date.getHours() + FIRST_LESSON_NOTICE_HOURS)
-    return date
-  }, [])
 
   const groupedSlots = useMemo(() => {
     const grouped: Record<string, Slot[]> = {}
@@ -121,7 +128,9 @@ function ScheduleContent() {
       id: slot.id,
       label: `Weekly pattern ${index + 1}`,
       tutor: slot.tutor_profiles?.full_name || 'Approved tutor',
-      time: `Every ${getWeekdayName(slot.slot_date)}, ${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`,
+      time: `Every ${getWeekdayName(slot.slot_date)}, ${formatTime(
+        slot.start_time
+      )} - ${formatTime(slot.end_time)}`,
       dates: Array.from({ length: weeksToBook }).map((_, i) =>
         addWeeks(slot.slot_date, i)
       ),
@@ -149,7 +158,9 @@ function ScheduleContent() {
 
       const { data: studentRow, error: studentError } = await supabase
         .from('student_profiles')
-        .select('id, full_name, child_age, country_system, country_class_label, learning_level_id')
+        .select(
+          'id, full_name, child_age, country_system, country_class_label, learning_level_id'
+        )
         .eq('id', studentId)
         .maybeSingle()
 
@@ -171,7 +182,9 @@ function ScheduleContent() {
       let realSubjectName = subjectLabels[subjectIdParam] || 'Selected subject'
 
       const looksLikeUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectIdParam)
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          subjectIdParam
+        )
 
       if (looksLikeUuid) {
         const { data } = await supabase
@@ -203,47 +216,98 @@ function ScheduleContent() {
       setSubjectName(realSubjectName)
 
       const minimumNoticeDate = new Date()
-      minimumNoticeDate.setHours(minimumNoticeDate.getHours() + FIRST_LESSON_NOTICE_HOURS)
+      minimumNoticeDate.setHours(
+        minimumNoticeDate.getHours() + FIRST_LESSON_NOTICE_HOURS
+      )
+
       const earliestBookableDate = minimumNoticeDate.toISOString().split('T')[0]
 
-      const { data: slotRows, error: slotError } = await supabase
-        .from('tutor_availability_slots')
+            const isLanguageSubject = ['yoruba', 'igbo', 'hausa'].includes(
+        realSubjectName.toLowerCase()
+      )
+
+      let slotLearningLevelId = studentRow.learning_level_id
+
+      if (isLanguageSubject) {
+        const { data: allAgesLevel } = await supabase
+          .from('learning_levels')
+          .select('id')
+          .or('code.eq.ALL_AGES,name.eq.All Ages')
+          .maybeSingle()
+
+        if (allAgesLevel?.id) {
+          slotLearningLevelId = allAgesLevel.id
+        }
+      }
+
+                  const { data: safeTutors, error: safeTutorError } = await supabase
+        .from('vw_safe_tutor_profiles')
         .select(`
           id,
-          tutor_id,
-          subject_id,
-          learning_level_id,
-          slot_date,
-          start_time,
-          end_time,
-          starts_at,
-          ends_at,
-          timezone,
-          is_available,
-          is_booked,
-          tutor_profiles (
-            full_name
-          )
+          full_name,
+          photo_url,
+          bio,
+          years_of_experience,
+          qualification_summary,
+          languages_spoken,
+          average_rating,
+          rating_count
         `)
-        .eq('subject_id', realSubjectId)
-        .eq('learning_level_id', studentRow.learning_level_id)
-        .eq('is_available', true)
-        .eq('is_booked', false)
-        .gte('slot_date', earliestBookableDate)
-        .order('slot_date', { ascending: true })
-        .order('start_time', { ascending: true })
 
-      if (slotError) {
-        setMessage(slotError.message)
+      if (safeTutorError) {
+        setMessage(safeTutorError.message)
         setLoading(false)
         return
       }
 
-      const cleanSlots = ((slotRows ?? []) as any[]).map((row) => ({
+      const safeTutorRows = (safeTutors ?? []) as (TutorProfile & { id: string })[]
+      const safeTutorIds = safeTutorRows.map((tutor) => tutor.id)
+
+      if (safeTutorIds.length === 0) {
+        setSlots([])
+        setMessage('No approved tutors are available for this subject yet.')
+        setLoading(false)
+        return
+      }
+
+      const tutorMap = new Map(
+        safeTutorRows.map((tutor) => [tutor.id, tutor])
+      )
+
+      const { data: availableSlotRows, error: availableSlotError } =
+        await supabase
+          .from('tutor_availability_slots')
+          .select(`
+            id,
+            tutor_id,
+            subject_id,
+            learning_level_id,
+            slot_date,
+            start_time,
+            end_time,
+            starts_at,
+            ends_at,
+            timezone,
+            is_available,
+            is_booked
+          `)
+          .eq('subject_id', realSubjectId)
+          .in('tutor_id', safeTutorIds)
+          .eq('is_available', true)
+          .eq('is_booked', false)
+          .gte('slot_date', earliestBookableDate)
+          .order('slot_date', { ascending: true })
+          .order('start_time', { ascending: true })
+
+      if (availableSlotError) {
+        setMessage(availableSlotError.message)
+        setLoading(false)
+        return
+      }
+
+      const cleanSlots = ((availableSlotRows ?? []) as any[]).map((row) => ({
         ...row,
-        tutor_profiles: Array.isArray(row.tutor_profiles)
-          ? row.tutor_profiles[0] ?? null
-          : row.tutor_profiles ?? null,
+        tutor_profiles: tutorMap.get(row.tutor_id) || null,
       })) as Slot[]
 
       const premiumSlots = cleanSlots.filter((slot) => {
@@ -260,12 +324,20 @@ function ScheduleContent() {
         )
       })
 
+      console.log('safeTutorRows', safeTutorRows.length)
+console.log('availableSlotRows', availableSlotRows?.length)
+console.log('cleanSlots', cleanSlots.length)
+console.log('premiumSlots', premiumSlots.length)
+console.log('minimumNoticeDate', minimumNoticeDate)
+
       setSlots(premiumSlots)
 
       setMessage(
         premiumSlots.length
           ? ''
-          : 'No available tutor slots found yet. First lessons require 72 hours notice and are available from 08:00 to 20:00.'
+          : isLanguageSubject
+            ? 'No language tutor slots are available yet. Please message us and we will help arrange a suitable tutor.'
+            : 'No available tutor slots found yet. First lessons require 72 hours notice and are available from 08:00 to 20:00.'
       )
 
       setLoading(false)
@@ -277,22 +349,39 @@ function ScheduleContent() {
   function toggleSlot(slot: Slot) {
     setSelectedSlots((prev) => {
       const selected = prev.some((s) => s.id === slot.id)
+
       if (selected) return prev.filter((s) => s.id !== slot.id)
+
       if (frequency === 'WEEKLY_SAME_TIME') return [slot]
+
       if (prev.length >= 2) return [prev[1], slot]
+
       return [...prev, slot]
     })
   }
 
   function changeFrequency(next: BookingFrequency) {
     setFrequency(next)
+
     if (next === 'WEEKLY_SAME_TIME') {
       setSelectedSlots((prev) => prev.slice(0, 1))
+    } else {
+      setSelectedSlots([])
     }
   }
 
+  function goBackToPricing() {
+    const params = new URLSearchParams()
+
+    if (studentId) params.set('studentId', studentId)
+    if (subjectIdParam) params.set('subjectId', subjectIdParam)
+    if (programId) params.set('programId', programId)
+
+    router.push(`/pricing?${params.toString()}`)
+  }
+
   async function continueToPayment() {
-    if (!studentId || !subjectIdParam || !student || !resolvedSubjectId) {
+    if (!studentId || !student || !resolvedSubjectId) {
       alert('Missing booking details. Please start again.')
       router.push('/parent/students')
       return
@@ -337,7 +426,9 @@ function ScheduleContent() {
         status: 'PENDING_PAYMENT',
         payment_status: 'UNPAID',
         amount_gbp: slotIndex === 0 && weekIndex === 0 ? totalAmount : 0,
-        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${slotIndex + 1}-${weekIndex + 1}`,
+        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${
+          slotIndex + 1
+        }-${weekIndex + 1}`,
         notes,
         booking_frequency: frequency,
         repeat_weeks: weeksToBook,
@@ -358,8 +449,14 @@ function ScheduleContent() {
 
     await supabase
       .from('tutor_availability_slots')
-      .update({ is_available: false, is_booked: true })
-      .in('id', seedSlots.map((slot) => slot.id))
+      .update({
+        is_available: false,
+        is_booked: true,
+      })
+      .in(
+        'id',
+        seedSlots.map((slot) => slot.id)
+      )
 
     const firstBookingId = bookings?.[0]?.id
 
@@ -373,20 +470,13 @@ function ScheduleContent() {
     router.push(`/payment?bookingId=${firstBookingId}`)
   }
 
-  function goBackToPricing() {
-    const params = new URLSearchParams()
-    if (studentId) params.set('studentId', studentId)
-    if (subjectIdParam) params.set('subjectId', subjectIdParam)
-    if (programId) params.set('programId', programId)
-    router.push(`/pricing?${params.toString()}`)
-  }
-
   if (loading) return <ScheduleLoading message={message} />
 
   return (
     <main className="page">
       <section className="hero">
         <p className="eyebrow">Private 1-to-1 scheduling</p>
+
         <h1>Choose your child’s weekly learning time.</h1>
 
         <p className="subtitle">
@@ -404,7 +494,7 @@ function ScheduleContent() {
         </div>
 
         <div className="summaryGrid">
-          <SummaryCard label="Child" value={student?.full_name || 'Selected child'} />
+          <SummaryCard label="Learner" value={student?.full_name || 'Selected learner'} />
           <SummaryCard label="Subject" value={subjectName} />
           <SummaryCard
             label="Plan"
@@ -417,17 +507,17 @@ function ScheduleContent() {
       <section className="layout">
         <div className="mainCard">
           <div className="sectionHead">
-  <p className="eyebrow">Available tutor slots</p>
-  <h2>Select weekly pattern</h2>
+            <p className="eyebrow">Available tutor slots</p>
+            <h2>Select weekly pattern</h2>
 
-  <div className="premiumInfo">
-    <strong>Choose one weekly lesson time.</strong>
-    <p>
-      Fountain Prep will automatically reserve this same time every week
-      for the duration of your plan.
-    </p>
-  </div>
-</div>
+            <div className="premiumInfo">
+              <strong>Choose your preferred weekly lesson time.</strong>
+              <p>
+                Fountain Prep will reserve this same time every week for the
+                duration of your selected plan.
+              </p>
+            </div>
+          </div>
 
           {message ? <div className="notice">{message}</div> : null}
 
@@ -438,7 +528,10 @@ function ScheduleContent() {
               className={frequency === 'WEEKLY_SAME_TIME' ? 'freq active' : 'freq'}
             >
               <strong>1 lesson weekly</strong>
-              <span>{weeksToBook} lessons • £{pricePerClass}/class</span>
+              <span>
+                {weeksToBook} lesson{weeksToBook > 1 ? 's' : ''} • £
+                {pricePerClass}/class
+              </span>
             </button>
 
             <button
@@ -447,7 +540,9 @@ function ScheduleContent() {
               className={frequency === 'TWO_DAYS_WEEKLY' ? 'freq active' : 'freq'}
             >
               <strong>2 lessons weekly</strong>
-              <span>{weeksToBook * 2} lessons • £{pricePerClass}/class</span>
+              <span>
+                {weeksToBook * 2} lessons • £{pricePerClass}/class
+              </span>
             </button>
           </div>
 
@@ -455,16 +550,18 @@ function ScheduleContent() {
             <div className="empty">
               <h3>No tutor slots available yet</h3>
               <p>
-                Please check again later or choose another subject. First lessons
-                require 72 hours notice.
+                We are currently matching additional tutors for this subject. You
+                can check again later or contact us so we can help arrange a
+                suitable tutor.
               </p>
-              <button onClick={goBackToPricing} className="secondaryBtn">
-                Back to Pricing
+
+              <button type="button" onClick={goBackToPricing} className="secondaryBtn">
+                Back to Payment Plans
               </button>
             </div>
           ) : (
             <div className="dateList">
-              {availableDates.slice(0, 3).map((date) => (
+              {availableDates.map((date) => (
                 <div key={date} className="dateCard">
                   <div className="dateHeader">
                     <div>
@@ -474,43 +571,21 @@ function ScheduleContent() {
                     <span>Available</span>
                   </div>
 
-                  {availableDates.length > 3 && (
-  <button
-    type="button"
-    className="secondaryBtn"
-    onClick={() =>
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: 'smooth',
-      })
-    }
-  >
-    View More Available Dates
-  </button>
-)}
-
                   <div className="slotGrid">
                     {groupedSlots[date].map((slot) => {
                       const active = selectedSlots.some((s) => s.id === slot.id)
 
                       return (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          onClick={() => toggleSlot(slot)}
-                          className={active ? 'slot activeSlot' : 'slot'}
-                        >
-                          <strong>
-                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                          </strong>
-                          <span>{slot.tutor_profiles?.full_name || 'Approved tutor'}</span>
-
-<small className="tutorMeta">
-  ⭐ Experienced Tutor
-</small>
-                          <small>{active ? '✓ Selected' : 'Choose this time'}</small>
-                        </button>
-                      )
+  <TutorCard
+    key={slot.id}
+    tutor={slot.tutor_profiles}
+    startTime={formatTime(slot.start_time)}
+    endTime={formatTime(slot.end_time)}
+    active={active}
+    onSelect={() => toggleSlot(slot)}
+    onViewProfile={() => setProfileTutor(slot.tutor_profiles)}
+  />
+)
                     })}
                   </div>
                 </div>
@@ -521,22 +596,21 @@ function ScheduleContent() {
 
         <aside className="sideCard">
           <p className="eyebrow">Booking summary</p>
-          <h2>Your selected plan</h2>
+          <h2>{planName}</h2>
 
           <div className="totalBox">
-            <p>{planName}</p>
+            <p>Total due</p>
             <strong>£{totalAmount}</strong>
             <span>{totalLessonsRequired} private 1-to-1 lessons</span>
           </div>
 
           <div className="bookingPolicy">
-  <span>✓ Private 1-to-1 tutoring</span>
-  <span>✓ Weekly recurring lessons</span>
-  <span>✓ Dedicated tutor</span>
-  <span>✓ Same day and time every week</span>
-  <span>✓ Parent dashboard tracking</span>
-  <span>✓ 72-hour first lesson preparation notice</span>
-</div>
+            <span>✓ Private 1-to-1 tutoring</span>
+            <span>✓ Weekly recurring lessons</span>
+            <span>✓ Dedicated tutor</span>
+            <span>✓ Parent dashboard tracking</span>
+            <span>✓ 72-hour first lesson preparation notice</span>
+          </div>
 
           <div className="selectedBox">
             {bookingSummary.length === 0 ? (
@@ -549,6 +623,7 @@ function ScheduleContent() {
                   <small>{item.label}</small>
                   <strong>{item.time}</strong>
                   <p>Tutor: {item.tutor}</p>
+
                   <div className="datePills">
                     {item.dates.map((date) => (
                       <span key={date}>{formatShortDate(date)}</span>
@@ -575,17 +650,108 @@ function ScheduleContent() {
           </button>
 
           <button type="button" onClick={goBackToPricing} className="ghostBtn">
-            Back to Pricing
+            Back to Payment Plans
           </button>
         </aside>
       </section>
+
+      {profileTutor && (
+        <div className="profileOverlay">
+          <div className="profileModal">
+            <div className="profileTop">
+              <div className="profileIdentity">
+                {profileTutor.photo_url ? (
+                  <img
+                    src={profileTutor.photo_url}
+                    alt={profileTutor.full_name}
+                    className="profilePhoto"
+                  />
+                ) : (
+                  <div className="profileInitial">
+                    {profileTutor.full_name?.charAt(0) ?? 'T'}
+                  </div>
+                )}
+
+                <div>
+                  <h2>{profileTutor.full_name}</h2>
+                  <p>Fountain Prep Tutor</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setProfileTutor(null)}
+                className="closeProfile"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="profileBody">
+              {profileTutor.qualification_summary && (
+                <div>
+                  <span>Qualification</span>
+                  <strong>{profileTutor.qualification_summary}</strong>
+                </div>
+              )}
+
+              <div>
+                <span>Experience</span>
+                <strong>
+                  {profileTutor.years_of_experience ?? 0}+ years teaching
+                  experience
+                </strong>
+              </div>
+
+              {!!profileTutor.languages_spoken?.length && (
+                <div>
+                  <span>Languages spoken</span>
+                  <strong>{profileTutor.languages_spoken.join(', ')}</strong>
+                </div>
+              )}
+
+              {profileTutor.rating_count && profileTutor.rating_count > 0 ? (
+                <div>
+                  <span>Rating</span>
+                  <strong>
+                    ⭐ {Number(profileTutor.average_rating ?? 0).toFixed(1)} / 5
+                  </strong>
+                </div>
+              ) : null}
+
+              {profileTutor.bio && (
+                <div>
+                  <span>About</span>
+                  <p>{profileTutor.bio}</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setProfileTutor(null)}
+              className="profileContinue"
+            >
+              Continue booking
+            </button>
+          </div>
+        </div>
+      )}
 
       <style jsx>{styles}</style>
     </main>
   )
 }
 
-function SummaryCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function SummaryCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string
+  value: string
+  sub?: string
+}) {
   return (
     <div className="summary">
       <span>{label}</span>
@@ -637,7 +803,7 @@ function getWeekdayName(dateString: string) {
 }
 
 function formatTime(time: string) {
-  return time.slice(0, 5)
+  return time?.slice(0, 5) || ''
 }
 
 const styles = `
@@ -744,7 +910,7 @@ const styles = `
   .layout {
     margin-top: 30px;
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: minmax(0, 1fr) 380px;
     gap: 24px;
     align-items: start;
   }
@@ -760,7 +926,9 @@ const styles = `
 
   .sideCard {
     position: sticky;
-    top: 24px;
+    top: 110px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
   }
 
   .sectionHead h2,
@@ -768,6 +936,25 @@ const styles = `
     margin: 8px 0 0;
     font-size: 32px;
     letter-spacing: -0.04em;
+  }
+
+  .premiumInfo {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(124, 58, 237, 0.06);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+  }
+
+  .premiumInfo strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .premiumInfo p {
+    margin: 0;
+    opacity: 0.8;
+    line-height: 1.6;
   }
 
   .notice {
@@ -788,7 +975,6 @@ const styles = `
   }
 
   .freq,
-  .slot,
   .primaryBtn,
   .secondaryBtn,
   .ghostBtn {
@@ -875,6 +1061,16 @@ const styles = `
     border: 1px solid rgba(124, 58, 237, 0.1);
   }
 
+  .slotMain {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
   .slot strong,
   .slot span,
   .slot small {
@@ -892,9 +1088,27 @@ const styles = `
     font-weight: 900;
   }
 
+  .tutorMeta {
+    display: block;
+    margin-top: 6px;
+    opacity: 0.7;
+  }
+
   .activeSlot {
     border-color: #7c3aed;
     background: #f1e8ff;
+  }
+
+  .profileLink {
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #6d28d9;
+    font-weight: 950;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .totalBox {
@@ -1045,6 +1259,130 @@ const styles = `
     line-height: 1.7;
   }
 
+  .profileOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(17, 11, 28, 0.58);
+    backdrop-filter: blur(8px);
+  }
+
+  .profileModal {
+    width: min(100%, 480px);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 26px;
+    border-radius: 30px;
+    background: white;
+    box-shadow: 0 30px 90px rgba(17, 11, 28, 0.28);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+  }
+
+  .profileTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .profileIdentity {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .profilePhoto,
+  .profileInitial {
+    width: 68px;
+    height: 68px;
+    border-radius: 22px;
+    flex: 0 0 auto;
+  }
+
+  .profilePhoto {
+    object-fit: cover;
+  }
+
+  .profileInitial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1e8ff;
+    color: #6d28d9;
+    font-size: 28px;
+    font-weight: 950;
+  }
+
+  .profileTop h2 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+    color: #201230;
+  }
+
+  .profileTop p {
+    margin: 6px 0 0;
+    color: #6d647c;
+    font-weight: 800;
+  }
+
+  .closeProfile {
+    border: 0;
+    border-radius: 999px;
+    background: #f6f1ff;
+    color: #4c1d95;
+    font-weight: 950;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+  }
+
+  .profileBody {
+    margin-top: 22px;
+    display: grid;
+    gap: 16px;
+  }
+
+  .profileBody span {
+    display: block;
+    color: #7c3aed;
+    font-size: 11px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+
+  .profileBody strong {
+    display: block;
+    margin-top: 6px;
+    color: #201230;
+    line-height: 1.55;
+  }
+
+  .profileBody p {
+    margin: 7px 0 0;
+    color: #5f5470;
+    line-height: 1.75;
+    font-weight: 650;
+  }
+
+  .profileContinue {
+    width: 100%;
+    margin-top: 24px;
+    min-height: 54px;
+    border: 0;
+    border-radius: 18px;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 18px 42px rgba(109, 40, 217, 0.24);
+  }
+
   @media (max-width: 980px) {
     .page {
       padding: 26px 12px 70px;
@@ -1064,35 +1402,13 @@ const styles = `
 
     .sideCard {
       position: static;
+      max-height: none;
+      overflow: visible;
     }
 
     h1 {
       font-size: clamp(38px, 12vw, 56px);
     }
-
-    .premiumInfo {
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 14px;
-  background: rgba(124, 58, 237, 0.06);
-  border: 1px solid rgba(124, 58, 237, 0.12);
-}
-
-.premiumInfo strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.premiumInfo p {
-  margin: 0;
-  opacity: 0.8;
-}
-
-.tutorMeta {
-  display: block;
-  margin-top: 6px;
-  opacity: 0.7;
-}
 
     .mainCard,
     .sideCard {

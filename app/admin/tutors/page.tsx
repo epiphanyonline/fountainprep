@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { onTutorApproved, onTutorListed } from '../../lib/events'
 
 type TutorRow = {
   id: string
+  user_id: string
+  email: string | null
   full_name: string
   qualification_summary: string | null
   years_of_experience: number
@@ -23,6 +26,12 @@ type TutorRow = {
   cv_signed_url?: string | null
   id_signed_url?: string | null
   qualification_signed_url?: string | null
+}
+
+type TutorUpdate = {
+  approval_status?: string
+  verification_status?: string
+  is_listed?: boolean
 }
 
 export default function AdminTutorsPage() {
@@ -53,6 +62,7 @@ export default function AdminTutorsPage() {
       .from('tutor_profiles')
       .select(`
         id,
+        user_id,
         full_name,
         qualification_summary,
         years_of_experience,
@@ -77,9 +87,33 @@ export default function AdminTutorsPage() {
       return
     }
 
+    const tutorRows = (data || []) as Omit<TutorRow, 'email'>[]
+
+    const userIds = Array.from(
+      new Set(tutorRows.map((tutor) => tutor.user_id).filter(Boolean))
+    )
+
+    const emailMap = new Map<string, string | null>()
+
+    if (userIds.length > 0) {
+      const { data: profileRows, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, email')
+        .in('id', userIds)
+
+      if (profileError) {
+        console.warn('Tutor email lookup failed:', profileError.message)
+      }
+
+      for (const profile of profileRows ?? []) {
+        emailMap.set(profile.id, profile.email ?? null)
+      }
+    }
+
     const enriched = await Promise.all(
-      ((data || []) as TutorRow[]).map(async (tutor) => ({
+      tutorRows.map(async (tutor) => ({
         ...tutor,
+        email: emailMap.get(tutor.user_id) ?? null,
         cv_signed_url: await signedUrl(tutor.cv_url),
         id_signed_url: await signedUrl(tutor.government_id_url),
         qualification_signed_url: await signedUrl(tutor.qualification_document_url),
@@ -94,8 +128,11 @@ export default function AdminTutorsPage() {
     loadTutors()
   }, [])
 
-  async function updateTutor(id: string, updates: Partial<TutorRow>) {
-    const { error } = await supabase.from('tutor_profiles').update(updates).eq('id', id)
+  async function updateTutor(id: string, updates: TutorUpdate) {
+    const { error } = await supabase
+      .from('tutor_profiles')
+      .update(updates)
+      .eq('id', id)
 
     if (error) {
       setMessage(error.message)
@@ -105,12 +142,26 @@ export default function AdminTutorsPage() {
     await loadTutors()
   }
 
-  async function approveTutor(id: string) {
-    await updateTutor(id, {
+  async function approveTutor(tutor: TutorRow) {
+    await updateTutor(tutor.id, {
       approval_status: 'approved',
       verification_status: 'verified',
       is_listed: true,
     })
+
+    if (tutor.user_id) {
+      await onTutorApproved({
+        tutorUserId: tutor.user_id,
+        tutorName: tutor.full_name,
+        tutorEmail: tutor.email,
+      })
+
+      await onTutorListed({
+        tutorUserId: tutor.user_id,
+        tutorName: tutor.full_name,
+        tutorEmail: tutor.email,
+      })
+    }
   }
 
   async function rejectTutor(id: string) {
@@ -120,10 +171,20 @@ export default function AdminTutorsPage() {
     })
   }
 
-  async function toggleListing(id: string, current: boolean) {
-    await updateTutor(id, {
-      is_listed: !current,
+  async function toggleListing(tutor: TutorRow) {
+    const listing = !tutor.is_listed
+
+    await updateTutor(tutor.id, {
+      is_listed: listing,
     })
+
+    if (listing && tutor.user_id) {
+      await onTutorListed({
+        tutorUserId: tutor.user_id,
+        tutorName: tutor.full_name,
+        tutorEmail: tutor.email,
+      })
+    }
   }
 
   async function deleteTutorAndDocuments(tutor: TutorRow) {
@@ -213,6 +274,7 @@ export default function AdminTutorsPage() {
                   <p className="meta">
                     {tutor.years_of_experience} yrs experience • Submitted{' '}
                     {formatDate(tutor.submitted_at || tutor.created_at)}
+                    {tutor.email ? ` • ${tutor.email}` : ''}
                   </p>
                 </div>
 
@@ -253,7 +315,7 @@ export default function AdminTutorsPage() {
               </div>
 
               <div className="actions">
-                <button className="btnPrimary" onClick={() => approveTutor(tutor.id)}>
+                <button className="btnPrimary" onClick={() => approveTutor(tutor)}>
                   Approve & List
                 </button>
 
@@ -261,7 +323,7 @@ export default function AdminTutorsPage() {
                   Reject
                 </button>
 
-                <button className="btnSecondary" onClick={() => toggleListing(tutor.id, tutor.is_listed)}>
+                <button className="btnSecondary" onClick={() => toggleListing(tutor)}>
                   {tutor.is_listed ? 'Unlist' : 'List'}
                 </button>
 

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { onBookingConfirmed } from '../../lib/events'
 
 type Booking = {
   id: string
@@ -158,8 +159,21 @@ if (reminderBookings?.length) {
 
   if (reminderError) {
     console.log('Reminder creation error:', reminderError.message)
-  }
-}
+   }
+  } 
+
+ const { data: tutorRows } = await supabase
+  .from('lesson_bookings')
+  .select('tutor_id')
+  .eq(groupId ? 'parent_booking_group_id' : 'id', groupId || bookingId)
+
+const tutorIds = [
+  ...new Set(
+    (tutorRows ?? [])
+      .map((row: any) => row.tutor_id)
+      .filter(Boolean)
+  ),
+]
 
       const { data: allBookings } = await supabase
         .from('lesson_bookings')
@@ -187,9 +201,15 @@ if (reminderBookings?.length) {
 
       setStudent(studentRow ?? null)
       setSubject(subjectRow ?? null)
+      await onBookingConfirmed({
+  parentUserId: user.id,
+  tutorUserIds: tutorIds,
+  studentName: studentRow?.full_name,
+  subjectName: subjectRow?.name,
+})
       setMessage('Your child’s learning plan has been confirmed.')
       setLoading(false)
-    }
+      }      
 
     confirmPayment()
   }, [bookingId, sessionId, router])

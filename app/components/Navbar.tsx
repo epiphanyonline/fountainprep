@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import NotificationBell from './ui/NotificationBell'
 
 type UserProfile = {
   id: string
@@ -20,6 +21,7 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     async function loadProfile() {
@@ -42,6 +44,20 @@ export default function Navbar() {
         .maybeSingle()
 
       setProfile(data ?? null)
+
+      if (data) {
+  const { count } = await supabase
+    .from('notifications')
+    .select('*', {
+      count: 'exact',
+      head: true,
+    })
+    .eq('user_id', user.id)
+    .eq('is_read', false)
+
+  setNotificationCount(count ?? 0)
+}
+
       setLoading(false)
     }
 
@@ -178,11 +194,25 @@ export default function Navbar() {
               </Link>
             ))}
 
+            {profile && (
+  <NotificationBell
+    count={notificationCount}
+    href="/notifications"
+  />
+)}
+
             {!loading && !profile ? (
               <Link href="/login" className="mobile-link primary">
                 Login
               </Link>
             ) : null}
+
+            {profile && (
+  <NotificationBell
+    count={notificationCount}
+    href="/notifications"
+  />
+)}
 
             {!loading && profile ? (
               <button

@@ -12,13 +12,14 @@ type TutorProfile = {
 
 type LearningLevel = {
   id: string
+  code: string | null
   name: string
 }
 
 type Subject = {
   id: string
   name: string
-  category: string
+  category: string | null
 }
 
 type WeeklyAvailability = {
@@ -55,6 +56,8 @@ const currentLaunchSubjects = [
   'Igbo',
   'Hausa',
 ]
+
+const languageSubjects = ['yoruba', 'igbo', 'hausa']
 
 const days = [
   { key: 'monday', label: 'Monday', jsDay: 1, group: 'weekday' },
@@ -124,6 +127,38 @@ export default function TutorAvailabilityPage() {
     emptySelection()
   )
 
+  const selectedSubject = subjects.find((subject) => subject.id === subjectId)
+  const isLanguageSubject = selectedSubject
+    ? languageSubjects.includes(selectedSubject.name.toLowerCase())
+    : false
+
+  const allAgesLevel = levels.find(
+    (level) =>
+      level.code === 'ALL_AGES' ||
+      level.name.toLowerCase() === 'all ages' ||
+      level.name.toLowerCase() === 'language learners'
+  )
+
+  const normalLevels = levels.filter(
+    (level) =>
+      level.code !== 'ALL_AGES' &&
+      level.name.toLowerCase() !== 'all ages' &&
+      level.name.toLowerCase() !== 'language learners'
+  )
+
+  const effectiveLearningLevelId = isLanguageSubject
+    ? allAgesLevel?.id || ''
+    : learningLevelId
+
+  const selectedCount = useMemo(() => {
+    return days.reduce((total, day) => {
+      return (
+        total +
+        periods.filter((period) => selection[day.key]?.[period.key]).length
+      )
+    }, 0)
+  }, [selection])
+
   useEffect(() => {
     async function loadData() {
       const {
@@ -159,7 +194,7 @@ export default function TutorAvailabilityPage() {
 
       const { data: levelRows } = await supabase
         .from('learning_levels')
-        .select('id, name')
+        .select('id, code, name')
         .eq('is_active', true)
         .order('min_age', { ascending: true })
 
@@ -170,11 +205,23 @@ export default function TutorAvailabilityPage() {
         .in('name', currentLaunchSubjects)
         .order('name', { ascending: true })
 
+      const cleanLevels = (levelRows ?? []) as LearningLevel[]
+      const cleanSubjects = (subjectRows ?? []) as Subject[]
+
       setTutor(tutorProfile as TutorProfile)
-      setLevels((levelRows ?? []) as LearningLevel[])
-      setSubjects((subjectRows ?? []) as Subject[])
-      setLearningLevelId(levelRows?.[0]?.id ?? '')
-      setSubjectId(subjectRows?.[0]?.id ?? '')
+      setLevels(cleanLevels)
+      setSubjects(cleanSubjects)
+
+      const firstSubject = cleanSubjects[0]
+      const firstNormalLevel = cleanLevels.find(
+        (level) =>
+          level.code !== 'ALL_AGES' &&
+          level.name.toLowerCase() !== 'all ages' &&
+          level.name.toLowerCase() !== 'language learners'
+      )
+
+      setSubjectId(firstSubject?.id ?? '')
+      setLearningLevelId(firstNormalLevel?.id ?? '')
 
       await loadWeeklyAvailability(tutorProfile.id)
 
@@ -185,14 +232,19 @@ export default function TutorAvailabilityPage() {
     loadData()
   }, [router])
 
-  const selectedCount = useMemo(() => {
-    return days.reduce((total, day) => {
-      return (
-        total +
-        periods.filter((period) => selection[day.key]?.[period.key]).length
-      )
-    }, 0)
-  }, [selection])
+  useEffect(() => {
+    if (isLanguageSubject && allAgesLevel?.id) {
+      setLearningLevelId(allAgesLevel.id)
+    }
+
+    if (!isLanguageSubject && normalLevels.length > 0) {
+      const stillValid = normalLevels.some((level) => level.id === learningLevelId)
+
+      if (!stillValid) {
+        setLearningLevelId(normalLevels[0].id)
+      }
+    }
+  }, [isLanguageSubject, allAgesLevel?.id, normalLevels, learningLevelId])
 
   async function loadWeeklyAvailability(tutorId: string) {
     const { data } = await supabase
@@ -259,90 +311,122 @@ export default function TutorAvailabilityPage() {
     })
   }
 
-  async function ensureTutorSubjectMapping() {
-    if (!tutor || !subjectId || !learningLevelId) return
-
+  async function ensureTutorSubjectMapping(
+    tutorId: string,
+    currentSubjectId: string,
+    currentLevelId: string
+  ) {
     const { data: existing } = await supabase
       .from('tutor_subjects')
       .select('id')
-      .eq('tutor_id', tutor.id)
-      .eq('subject_id', subjectId)
-      .eq('learning_level_id', learningLevelId)
+      .eq('tutor_id', tutorId)
+      .eq('subject_id', currentSubjectId)
+      .eq('learning_level_id', currentLevelId)
       .maybeSingle()
 
     if (existing) return
 
     await supabase.from('tutor_subjects').insert({
-      tutor_id: tutor.id,
-      subject_id: subjectId,
-      learning_level_id: learningLevelId,
+      tutor_id: tutorId,
+      subject_id: currentSubjectId,
+      learning_level_id: currentLevelId,
+      approved_by_admin: true,
       is_active: true,
     })
   }
 
-  async function handleSaveWeeklyAvailability() {
+  function getNextDatesForDay(jsDay: number, weeks = 8) {
+    const dates: string[] = []
+    const today = new Date()
+
+    for (let i = 0; i < weeks * 7; i += 1) {
+      const current = new Date(today)
+      current.setDate(today.getDate() + i)
+
+      if (current.getDay() === jsDay) {
+        dates.push(current.toISOString().split('T')[0])
+      }
+    }
+
+    return dates.slice(0, weeks)
+  }
+
+  function buildTimestamp(date: string, time: string, nextDay: boolean) {
+  const cleanTime = time.slice(0, 5)
+  const timestamp = new Date(`${date}T${cleanTime}:00`)
+
+  if (nextDay) {
+    timestamp.setDate(timestamp.getDate() + 1)
+  }
+
+  return timestamp.toISOString()
+}
+
+  async function generateSlotsForWeeklyRows(rows: WeeklyAvailability[]) {
+    const slotRows = rows.flatMap((row) => {
+      const matchingDay = days.find((day) => day.jsDay === row.day_of_week)
+      if (!matchingDay) return []
+
+      const dates = getNextDatesForDay(row.day_of_week, 8)
+
+      return dates.map((date) => ({
+        tutor_id: tutor?.id,
+        subject_id: row.subject_id,
+        learning_level_id: row.learning_level_id,
+        weekly_availability_id: row.id,
+        slot_date: date,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        starts_at: buildTimestamp(date, row.start_time, false),
+        ends_at: buildTimestamp(date, row.end_time, row.ends_next_day),
+        timezone: row.timezone,
+        is_available: true,
+        is_booked: false,
+      }))
+    })
+
+    if (slotRows.length === 0) return
+
+    await supabase.from('tutor_availability_slots').upsert(slotRows, {
+      onConflict: 'tutor_id,subject_id,learning_level_id,slot_date,start_time',
+      ignoreDuplicates: true,
+    })
+  }
+
+  async function saveAvailability() {
     if (!tutor) return
 
-    if (!subjectId || !learningLevelId) {
-      setMessage('Please select subject and learning level first.')
+    if (!subjectId) {
+      setMessage('Please select a subject.')
+      return
+    }
+
+    if (!effectiveLearningLevelId) {
+      setMessage(
+        isLanguageSubject
+          ? 'All Ages level is missing. Please create ALL_AGES in learning_levels.'
+          : 'Please select a learning level.'
+      )
       return
     }
 
     if (selectedCount === 0) {
-      setMessage('Please select at least one weekly shift.')
+      setMessage('Please select at least one availability period.')
       return
     }
 
     setSaving(true)
-    setMessage('Saving weekly shifts and creating bookable lesson slots...')
+    setMessage('Saving availability...')
 
-    await ensureTutorSubjectMapping()
+    await ensureTutorSubjectMapping(tutor.id, subjectId, effectiveLearningLevelId)
 
-    const rowsToInsert: any[] = []
-    const duplicateWarnings: string[] = []
-    const overlapWarnings: string[] = []
-
-    days.forEach((day) => {
-      periods.forEach((period) => {
-        if (!selection[day.key]?.[period.key]) return
-
-        const exactDuplicate = weeklyRows.find(
-          (row) =>
-            row.subject_id === subjectId &&
-            row.learning_level_id === learningLevelId &&
-            row.day_of_week === day.jsDay &&
-            row.period_key === period.key &&
-            row.is_active
-        )
-
-        if (exactDuplicate) {
-          duplicateWarnings.push(`${day.label} ${period.label}`)
-          return
-        }
-
-        const overlap = weeklyRows.find(
-          (row) =>
-            row.day_of_week === day.jsDay &&
-            row.is_active &&
-            overlaps(
-              period.start,
-              period.end,
-              period.nextDay,
-              row.start_time.slice(0, 5),
-              row.end_time.slice(0, 5),
-              row.ends_next_day
-            )
-        )
-
-        if (overlap) {
-          overlapWarnings.push(`${day.label} ${period.label}`)
-          return
-        }
-
-        rowsToInsert.push({
+    const rowsToCreate = days.flatMap((day) =>
+      periods
+        .filter((period) => selection[day.key]?.[period.key])
+        .map((period) => ({
           tutor_id: tutor.id,
           subject_id: subjectId,
-          learning_level_id: learningLevelId,
+          learning_level_id: effectiveLearningLevelId,
           day_of_week: day.jsDay,
           period_key: period.key,
           start_time: period.start,
@@ -350,148 +434,88 @@ export default function TutorAvailabilityPage() {
           ends_next_day: period.nextDay,
           timezone,
           is_active: true,
-        })
-      })
-    })
-
-    if (rowsToInsert.length === 0) {
-      setSaving(false)
-
-      if (duplicateWarnings.length > 0) {
-        setMessage(
-          `Already exists: ${duplicateWarnings.join(
-            ', '
-          )}. No duplicate shift was saved.`
-        )
-        return
-      }
-
-      if (overlapWarnings.length > 0) {
-        setMessage(
-          `Overlapping shift blocked: ${overlapWarnings.join(
-            ', '
-          )}. Please remove the existing shift first.`
-        )
-        return
-      }
-
-      setMessage('No new shift was saved.')
-      return
-    }
-
-    const { error } = await supabase
-      .from('tutor_weekly_availability')
-      .insert(rowsToInsert)
-
-    if (error) {
-      setMessage(error.message)
-      setSaving(false)
-      return
-    }
-
-    const generated = await createBookableSlots(rowsToInsert)
-
-    setSelection(emptySelection())
-    await loadWeeklyAvailability(tutor.id)
-
-    let finalMessage = `${rowsToInsert.length} weekly shift(s) saved. ${generated} bookable lesson slot(s) created for parents.`
-
-    if (duplicateWarnings.length > 0) {
-      finalMessage += ` Already exists and skipped: ${duplicateWarnings.join(
-        ', '
-      )}.`
-    }
-
-    if (overlapWarnings.length > 0) {
-      finalMessage += ` Overlapping shift(s) skipped: ${overlapWarnings.join(
-        ', '
-      )}.`
-    }
-
-    setMessage(finalMessage)
-    setSaving(false)
-  }
-
-  async function createBookableSlots(rows: any[]) {
-    if (!tutor) return 0
-
-    const today = new Date()
-    const horizon = new Date()
-    horizon.setDate(today.getDate() + 84)
-
-    const startDate = toDateString(today)
-    const endDate = toDateString(horizon)
-
-    const { data: existingSlots } = await supabase
-      .from('tutor_availability_slots')
-      .select('id, subject_id, learning_level_id, slot_date, start_time, end_time')
-      .eq('tutor_id', tutor.id)
-      .gte('slot_date', startDate)
-      .lte('slot_date', endDate)
+        }))
+    )
 
     const existingKeys = new Set(
-      ((existingSlots ?? []) as any[]).map(
-        (slot) =>
-          `${slot.subject_id}|${slot.learning_level_id}|${slot.slot_date}|${slot.start_time?.slice(
-            0,
-            5
-          )}|${slot.end_time?.slice(0, 5)}`
+      weeklyRows.map(
+        (row) =>
+          `${row.subject_id}|${row.learning_level_id}|${row.day_of_week}|${row.period_key}`
       )
     )
 
-    const slotsToInsert: any[] = []
+    const newRows = rowsToCreate.filter(
+      (row) =>
+        !existingKeys.has(
+          `${row.subject_id}|${row.learning_level_id}|${row.day_of_week}|${row.period_key}`
+        )
+    )
 
-    rows.forEach((row) => {
-      const dates = nextDatesForDay(row.day_of_week, 12)
+    if (newRows.length === 0) {
+      setMessage('These availability periods already exist.')
+      setSaving(false)
+      return
+    }
 
-      dates.forEach((slotDate) => {
-        const key = `${row.subject_id}|${row.learning_level_id}|${slotDate}|${row.start_time}|${row.end_time}`
-
-        if (existingKeys.has(key)) return
-
-        const startsAt = makeDateTime(slotDate, row.start_time)
-        const endsAt = makeDateTime(slotDate, row.end_time, row.ends_next_day)
-
-        slotsToInsert.push({
-          tutor_id: row.tutor_id,
-          subject_id: row.subject_id,
-          learning_level_id: row.learning_level_id,
-          slot_date: slotDate,
-          start_time: row.start_time,
-          end_time: row.end_time,
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-          timezone: row.timezone,
-          is_available: true,
-          is_booked: false,
-        })
-      })
-    })
-
-    if (slotsToInsert.length === 0) return 0
-
-    const { error } = await supabase
-      .from('tutor_availability_slots')
-      .insert(slotsToInsert)
+    const { data: insertedRows, error } = await supabase
+      .from('tutor_weekly_availability')
+      .insert(newRows)
+      .select(
+        `
+        id,
+        subject_id,
+        learning_level_id,
+        day_of_week,
+        period_key,
+        start_time,
+        end_time,
+        ends_next_day,
+        timezone,
+        is_active,
+        subjects ( name ),
+        learning_levels ( name )
+      `
+      )
 
     if (error) {
       setMessage(error.message)
-      return 0
+      setSaving(false)
+      return
     }
 
-    return slotsToInsert.length
+    const cleanInsertedRows = ((insertedRows ?? []) as any[]).map((row) => ({
+      ...row,
+      subjects: Array.isArray(row.subjects)
+        ? row.subjects[0] ?? null
+        : row.subjects ?? null,
+      learning_levels: Array.isArray(row.learning_levels)
+        ? row.learning_levels[0] ?? null
+        : row.learning_levels ?? null,
+    })) as WeeklyAvailability[]
+
+    await generateSlotsForWeeklyRows(cleanInsertedRows)
+    await loadWeeklyAvailability(tutor.id)
+
+    setSelection(emptySelection())
+    setMessage(
+      isLanguageSubject
+        ? 'Language availability saved for all learner ages.'
+        : 'Availability saved successfully.'
+    )
+    setSaving(false)
   }
 
-  async function handleRemoveWeekly(row: WeeklyAvailability) {
-    if (!tutor) return
+  async function removeAvailability(row: WeeklyAvailability) {
+    if (!confirm('Remove this availability? Future unbooked slots will also be removed.')) {
+      return
+    }
 
-    const today = new Date().toISOString().split('T')[0]
+    setMessage('Removing availability...')
 
     const { error } = await supabase
       .from('tutor_weekly_availability')
       .update({ is_active: false })
       .eq('id', row.id)
-      .eq('tutor_id', tutor.id)
 
     if (error) {
       setMessage(error.message)
@@ -500,31 +524,23 @@ export default function TutorAvailabilityPage() {
 
     await supabase
       .from('tutor_availability_slots')
-      .update({ is_available: false })
-      .eq('tutor_id', tutor.id)
-      .eq('subject_id', row.subject_id)
-      .eq('learning_level_id', row.learning_level_id)
+      .delete()
+      .eq('weekly_availability_id', row.id)
       .eq('is_booked', false)
-      .gte('slot_date', today)
 
-    await loadWeeklyAvailability(tutor.id)
-    setMessage('Weekly shift removed. Future unbooked slots were also hidden.')
-  }
+    if (tutor?.id) {
+      await loadWeeklyAvailability(tutor.id)
+    }
 
-  function dayName(dayNumber: number) {
-    return days.find((day) => day.jsDay === dayNumber)?.label ?? 'Day'
-  }
-
-  function timezoneLabel(value: string) {
-    return timezoneOptions.find((tz) => tz.value === value)?.label ?? value
+    setMessage('Availability removed.')
   }
 
   if (loading) {
     return (
       <main className="page">
         <section className="hero">
-          <p className="eyebrow">Tutor Availability</p>
-          <h1>Loading your availability...</h1>
+          <p className="eyebrow">Tutor availability</p>
+          <h1>Loading your weekly schedule...</h1>
           <p className="subtitle">{message}</p>
         </section>
 
@@ -536,182 +552,162 @@ export default function TutorAvailabilityPage() {
   return (
     <main className="page">
       <section className="hero">
-        <p className="eyebrow">Tutor Availability</p>
-
-        <h1>Set your weekly teaching pattern.</h1>
-
-        <p className="subtitle">
-          Choose the subjects, levels, days and time blocks you can teach.
-          Fountain Prep will automatically create bookable lesson slots for
-          parents.
-        </p>
-
-        <div className="actions">
-          <Link href="/tutor/dashboard" className="secondaryBtn">
-            Back to Tutor Dashboard
-          </Link>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="sectionHead">
-          <p className="eyebrow">Teaching Match</p>
-          <h2>What can you teach?</h2>
-        </div>
-
-        <div className="formGrid">
-          <label>
-            <span>Subject</span>
-            <select
-              value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              required
-            >
-              <option value="">Select subject</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name} {subject.category ? `• ${subject.category}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Learning level</span>
-            <select
-              value={learningLevelId}
-              onChange={(e) => setLearningLevelId(e.target.value)}
-              required
-            >
-              <option value="">Select learning level</option>
-              {levels.map((level) => (
-                <option key={level.id} value={level.id}>
-                  {level.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Timezone</span>
-            <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-              {timezoneOptions.map((tz) => (
-                <option key={tz.value} value={tz.value}>
-                  {tz.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {levels.length === 0 ? (
-          <Notice message="No active learning levels found. Please activate learning levels first." />
-        ) : null}
-
-        {message ? <Notice message={message} /> : null}
-      </section>
-
-      <section className="card">
-        <div className="sectionHead">
-          <p className="eyebrow">Quick Select</p>
-          <h2>Select common patterns.</h2>
-        </div>
-
-        <div className="quickActions">
-          <button type="button" className="secondaryBtn" onClick={() => applyToGroup('weekday', true)}>
-            Apply to weekdays
-          </button>
-
-          <button type="button" className="secondaryBtn" onClick={() => applyToGroup('weekend', true)}>
-            Apply to weekends
-          </button>
-
-          <button type="button" className="secondaryBtn" onClick={() => setSelection(emptySelection())}>
-            Clear Selection
-          </button>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="sectionHead">
-          <p className="eyebrow">Weekly Shifts</p>
-          <h2>Choose your available blocks.</h2>
-        </div>
-
-        <div className="dayGrid">
-          {days.map((day) => (
-            <div key={day.key} className="dayCard">
-              <h3>{day.label}</h3>
-
-              <div className="periodList">
-                {periods.map((period) => (
-                  <label key={period.key} className="periodCard">
-                    <input
-                      type="checkbox"
-                      checked={selection[day.key]?.[period.key] ?? false}
-                      onChange={() => togglePeriod(day.key, period.key)}
-                    />
-
-                    <span>
-                      <strong>{period.label}</strong>
-                      <small>{period.time}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          className="primaryBtn saveBtn"
-          disabled={saving}
-          onClick={handleSaveWeeklyAvailability}
-        >
-          {saving ? 'Saving...' : `Save Weekly Shifts (${selectedCount})`}
-        </button>
-      </section>
-
-      <section className="card">
-        <div className="sectionHead">
-          <p className="eyebrow">Current Availability</p>
-          <h2>Your active weekly shifts.</h2>
-        </div>
-
-        {weeklyRows.length === 0 ? (
-          <p className="subtitle compact">
-            You have not saved any permanent weekly shifts yet.
+        <div>
+          <p className="eyebrow">Tutor availability</p>
+          <h1>Set the weekly times learners can book you.</h1>
+          <p className="subtitle">
+            Add the subjects you teach and choose the periods you are available.
+            African language subjects use one All Ages availability, so parents
+            and learners of any age can find your available slots.
           </p>
-        ) : (
-          <div className="savedGrid">
-            {weeklyRows.map((row) => (
-              <div key={row.id} className="savedCard">
-                <h3>
-                  {dayName(row.day_of_week)} • {row.period_key.toUpperCase()}
-                </h3>
+        </div>
 
+        <Link href="/tutor/dashboard" className="backLink">
+          Back to Dashboard
+        </Link>
+      </section>
+
+      {message && <div className="message">{message}</div>}
+
+      <section className="layout">
+        <div className="card">
+          <div className="sectionHead">
+            <p className="eyebrow">Create availability</p>
+            <h2>Subject and level</h2>
+          </div>
+
+          <div className="formGrid">
+            <label>
+              <span>Subject</span>
+              <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {isLanguageSubject ? (
+              <div className="infoBox">
+                <strong>All Ages language availability</strong>
                 <p>
-                  {row.start_time.slice(0, 5)} - {row.end_time.slice(0, 5)}
-                  {row.ends_next_day ? ' next day' : ''} •{' '}
-                  {timezoneLabel(row.timezone)}
+                  {selectedSubject?.name} availability will be shown to all
+                  learner ages. The learner’s age, ability and goal will be
+                  collected during booking.
                 </p>
-
-                <p>
-                  {row.subjects?.name || '-'} •{' '}
-                  {row.learning_levels?.name || '-'}
-                </p>
-
-                <button
-                  type="button"
-                  className="secondaryBtn"
-                  onClick={() => handleRemoveWeekly(row)}
+              </div>
+            ) : (
+              <label>
+                <span>Learning level</span>
+                <select
+                  value={learningLevelId}
+                  onChange={(e) => setLearningLevelId(e.target.value)}
                 >
-                  Remove Shift
-                </button>
+                  {normalLevels.map((level) => (
+                    <option key={level.id} value={level.id}>
+                      {level.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <label>
+              <span>Timezone</span>
+              <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                {timezoneOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="quickActions">
+            <button type="button" onClick={() => applyToGroup('weekday', true)}>
+              Select weekdays
+            </button>
+            <button type="button" onClick={() => applyToGroup('weekend', true)}>
+              Select weekend
+            </button>
+            <button type="button" onClick={() => setSelection(emptySelection())}>
+              Clear all
+            </button>
+          </div>
+
+          <div className="availabilityGrid">
+            {days.map((day) => (
+              <div key={day.key} className="dayCard">
+                <h3>{day.label}</h3>
+
+                <div className="periods">
+                  {periods.map((period) => {
+                    const checked = selection[day.key]?.[period.key] || false
+
+                    return (
+                      <button
+                        key={period.key}
+                        type="button"
+                        onClick={() => togglePeriod(day.key, period.key)}
+                        className={checked ? 'period activePeriod' : 'period'}
+                      >
+                        <strong>{period.label}</strong>
+                        <span>{period.time}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             ))}
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={saveAvailability}
+            disabled={saving}
+            className="primaryBtn"
+          >
+            {saving
+              ? 'Saving availability...'
+              : `Save ${selectedCount || ''} availability period${
+                  selectedCount === 1 ? '' : 's'
+                }`}
+          </button>
+        </div>
+
+        <aside className="card sideCard">
+          <p className="eyebrow">Current availability</p>
+          <h2>Your active weekly slots</h2>
+
+          {weeklyRows.length === 0 ? (
+            <div className="empty">
+              <h3>No availability yet</h3>
+              <p>Add your first subject and weekly times to begin receiving bookings.</p>
+            </div>
+          ) : (
+            <div className="currentList">
+              {weeklyRows.map((row) => (
+                <div key={row.id} className="currentItem">
+                  <div>
+                    <strong>{row.subjects?.name || 'Subject'}</strong>
+                    <span>
+                      {row.learning_levels?.name || 'All Ages'} •{' '}
+                      {getDayName(row.day_of_week)} • {formatTime(row.start_time)} -{' '}
+                      {formatTime(row.end_time)}
+                    </span>
+                    <small>{row.timezone}</small>
+                  </div>
+
+                  <button type="button" onClick={() => removeAvailability(row)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
       </section>
 
       <style jsx>{styles}</style>
@@ -719,125 +715,54 @@ export default function TutorAvailabilityPage() {
   )
 }
 
-function Notice({ message }: { message: string }) {
-  const isSuccess =
-    message.toLowerCase().includes('success') ||
-    message.toLowerCase().includes('saved') ||
-    message.toLowerCase().includes('created') ||
-    message.toLowerCase().includes('removed')
-
-  return (
-    <div className={isSuccess ? 'notice success' : 'notice warning'}>
-      {message}
-    </div>
-  )
+function getDayName(jsDay: number) {
+  return days.find((day) => day.jsDay === jsDay)?.label || 'Day'
 }
 
-function timeToMinutes(time: string) {
-  const [h, m] = time.split(':').map(Number)
-  return h * 60 + m
-}
-
-function overlaps(
-  startA: string,
-  endA: string,
-  nextDayA: boolean,
-  startB: string,
-  endB: string,
-  nextDayB: boolean
-) {
-  const aStart = timeToMinutes(startA)
-  let aEnd = timeToMinutes(endA)
-  if (nextDayA) aEnd += 24 * 60
-
-  const bStart = timeToMinutes(startB)
-  let bEnd = timeToMinutes(endB)
-  if (nextDayB) bEnd += 24 * 60
-
-  return aStart < bEnd && bStart < aEnd
-}
-
-function nextDatesForDay(dayOfWeek: number, weeks: number) {
-  const result: string[] = []
-  const today = new Date()
-
-  for (let i = 0; i < weeks * 7; i++) {
-    const date = new Date(today)
-    date.setDate(today.getDate() + i)
-
-    if (date.getDay() === dayOfWeek) {
-      result.push(toDateString(date))
-    }
-
-    if (result.length >= weeks) break
-  }
-
-  return result
-}
-
-function makeDateTime(dateString: string, time: string, nextDay = false) {
-  const date = new Date(`${dateString}T${time}:00`)
-
-  if (nextDay) {
-    date.setDate(date.getDate() + 1)
-  }
-
-  return date
-}
-
-function toDateString(date: Date) {
-  return date.toISOString().split('T')[0]
+function formatTime(time: string) {
+  return time?.slice(0, 5) || ''
 }
 
 const styles = `
   .page {
     min-height: 100vh;
-    padding: 42px 18px 90px;
+    padding: 44px 18px 90px;
     background:
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 30%),
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 30%),
       linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff);
-    color: #21152d;
+    color: #201230;
   }
 
   .hero,
-  .card {
+  .layout,
+  .message {
     max-width: 1180px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  .hero,
-  .card {
-    background: rgba(255,255,255,0.96);
-    border: 1px solid rgba(126,87,194,0.12);
-    box-shadow: 0 24px 70px rgba(71,43,117,0.09);
-  }
-
   .hero {
-    padding: 48px;
-    border-radius: 40px;
-    background:
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 34%),
-      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,239,255,0.96));
-  }
-
-  .card {
-    margin-top: 28px;
-    padding: 32px;
-    border-radius: 34px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+    padding: 46px;
+    border-radius: 38px;
+    background: linear-gradient(135deg, #ffffff, #f4edff);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    box-shadow: 0 30px 90px rgba(47, 25, 80, 0.1);
   }
 
   .eyebrow {
     margin: 0;
     color: #6d28d9;
     font-weight: 950;
-    font-size: 14px;
   }
 
   h1 {
     margin: 14px 0 0;
-    max-width: 820px;
-    font-size: clamp(42px, 6vw, 72px);
+    max-width: 850px;
+    font-size: clamp(38px, 6vw, 68px);
     line-height: 0.96;
     letter-spacing: -0.06em;
     font-weight: 950;
@@ -846,218 +771,287 @@ const styles = `
   .subtitle {
     max-width: 780px;
     margin: 20px 0 0;
-    color: #6f637e;
+    color: #6d647c;
     font-size: 18px;
     line-height: 1.75;
   }
 
-  .compact {
-    font-size: 16px;
-  }
-
-  .actions,
-  .quickActions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 28px;
-  }
-
-  .primaryBtn,
-  .secondaryBtn {
-    min-height: 54px;
-    padding: 0 24px;
-    border-radius: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .backLink {
+    flex: 0 0 auto;
     text-decoration: none;
-    font-weight: 950;
-    border: 0;
-    font-family: inherit;
-    cursor: pointer;
-  }
-
-  .primaryBtn {
-    background: linear-gradient(135deg, #7c3aed, #6d28d9);
     color: white;
-    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
-  }
-
-  .primaryBtn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  .secondaryBtn {
-    background: white;
-    color: #351e55;
-    border: 1px solid rgba(124,58,237,0.16);
-  }
-
-  .sectionHead {
-    margin-bottom: 24px;
-  }
-
-  .sectionHead h2 {
-    margin: 10px 0 0;
-    font-size: clamp(28px, 4vw, 44px);
-    line-height: 1.05;
-    letter-spacing: -0.045em;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    padding: 15px 18px;
+    border-radius: 18px;
     font-weight: 950;
+    box-shadow: 0 18px 42px rgba(109, 40, 217, 0.2);
+  }
+
+  .message {
+    margin-top: 18px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-weight: 800;
+    line-height: 1.6;
+  }
+
+  .layout {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 390px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .card {
+    padding: 30px;
+    border-radius: 34px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(124, 58, 237, 0.1);
+    box-shadow: 0 24px 70px rgba(47, 25, 80, 0.09);
+  }
+
+  .sideCard {
+    position: sticky;
+    top: 110px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+  }
+
+  .sectionHead h2,
+  .sideCard h2 {
+    margin: 8px 0 0;
+    font-size: 32px;
+    letter-spacing: -0.04em;
   }
 
   .formGrid {
+    margin-top: 24px;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
 
   label span {
     display: block;
-    color: #7a7088;
-    font-weight: 850;
-    font-size: 14px;
     margin-bottom: 8px;
+    color: #6d28d9;
+    font-weight: 950;
+    font-size: 13px;
   }
 
   select {
     width: 100%;
-    min-height: 54px;
-    padding: 0 16px;
+    min-height: 56px;
     border-radius: 18px;
-    border: 1px solid rgba(124,58,237,0.16);
-    background: white;
-    color: #241535;
+    border: 1px solid rgba(124, 58, 237, 0.16);
+    background: #fbf8ff;
+    padding: 0 14px;
     font: inherit;
     font-weight: 800;
+    color: #201230;
   }
 
-  .notice {
-    margin-top: 18px;
-    padding: 15px 17px;
-    border-radius: 18px;
-    font-weight: 850;
-    line-height: 1.5;
+  .infoBox {
+    padding: 16px;
+    border-radius: 20px;
+    background: #f1e8ff;
+    border: 1px solid rgba(124, 58, 237, 0.16);
   }
 
-  .success {
-    background: #ecfdf3;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-  }
-
-  .warning {
-    background: #fff7ed;
-    color: #9a3412;
-    border: 1px solid #fed7aa;
-  }
-
-  .dayGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-  }
-
-  .dayCard,
-  .savedCard {
-    padding: 22px;
-    border-radius: 26px;
-    background: #fbf8ff;
-    border: 1px solid rgba(124,58,237,0.12);
-  }
-
-  .dayCard h3,
-  .savedCard h3 {
-    margin: 0;
-    font-size: 22px;
+  .infoBox strong {
+    display: block;
+    color: #4c1d95;
     font-weight: 950;
   }
 
-  .periodList {
-    margin-top: 16px;
-    display: grid;
-    gap: 12px;
+  .infoBox p {
+    margin: 7px 0 0;
+    color: #5f5470;
+    line-height: 1.6;
+    font-weight: 700;
   }
 
-  .periodCard {
+  .quickActions {
+    margin-top: 22px;
     display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 15px;
-    border-radius: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .quickActions button {
+    border: 1px solid rgba(124, 58, 237, 0.14);
     background: white;
-    border: 1px solid rgba(124,58,237,0.12);
+    color: #241535;
+    padding: 12px 14px;
+    border-radius: 999px;
+    font-weight: 950;
+    cursor: pointer;
   }
 
-  .periodCard input {
-    width: 20px;
-    height: 20px;
+  .availabilityGrid {
+    margin-top: 24px;
+    display: grid;
+    gap: 16px;
   }
 
-  .periodCard small {
+  .dayCard {
+    padding: 20px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.1);
+  }
+
+  .dayCard h3 {
+    margin: 0 0 14px;
+    font-size: 22px;
+  }
+
+  .periods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .period {
+    text-align: left;
+    padding: 16px;
+    border-radius: 20px;
+    background: white;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .period strong,
+  .period span {
     display: block;
-    margin-top: 4px;
-    color: #6f637e;
+  }
+
+  .period span {
+    margin-top: 7px;
+    color: #6d647c;
     font-weight: 750;
   }
 
-  .saveBtn {
-    margin-top: 26px;
+  .activePeriod {
+    border-color: #7c3aed;
+    background: #f1e8ff;
+    box-shadow: 0 16px 34px rgba(124, 58, 237, 0.12);
+  }
+
+  .primaryBtn {
     width: 100%;
+    margin-top: 24px;
+    min-height: 56px;
+    border: 0;
+    border-radius: 18px;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 18px 42px rgba(109, 40, 217, 0.24);
   }
 
-  .savedGrid {
+  .primaryBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .empty {
+    margin-top: 22px;
+    padding: 22px;
+    border-radius: 24px;
+    background: #fbf8ff;
+    text-align: center;
+  }
+
+  .empty h3 {
+    margin: 0;
+  }
+
+  .empty p {
+    color: #6d647c;
+    line-height: 1.7;
+  }
+
+  .currentList {
+    margin-top: 22px;
     display: grid;
+    gap: 12px;
+  }
+
+  .currentItem {
+    display: flex;
+    justify-content: space-between;
     gap: 14px;
+    padding: 16px;
+    border-radius: 20px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124, 58, 237, 0.1);
   }
 
-  .savedCard p {
-    margin: 8px 0 0;
-    color: #6f637e;
-    line-height: 1.6;
+  .currentItem strong,
+  .currentItem span,
+  .currentItem small {
+    display: block;
   }
 
-  .savedCard button {
-    margin-top: 16px;
+  .currentItem span {
+    margin-top: 6px;
+    color: #5f5470;
+    line-height: 1.5;
+    font-weight: 800;
   }
 
-  @media (max-width: 900px) {
+  .currentItem small {
+    margin-top: 6px;
+    color: #7c3aed;
+    font-weight: 900;
+  }
+
+  .currentItem button {
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(220, 38, 38, 0.16);
+    background: #fff1f2;
+    color: #be123c;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  @media (max-width: 980px) {
     .page {
       padding: 26px 12px 70px;
     }
 
     .hero {
-      padding: 32px 20px;
+      flex-direction: column;
+      padding: 30px 20px;
       border-radius: 30px;
+    }
+
+    .layout,
+    .formGrid,
+    .periods {
+      grid-template-columns: 1fr;
+    }
+
+    .sideCard {
+      position: static;
+      max-height: none;
+      overflow: visible;
     }
 
     h1 {
       font-size: clamp(38px, 12vw, 56px);
     }
 
-    .subtitle {
-      font-size: 16px;
-    }
-
     .card {
-      padding: 24px 20px;
+      padding: 22px;
       border-radius: 28px;
-    }
-
-    .formGrid,
-    .dayGrid {
-      grid-template-columns: 1fr;
-    }
-
-    .actions,
-    .quickActions {
-      flex-direction: column;
-    }
-
-    .primaryBtn,
-    .secondaryBtn {
-      width: 100%;
     }
   }
 `

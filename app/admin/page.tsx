@@ -7,18 +7,38 @@ import { supabase } from '../lib/supabase'
 
 type Booking = {
   id: string
-  parent_id: string
+  parent_id: string | null
   student_id: string
   tutor_id: string | null
   subject_id: string
   plan_id: string
   lesson_date: string | null
   lesson_time: string | null
+  timezone: string | null
   status: string
   payment_status: string
   amount_gbp: number | null
   meeting_link: string | null
+  notes: string | null
   created_at: string | null
+}
+
+type Student = {
+  id: string
+  full_name: string
+}
+
+type Subject = {
+  id: string
+  name: string
+}
+
+type Tutor = {
+  id: string
+  full_name: string
+  approval_status: string
+  verification_status: string
+  is_listed: boolean
 }
 
 type Payment = {
@@ -28,14 +48,6 @@ type Payment = {
   amount: number | null
   currency: string | null
   created_at: string | null
-}
-
-type Tutor = {
-  id: string
-  full_name: string
-  approval_status: string
-  verification_status: string
-  is_listed: boolean
 }
 
 type TutorEarning = {
@@ -49,39 +61,28 @@ type TutorEarning = {
   lesson_date: string | null
 }
 
-const subjectLabels: Record<string, string> = {
-  maths: 'Maths',
-  english: 'English',
-  science: 'Science',
-  coding: 'Coding',
-  music: 'Music',
-  yoruba: 'Yoruba',
-  igbo: 'Igbo',
-  hausa: 'Hausa',
-}
-
 const adminActions = [
   {
     title: 'Messages & Support',
-    text: 'Handle enquiries, complaints, tutor applications and safeguarding reports.',
+    text: 'Handle enquiries, complaints, parent notes, tutor issues and safeguarding reports.',
     href: '/admin/messages',
     tag: 'Support',
   },
   {
     title: 'Tutor Approval',
-    text: 'Review tutor applications, verification and listing status.',
+    text: 'Review tutor applications, verification, interview readiness and listing status.',
     href: '/admin/tutors',
     tag: 'Tutors',
   },
   {
-  title: 'Curriculum Manager',
-  text: 'Manage subjects, stages, strands, modules and lessons.',
-  href: '/admin/curriculum',
-  tag: 'Learning',
-},
+    title: 'Curriculum Manager',
+    text: 'Manage subjects, stages, strands, modules and lessons.',
+    href: '/admin/curriculum',
+    tag: 'Learning',
+  },
   {
     title: 'Bookings Control',
-    text: 'Track parent bookings, lesson status and meeting links.',
+    text: 'Track parent bookings, assigned tutors, meeting links and lesson notes.',
     href: '/admin/bookings',
     tag: 'Lessons',
   },
@@ -108,6 +109,9 @@ export default function AdminDashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [tutorEarnings, setTutorEarnings] = useState<TutorEarning[]>([])
+  const [studentMap, setStudentMap] = useState<Record<string, Student>>({})
+  const [subjectMap, setSubjectMap] = useState<Record<string, Subject>>({})
+  const [tutorMap, setTutorMap] = useState<Record<string, Tutor>>({})
   const [parentCount, setParentCount] = useState(0)
   const [studentCount, setStudentCount] = useState(0)
   const [openMessages, setOpenMessages] = useState(0)
@@ -115,25 +119,17 @@ export default function AdminDashboardPage() {
   const [highPriorityMessages, setHighPriorityMessages] = useState(0)
   const [safeguardingMessages, setSafeguardingMessages] = useState(0)
 
-  
-const controlLinks = [
-  {
-    label:
-      unreadMessages > 0
-        ? `Messages (${unreadMessages})`
-        : 'Messages',
-    href: '/admin/messages',
-  },
-  { label: 'Parents', href: '/admin/parents' },
-  { label: 'Students', href: '/admin/students' },
-  { label: 'Curriculum', href: '/admin/curriculum' },
-  { label: 'Curriculum Builder', href: '/admin/curriculum-builder' },
-  { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
-  { label: 'Bookings', href: '/admin/bookings' },
-  { label: 'Payments', href: '/admin/payments' },
-  { label: 'Reports', href: '/admin/reports' },
-  { label: 'Tutors', href: '/admin/tutors' },
-]
+  const controlLinks = [
+    { label: unreadMessages > 0 ? `Messages (${unreadMessages})` : 'Messages', href: '/admin/messages' },
+    { label: 'Parents', href: '/admin/parents' },
+    { label: 'Students', href: '/admin/students' },
+    { label: 'Curriculum', href: '/admin/curriculum' },
+    { label: 'Tutor Payouts', href: '/admin/tutor-payouts' },
+    { label: 'Bookings', href: '/admin/bookings' },
+    { label: 'Payments', href: '/admin/payments' },
+    { label: 'Reports', href: '/admin/reports' },
+    { label: 'Tutors', href: '/admin/tutors' },
+  ]
 
   useEffect(() => {
     async function loadAdminDashboard() {
@@ -170,14 +166,55 @@ const controlLinks = [
           plan_id,
           lesson_date,
           lesson_time,
+          timezone,
           status,
           payment_status,
           amount_gbp,
           meeting_link,
+          notes,
           created_at
         `)
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(40)
+
+      const cleanBookings = (bookingRows ?? []) as Booking[]
+
+      const studentIds = Array.from(new Set(cleanBookings.map((b) => b.student_id).filter(Boolean)))
+      const subjectIds = Array.from(new Set(cleanBookings.map((b) => b.subject_id).filter(Boolean)))
+      const tutorIds = Array.from(new Set(cleanBookings.map((b) => b.tutor_id).filter(Boolean))) as string[]
+
+      if (studentIds.length) {
+        const { data } = await supabase
+          .from('student_profiles')
+          .select('id, full_name')
+          .in('id', studentIds)
+
+        setStudentMap(
+          Object.fromEntries(((data ?? []) as Student[]).map((item) => [item.id, item]))
+        )
+      }
+
+      if (subjectIds.length) {
+        const { data } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', subjectIds)
+
+        setSubjectMap(
+          Object.fromEntries(((data ?? []) as Subject[]).map((item) => [item.id, item]))
+        )
+      }
+
+      const { data: tutorRows } = await supabase
+        .from('tutor_profiles')
+        .select('id, full_name, approval_status, verification_status, is_listed')
+        .order('created_at', { ascending: false })
+
+      const cleanTutors = (tutorRows ?? []) as Tutor[]
+
+      setTutorMap(
+        Object.fromEntries(cleanTutors.map((item) => [item.id, item]))
+      )
 
       const { data: paymentRows } = await supabase
         .from('payments')
@@ -185,20 +222,11 @@ const controlLinks = [
         .order('created_at', { ascending: false })
         .limit(20)
 
-      const { data: tutorEarningRows, error: tutorEarningError } = await supabase
+      const { data: tutorEarningRows } = await supabase
         .from('tutor_earnings')
         .select('id, tutor_id, booking_id, tutor_amount, status, created_at, paid_at, lesson_date')
         .order('created_at', { ascending: false })
         .limit(50)
-
-      if (tutorEarningError) {
-        console.warn('Tutor earnings error:', tutorEarningError.message)
-      }
-
-      const { data: tutorRows } = await supabase
-        .from('tutor_profiles')
-        .select('id, full_name, approval_status, verification_status, is_listed')
-        .order('created_at', { ascending: false })
 
       const { count: parentsTotal } = await supabase
         .from('parent_profiles')
@@ -213,10 +241,10 @@ const controlLinks = [
         .select('*', { count: 'exact', head: true })
         .eq('status', 'open')
 
-        const { count: unreadMessagesTotal } = await supabase
-  .from('support_threads')
-  .select('*', { count: 'exact', head: true })
-  .eq('admin_read', false)
+      const { count: unreadMessagesTotal } = await supabase
+        .from('support_threads')
+        .select('*', { count: 'exact', head: true })
+        .eq('admin_read', false)
 
       const { count: highPriorityMessagesTotal } = await supabase
         .from('support_threads')
@@ -230,10 +258,10 @@ const controlLinks = [
         .eq('category', 'safeguarding')
         .in('status', ['open', 'pending'])
 
-      setBookings((bookingRows ?? []) as Booking[])
+      setBookings(cleanBookings)
       setPayments((paymentRows ?? []) as Payment[])
       setTutorEarnings((tutorEarningRows ?? []) as TutorEarning[])
-      setTutors((tutorRows ?? []) as Tutor[])
+      setTutors(cleanTutors)
       setParentCount(parentsTotal ?? 0)
       setStudentCount(studentsTotal ?? 0)
       setOpenMessages(openMessagesTotal ?? 0)
@@ -247,7 +275,7 @@ const controlLinks = [
     loadAdminDashboard()
   }, [router])
 
-  const paidBookings = useMemo(
+  const confirmedBookings = useMemo(
     () => bookings.filter((b) => b.payment_status === 'PAID' || b.status === 'CONFIRMED'),
     [bookings]
   )
@@ -258,8 +286,8 @@ const controlLinks = [
   )
 
   const missingMeetingLinks = useMemo(
-    () => paidBookings.filter((b) => !b.meeting_link),
-    [paidBookings]
+    () => confirmedBookings.filter((b) => !b.meeting_link),
+    [confirmedBookings]
   )
 
   const approvedTutors = useMemo(
@@ -286,27 +314,14 @@ const controlLinks = [
     [tutorEarnings]
   )
 
-  const paidTutorPayouts = useMemo(
+  const pendingTutorPayoutAmount = useMemo(
     () =>
-      tutorEarnings.filter(
-        (earning) => String(earning.status || '').trim().toLowerCase() === 'paid'
+      pendingTutorPayouts.reduce(
+        (total, earning) => total + Number(earning.tutor_amount || 0),
+        0
       ),
-    [tutorEarnings]
+    [pendingTutorPayouts]
   )
-
-  const pendingTutorPayoutAmount = useMemo(() => {
-    return pendingTutorPayouts.reduce(
-      (total, earning) => total + Number(earning.tutor_amount || 0),
-      0
-    )
-  }, [pendingTutorPayouts])
-
-  const paidTutorPayoutAmount = useMemo(() => {
-    return paidTutorPayouts.reduce(
-      (total, earning) => total + Number(earning.tutor_amount || 0),
-      0
-    )
-  }, [paidTutorPayouts])
 
   const revenue = useMemo(() => {
     return payments
@@ -322,7 +337,6 @@ const controlLinks = [
           <h1>Loading platform activity...</h1>
           <p className="subtitle">{message}</p>
         </section>
-
         <style jsx global>{styles}</style>
       </main>
     )
@@ -333,41 +347,32 @@ const controlLinks = [
       <section className="hero">
         <div className="heroTop">
           <p className="eyebrow">Admin Control Centre</p>
-          <Link href="/admin/messages" className="miniLink">
-            Messages
-          </Link>
+          <Link href="/admin/messages" className="miniLink">Messages</Link>
         </div>
 
         <h1>Platform command centre</h1>
 
         <p className="subtitle">
-          Monitor bookings, payments, tutor payouts, support messages, reports,
-          parents, students and operational activity from one premium admin workspace.
+          Monitor bookings, payments, tutor payouts, support messages, parent notes,
+          meeting links, students and tutor activity from one premium admin workspace.
         </p>
 
         <div className="heroActions">
-          <Link href="/admin/messages" className="primaryLink">
-            Open Messages
-          </Link>
-          <Link href="/admin/tutor-payouts" className="secondaryLink">
-            Review Tutor Payouts
-          </Link>
-          <Link href="/admin/tutors" className="secondaryLink">
-            Review Tutors
-          </Link>
+          <Link href="/admin/messages" className="primaryLink">Open Messages</Link>
+          <Link href="/admin/tutors" className="secondaryLink">Review Tutors</Link>
+          <Link href="/admin/bookings" className="secondaryLink">View Bookings</Link>
         </div>
 
         <div className="kpiGrid">
-  <Kpi label="Unread Messages" value={String(unreadMessages)} />
-  <Kpi label="Open Messages" value={String(openMessages)} />
-  <Kpi label="Safeguarding" value={String(safeguardingMessages)} />
-  <Kpi label="Bookings" value={String(bookings.length)} />
-  <Kpi label="Confirmed" value={String(paidBookings.length)} />
-  <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
-  <Kpi label="Tutor Payouts" value={`$${pendingTutorPayoutAmount.toFixed(2)}`} />
-  <Kpi label="Parents" value={String(parentCount)} />
-  <Kpi label="Students" value={String(studentCount)} />
-</div>
+          <Kpi label="Unread Messages" value={String(unreadMessages)} />
+          <Kpi label="Open Messages" value={String(openMessages)} />
+          <Kpi label="Safeguarding" value={String(safeguardingMessages)} />
+          <Kpi label="Bookings" value={String(bookings.length)} />
+          <Kpi label="Confirmed" value={String(confirmedBookings.length)} />
+          <Kpi label="Revenue" value={`£${revenue.toFixed(2)}`} />
+          <Kpi label="Tutor Payouts" value={`$${pendingTutorPayoutAmount.toFixed(2)}`} />
+          <Kpi label="Students" value={String(studentCount)} />
+        </div>
       </section>
 
       <section className="quickGrid">
@@ -380,6 +385,32 @@ const controlLinks = [
         ))}
       </section>
 
+      <section className="cardWide">
+        <div className="sectionHeader">
+          <div>
+            <p className="sectionEyebrow">Recent Bookings</p>
+            <h2>Latest parent lesson activity</h2>
+          </div>
+          <Link href="/admin/bookings" className="smallLink">View all</Link>
+        </div>
+
+        {bookings.length === 0 ? (
+          <Empty title="No bookings yet" text="Parent bookings will appear here once lessons are scheduled." />
+        ) : (
+          <div className="bookingList">
+            {bookings.slice(0, 10).map((booking) => (
+              <BookingRow
+                key={booking.id}
+                booking={booking}
+                student={studentMap[booking.student_id]}
+                subject={subjectMap[booking.subject_id]}
+                tutor={booking.tutor_id ? tutorMap[booking.tutor_id] : undefined}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="mainGrid">
         <div className="card">
           <div className="sectionHeader">
@@ -387,10 +418,7 @@ const controlLinks = [
               <p className="sectionEyebrow">Support Inbox</p>
               <h2>Messages requiring attention</h2>
             </div>
-
-            <Link href="/admin/messages" className="smallLink">
-              Open inbox
-            </Link>
+            <Link href="/admin/messages" className="smallLink">Open inbox</Link>
           </div>
 
           <div className="healthList">
@@ -422,74 +450,17 @@ const controlLinks = [
         <div className="card">
           <div className="sectionHeader">
             <div>
-              <p className="sectionEyebrow">Tutor Payout Queue</p>
-              <h2>Completed lessons awaiting payout</h2>
-            </div>
-
-            <Link href="/admin/tutor-payouts" className="smallLink">
-              Open payouts
-            </Link>
-          </div>
-
-          {pendingTutorPayouts.length === 0 ? (
-            <Empty
-              title="No tutor payouts pending"
-              text="When tutors submit lesson reports and earnings are created, pending payouts will appear here."
-            />
-          ) : (
-            <div className="list">
-              {pendingTutorPayouts.slice(0, 6).map((earning) => (
-                <PayoutRow key={earning.id} earning={earning} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="sectionHeader">
-            <div>
-              <p className="sectionEyebrow">Recent Bookings</p>
-              <h2>Latest parent lesson activity</h2>
-            </div>
-
-            <Link href="/admin/bookings" className="smallLink">
-              View all
-            </Link>
-          </div>
-
-          {bookings.length === 0 ? (
-            <Empty
-              title="No bookings yet"
-              text="Parent bookings will appear here once lessons are scheduled."
-            />
-          ) : (
-            <div className="list">
-              {bookings.slice(0, 6).map((booking) => (
-                <BookingRow key={booking.id} booking={booking} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="splitGrid">
-        <div className="card">
-          <div className="sectionHeader">
-            <div>
               <p className="sectionEyebrow">Tutor Status</p>
               <h2>Tutor pipeline</h2>
             </div>
-
-            <Link href="/admin/tutors" className="smallLink">
-              Manage
-            </Link>
+            <Link href="/admin/tutors" className="smallLink">Manage</Link>
           </div>
 
           <div className="profileList">
             <ProfileRow label="Total Tutors" value={String(tutors.length)} />
             <ProfileRow label="Approved + Listed" value={String(approvedTutors.length)} />
             <ProfileRow label="Needs Review" value={String(pendingTutors.length)} />
-            <ProfileRow label="Paid Payouts" value={`$${paidTutorPayoutAmount.toFixed(2)}`} />
+            <ProfileRow label="Parents" value={String(parentCount)} />
           </div>
         </div>
 
@@ -510,10 +481,6 @@ const controlLinks = [
               <span>Pending tutor payout</span>
               <strong>${pendingTutorPayoutAmount.toFixed(2)}</strong>
             </div>
-            <div>
-              <span>Paid tutor payout</span>
-              <strong>${paidTutorPayoutAmount.toFixed(2)}</strong>
-            </div>
           </div>
         </div>
       </section>
@@ -524,10 +491,7 @@ const controlLinks = [
             <p className="sectionEyebrow">Payment Activity</p>
             <h2>Recent parent payment records</h2>
           </div>
-
-          <Link href="/admin/payments" className="smallLink">
-            View payments
-          </Link>
+          <Link href="/admin/payments" className="smallLink">View payments</Link>
         </div>
 
         {payments.length === 0 ? (
@@ -539,7 +503,7 @@ const controlLinks = [
                 <p className="paymentAmount">
                   {(payment.currency || 'GBP').toUpperCase()} {Number(payment.amount || 0).toFixed(2)}
                 </p>
-                <p className="rowMeta">Booking: {payment.booking_id.slice(0, 8)}...</p>
+                <p className="rowMeta">Booking: {payment.booking_id?.slice(0, 8)}...</p>
                 <StatusBadge status={payment.payment_status} />
               </div>
             ))}
@@ -578,39 +542,66 @@ function Kpi({ label, value }: { label: string; value: string }) {
   )
 }
 
-function BookingRow({ booking }: { booking: Booking }) {
+function BookingRow({
+  booking,
+  student,
+  subject,
+  tutor,
+}: {
+  booking: Booking
+  student?: Student
+  subject?: Subject
+  tutor?: Tutor
+}) {
   return (
-    <div className="rowCard">
-      <div>
-        <p className="rowTitle">{subjectLabels[booking.subject_id] || booking.subject_id}</p>
-        <p className="rowMeta">
-          {formatDate(booking.lesson_date)} • {booking.lesson_time || 'Time pending'}
-        </p>
-        <p className="rowMeta">
-          Tutor: {booking.tutor_id ? 'Assigned' : 'Not assigned'} • Meeting:{' '}
-          {booking.meeting_link ? 'Ready' : 'Missing'}
-        </p>
+    <div className="bookingCard">
+      <div className="bookingTop">
+        <div>
+          <p className="bookingSubject">{subject?.name || booking.subject_id}</p>
+          <p className="rowMeta">
+            Student: {student?.full_name || booking.student_id.slice(0, 8)}
+          </p>
+          <p className="rowMeta">
+            Tutor: {tutor?.full_name || (booking.tutor_id ? 'Assigned tutor' : 'Not assigned')}
+          </p>
+        </div>
+
+        <StatusBadge status={booking.payment_status || booking.status} />
       </div>
 
-      <StatusBadge status={booking.payment_status} />
-    </div>
-  )
-}
-
-function PayoutRow({ earning }: { earning: TutorEarning }) {
-  return (
-    <div className="rowCard payoutRow">
-      <div>
-        <p className="rowTitle">${Number(earning.tutor_amount || 0).toFixed(2)} tutor payout</p>
-        <p className="rowMeta">
-          Lesson: {formatDate(earning.lesson_date)} • Booking: {earning.booking_id.slice(0, 8)}...
-        </p>
-        <p className="rowMeta">
-          Created: {formatDateTime(earning.created_at)} • Status: {earning.status}
-        </p>
+      <div className="bookingMetaGrid">
+        <div>
+          <span>Date</span>
+          <strong>{formatDate(booking.lesson_date)}</strong>
+        </div>
+        <div>
+          <span>Time</span>
+          <strong>{booking.lesson_time || 'Time pending'}</strong>
+        </div>
+        <div>
+          <span>Timezone</span>
+          <strong>{booking.timezone || 'Not set'}</strong>
+        </div>
+        <div>
+          <span>Amount</span>
+          <strong>£{Number(booking.amount_gbp || 0).toFixed(2)}</strong>
+        </div>
       </div>
 
-      <StatusBadge status={earning.status} />
+      {booking.notes ? (
+        <div className="noteBox">
+          <span>Parent note</span>
+          <p>{booking.notes}</p>
+        </div>
+      ) : null}
+
+      {booking.meeting_link ? (
+        <a href={booking.meeting_link} target="_blank" rel="noreferrer" className="meetingLink">
+          Open meeting link
+        </a>
+      ) : (
+        <p className="missingLink">Meeting link missing</p>
+      )}
     </div>
   )
 }
@@ -643,20 +634,12 @@ function HealthRow({
 
 function StatusBadge({ status }: { status: string }) {
   const clean = status?.toLowerCase()
-  const paid = clean === 'paid' || status === 'PAID'
-  const pending = clean === 'pending'
+  const paid = clean === 'paid' || clean === 'confirmed'
+  const pending = clean === 'pending' || clean === 'pending_payment' || clean === 'unpaid'
 
   return (
-    <span
-      className={
-        paid
-          ? 'statusBadge statusPaid'
-          : pending
-            ? 'statusBadge statusTutorPending'
-            : 'statusBadge statusPending'
-      }
-    >
-      {paid ? 'Paid' : pending ? 'Pending' : status || 'Pending'}
+    <span className={paid ? 'statusBadge statusPaid' : pending ? 'statusBadge statusPending' : 'statusBadge'}>
+      {paid ? 'Confirmed' : pending ? 'Pending' : status || 'Pending'}
     </span>
   )
 }
@@ -678,17 +661,6 @@ function formatDate(date: string | null) {
     day: 'numeric',
     month: 'short',
   }).format(new Date(`${date}T00:00:00`))
-}
-
-function formatDateTime(date: string | null) {
-  if (!date) return 'Date pending'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date))
 }
 
 const styles = `
@@ -723,10 +695,11 @@ const styles = `
   }
 
   .heroTop,
-  .sectionHeader {
+  .sectionHeader,
+  .bookingTop {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 18px;
   }
 
@@ -755,8 +728,7 @@ const styles = `
     line-height: 1.75;
   }
 
-  .heroActions,
-  .dualActions {
+  .heroActions {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
@@ -766,7 +738,9 @@ const styles = `
   .primaryLink,
   .secondaryLink,
   .smallLink,
-  .miniLink {
+  .miniLink,
+  .meetingLink,
+  .controlLink {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -781,15 +755,17 @@ const styles = `
     border-radius: 18px;
   }
 
-  .primaryLink {
+  .primaryLink,
+  .meetingLink {
     color: white;
     background: linear-gradient(135deg, #7c3aed, #6d28d9);
-    box-shadow: 0 16px 38px rgba(124,58,237,0.28);
+    box-shadow: 0 16px 38px rgba(124,58,237,0.22);
   }
 
   .secondaryLink,
   .smallLink,
-  .miniLink {
+  .miniLink,
+  .controlLink {
     color: #351e55;
     background: white;
     border: 1px solid rgba(124,58,237,0.16);
@@ -813,7 +789,9 @@ const styles = `
   .kpiCard,
   .quickCard,
   .card,
-  .cardWide {
+  .cardWide,
+  .bookingCard,
+  .paymentCard {
     background: rgba(255,255,255,0.94);
     border: 1px solid rgba(126,87,194,0.12);
     box-shadow: 0 22px 62px rgba(71,43,117,0.08);
@@ -909,261 +887,213 @@ const styles = `
     font-weight: 950;
   }
 
-  .list,
+  .bookingList,
   .healthList,
   .profileList {
     display: grid;
     gap: 14px;
   }
 
-  .rowCard,
-  .paymentCard,
-  .emptyState,
-  .familyGrid div,
-  .financeGrid div,
-  .healthRow {
-    background: #fbf8ff;
-    border: 1px solid rgba(124,58,237,0.12);
+  .bookingCard {
+    padding: 22px;
+    border-radius: 26px;
   }
 
-  .rowCard {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 18px;
-    border-radius: 22px;
-  }
-
-  .payoutRow {
-    background: linear-gradient(135deg, #fbf8ff, #fff7ed);
-  }
-
-  .rowTitle {
+  .bookingSubject {
     margin: 0;
-    font-size: 18px;
+    font-size: 25px;
     font-weight: 950;
+    letter-spacing: -0.04em;
   }
 
   .rowMeta {
     margin: 7px 0 0;
     color: #6f637e;
-    font-size: 14px;
-    line-height: 1.45;
+    font-weight: 750;
+    line-height: 1.5;
+  }
+
+  .bookingMetaGrid,
+  .financeGrid,
+  .paymentGrid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .bookingMetaGrid div,
+  .financeGrid div {
+    padding: 15px;
+    border-radius: 18px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.1);
+  }
+
+  .bookingMetaGrid span,
+  .financeGrid span,
+  .noteBox span {
+    display: block;
+    color: #7a7088;
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .bookingMetaGrid strong,
+  .financeGrid strong {
+    display: block;
+    margin-top: 6px;
+    font-weight: 950;
+  }
+
+  .noteBox {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: #fff7ed;
+    border: 1px solid rgba(249,115,22,0.14);
+  }
+
+  .noteBox p {
+    margin: 7px 0 0;
+    color: #7c2d12;
+    line-height: 1.6;
+    font-weight: 750;
+  }
+
+  .meetingLink {
+    width: fit-content;
+    min-height: 44px;
+    margin-top: 16px;
+    padding: 0 16px;
+    border-radius: 999px;
+  }
+
+  .missingLink {
+    margin: 16px 0 0;
+    color: #be123c;
+    font-weight: 950;
   }
 
   .statusBadge {
-    align-self: flex-start;
-    padding: 8px 11px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
     border-radius: 999px;
-    font-weight: 950;
+    background: #f6f1ff;
+    color: #4c1d95;
     font-size: 12px;
-    white-space: nowrap;
+    font-weight: 950;
   }
 
   .statusPaid {
-    background: #ecfdf3;
-    color: #027a48;
+    background: #dcfce7;
+    color: #166534;
   }
 
-  .statusPending,
-  .statusTutorPending {
+  .statusPending {
     background: #fff7ed;
     color: #9a3412;
   }
 
-  .healthRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-radius: 20px;
-  }
-
-  .healthRow span {
-    color: #6f637e;
-    font-weight: 850;
-  }
-
-  .healthRow strong {
-    font-size: 24px;
-    font-weight: 950;
-  }
-
-  .healthRow.good strong {
-    color: #027a48;
-  }
-
-  .healthRow.warning strong {
-    color: #9a3412;
-  }
-
-  .healthRow.danger strong {
-    color: #b42318;
-  }
-
-  .fullLink {
-    width: 100%;
-    margin-top: 20px;
-  }
-
+  .healthRow,
   .profileRow {
     display: flex;
     justify-content: space-between;
-    gap: 18px;
-    padding: 16px 0;
-    border-bottom: 1px solid rgba(124,58,237,0.12);
+    gap: 12px;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(124,58,237,0.1);
   }
 
+  .healthRow span,
   .profileRow span {
     color: #7a7088;
     font-weight: 850;
   }
 
+  .healthRow strong,
   .profileRow strong {
-    text-align: right;
     font-weight: 950;
   }
 
-  .financeGrid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-
-  .financeGrid div {
-    padding: 22px;
-    border-radius: 24px;
-  }
-
-  .financeGrid span,
-  .financeGrid strong {
-    display: block;
-  }
-
-  .financeGrid span {
-    color: #6f637e;
-    font-weight: 850;
-  }
-
-  .financeGrid strong {
-    margin-top: 8px;
-    font-size: 34px;
-    line-height: 1;
-    font-weight: 950;
-  }
-
-  .paymentGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-  }
-
-  .paymentCard {
-    padding: 20px;
-    border-radius: 24px;
-  }
-
-  .paymentAmount {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 950;
-  }
-
-  .controlGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-  }
-
-  .controlLink {
-    min-height: 54px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 18px;
-    background: #fbf8ff;
-    border: 1px solid rgba(124,58,237,0.12);
-    color: #351e55;
-    text-decoration: none;
-    font-weight: 950;
-  }
+  .good strong { color: #166534; }
+  .warning strong { color: #9a3412; }
+  .danger strong { color: #be123c; }
 
   .emptyState {
-    padding: 24px;
+    padding: 26px;
     border-radius: 24px;
+    background: #fbf8ff;
+    border: 1px solid rgba(124,58,237,0.1);
   }
 
   .emptyState h3 {
     margin: 0;
-    font-size: 22px;
-    font-weight: 950;
+    font-size: 24px;
   }
 
   .emptyState p {
     margin: 10px 0 0;
     color: #6f637e;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 
-  @media (max-width: 980px) {
+  .paymentGrid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .paymentCard {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .paymentAmount {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 950;
+  }
+
+  .controlGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .controlLink {
+    min-height: 44px;
+    padding: 0 15px;
+    border-radius: 999px;
+  }
+
+  @media (max-width: 900px) {
     .page {
-      padding: 20px 10px 70px;
+      padding: 24px 12px 70px;
     }
 
-    .hero {
-      padding: 28px 20px;
-      border-radius: 30px;
+    .hero,
+    .card,
+    .cardWide {
+      padding: 24px;
+      border-radius: 28px;
     }
 
     .heroTop,
     .sectionHeader,
-    .rowCard {
+    .bookingTop {
+      flex-direction: column;
       align-items: flex-start;
-      flex-direction: column;
-    }
-
-    .hero h1 {
-      font-size: clamp(38px, 12vw, 56px);
-      line-height: 0.98;
-    }
-
-    .subtitle {
-      font-size: 16px;
-    }
-
-    .heroActions {
-      flex-direction: column;
-    }
-
-    .primaryLink,
-    .secondaryLink {
-      width: 100%;
     }
 
     .kpiGrid,
     .mainGrid,
-    .splitGrid {
+    .splitGrid,
+    .bookingMetaGrid {
       grid-template-columns: 1fr;
     }
 
-    .quickCard {
-      min-height: auto;
-    }
-
-    .card,
-    .cardWide {
-      padding: 23px 18px;
-      border-radius: 28px;
-    }
-
-    .profileRow {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .profileRow strong {
-      text-align: left;
+    .hero h1 {
+      font-size: clamp(40px, 13vw, 58px);
     }
   }
 `
