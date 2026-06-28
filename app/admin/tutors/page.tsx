@@ -255,6 +255,9 @@ export default function AdminTutorsPage() {
       throw new Error('Tutor email is missing.')
     }
 
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || 'https://www.fountainprep.com'
+
     let interviewId = interviewTutor.latest_interview?.id || null
     let interviewLink = ''
 
@@ -262,6 +265,9 @@ export default function AdminTutorsPage() {
       interviewTutor.latest_interview &&
       interviewTutor.latest_interview.status === 'SCHEDULED'
     ) {
+      interviewId = interviewTutor.latest_interview.id
+      interviewLink = `${siteUrl}/interview/${interviewId}`
+
       const { error: updateError } = await supabase
         .from('tutor_interviews')
         .update({
@@ -269,29 +275,13 @@ export default function AdminTutorsPage() {
           interview_time: interviewTime,
           tutor_name: interviewTutor.full_name,
           tutor_email: interviewTutor.email,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', interviewTutor.latest_interview.id)
-
-      if (updateError) {
-        throw new Error(updateError.message)
-      }
-
-      interviewId = interviewTutor.latest_interview.id
-      interviewLink =
-        interviewTutor.latest_interview.interview_link ||
-        `${window.location.origin}/interview/${interviewId}`
-
-      const { error: linkUpdateError } = await supabase
-        .from('tutor_interviews')
-        .update({
           interview_link: interviewLink,
           updated_at: new Date().toISOString(),
         })
         .eq('id', interviewId)
 
-      if (linkUpdateError) {
-        throw new Error(linkUpdateError.message)
+      if (updateError) {
+        throw new Error(updateError.message)
       }
     } else {
       const { data: interviewRow, error: interviewError } = await supabase
@@ -314,10 +304,7 @@ export default function AdminTutorsPage() {
       }
 
       interviewId = interviewRow.id
-      const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-
-interviewLink = `${siteUrl}/interview/${interviewId}`
+      interviewLink = `${siteUrl}/interview/${interviewId}`
 
       const { error: linkUpdateError } = await supabase
         .from('tutor_interviews')
