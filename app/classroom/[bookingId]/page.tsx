@@ -1,4 +1,4 @@
-'use client'
+ 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -73,14 +73,18 @@ export default function ClassroomPage() {
   const [completionStatus, setCompletionStatus] = useState('IN_PROGRESS')
   const [completedAt, setCompletedAt] = useState<string | null>(null)
   const [savingNotes, setSavingNotes] = useState(false)
+
   const videoRef = useRef<HTMLDivElement | null>(null)
+
   const [classroomStatus, setClassroomStatus] = useState('NOT_STARTED')
-const [classroomStartedAt, setClassroomStartedAt] = useState<string | null>(null)
-const [classroomEndedAt, setClassroomEndedAt] = useState<string | null>(null)
-const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
-const [attendanceStatus, setAttendanceStatus] = useState('present')
-const [elapsedSeconds, setElapsedSeconds] = useState(0)
-const [updatingClassroom, setUpdatingClassroom] = useState(false)
+  const [classroomStartedAt, setClassroomStartedAt] = useState<string | null>(
+    null
+  )
+  const [classroomEndedAt, setClassroomEndedAt] = useState<string | null>(null)
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
+  const [attendanceStatus, setAttendanceStatus] = useState('present')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [updatingClassroom, setUpdatingClassroom] = useState(false)
 
   useEffect(() => {
     async function loadClassroom() {
@@ -89,7 +93,7 @@ const [updatingClassroom, setUpdatingClassroom] = useState(false)
 
       const {
         data: { user },
-      } = await supabase.auth.getUser()      
+      } = await supabase.auth.getUser()
 
       if (!user) {
         router.push('/login')
@@ -99,25 +103,24 @@ const [updatingClassroom, setUpdatingClassroom] = useState(false)
       const { data, error } = await supabase
         .from('lesson_bookings')
         .select(`
-  id,
-  parent_id,
-  tutor_id,
-  student_id,
-  subject_id,
-  lesson_date,
-  lesson_time,
-  timezone,
-  meeting_link,
-  status,
-  payment_status,
-  notes,
-  classroom_status,
-  classroom_started_at,
-  classroom_ended_at,
-  classroom_duration_minutes,
-  attendance_status
-`)         
-        
+          id,
+          parent_id,
+          tutor_id,
+          student_id,
+          subject_id,
+          lesson_date,
+          lesson_time,
+          timezone,
+          meeting_link,
+          status,
+          payment_status,
+          notes,
+          classroom_status,
+          classroom_started_at,
+          classroom_ended_at,
+          classroom_duration_minutes,
+          attendance_status
+        `)
         .eq('id', bookingId)
         .maybeSingle()
 
@@ -133,55 +136,55 @@ const [updatingClassroom, setUpdatingClassroom] = useState(false)
         return
       }
 
-      const raw = data as any
+      const raw = data as Booking
 
-      let studentRow = null
-let subjectRow = null
-let tutorRow = null
+      let studentRow: StudentRow | null = null
+      let subjectRow: SubjectRow | null = null
+      let tutorRow: TutorProfileRow | null = null
 
-if (raw.student_id) {
-  const { data } = await supabase
-    .from('student_profiles')
-    .select('full_name')
-    .eq('id', raw.student_id)
-    .maybeSingle()
+      if (raw.student_id) {
+        const { data: studentData } = await supabase
+          .from('student_profiles')
+          .select('full_name')
+          .eq('id', raw.student_id)
+          .maybeSingle()
 
-  studentRow = data
-}
+        studentRow = studentData
+      }
 
-if (raw.subject_id) {
-  const { data } = await supabase
-    .from('subjects')
-    .select('name')
-    .eq('id', raw.subject_id)
-    .maybeSingle()
+      if (raw.subject_id) {
+        const { data: subjectData } = await supabase
+          .from('subjects')
+          .select('name')
+          .eq('id', raw.subject_id)
+          .maybeSingle()
 
-  subjectRow = data
-}
+        subjectRow = subjectData
+      }
 
-if (raw.tutor_id) {
-  const { data } = await supabase
-    .from('tutor_profiles')
-    .select(`
-      id,
-      user_id,
-      full_name,
-      photo_url,
-      qualification_summary,
-      years_of_experience
-    `)
-    .eq('id', raw.tutor_id)
-    .maybeSingle()
+      if (raw.tutor_id) {
+        const { data: tutorData } = await supabase
+          .from('tutor_profiles')
+          .select(`
+            id,
+            user_id,
+            full_name,
+            photo_url,
+            qualification_summary,
+            years_of_experience
+          `)
+          .eq('id', raw.tutor_id)
+          .maybeSingle()
 
-  tutorRow = data
-}
+        tutorRow = tutorData
+      }
 
-const row: Booking = {
-  ...raw,
-  students: studentRow,
-  subjects: subjectRow,
-  tutor_profiles: tutorRow,
-}
+      const row: Booking = {
+        ...raw,
+        students: studentRow,
+        subjects: subjectRow,
+        tutor_profiles: tutorRow,
+      }
 
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -203,10 +206,10 @@ const row: Booking = {
       setBooking(row)
 
       setClassroomStatus(row.classroom_status || 'NOT_STARTED')
-setClassroomStartedAt(row.classroom_started_at || null)
-setClassroomEndedAt(row.classroom_ended_at || null)
-setDurationMinutes(row.classroom_duration_minutes || null)
-setAttendanceStatus(row.attendance_status || 'present')
+      setClassroomStartedAt(row.classroom_started_at || null)
+      setClassroomEndedAt(row.classroom_ended_at || null)
+      setDurationMinutes(row.classroom_duration_minutes || null)
+      setAttendanceStatus(row.attendance_status || 'present')
 
       const { data: noteRow } = await supabase
         .from('lesson_classroom_notes')
@@ -236,6 +239,32 @@ setAttendanceStatus(row.attendance_status || 'present')
 
     if (bookingId) loadClassroom()
   }, [bookingId, router])
+
+  useEffect(() => {
+  if (classroomStatus !== 'LIVE') {
+    setElapsedSeconds(0)
+    return
+  }
+
+  if (!classroomStartedAt) {
+    setElapsedSeconds(0)
+    return
+  }
+
+  function updateElapsed(startedAt: string) {
+    const started = new Date(startedAt).getTime()
+    const now = Date.now()
+    setElapsedSeconds(Math.max(0, Math.floor((now - started) / 1000)))
+  }
+
+  updateElapsed(classroomStartedAt)
+
+  const timer = window.setInterval(() => {
+    updateElapsed(classroomStartedAt)
+  }, 1000)
+
+  return () => window.clearInterval(timer)
+}, [classroomStatus, classroomStartedAt])
 
   const jitsiSrc = useMemo(() => {
     if (!booking?.meeting_link) return ''
@@ -297,7 +326,9 @@ setAttendanceStatus(row.attendance_status || 'present')
         homework: homework || 'No homework added.',
         tutor_comment:
           tutorNotes ||
-          `The ${booking.subjects?.name || 'lesson'} lesson was completed successfully.`,
+          `The ${
+            booking.subjects?.name || 'lesson'
+          } lesson was completed successfully.`,
         attendance: 'present',
       }
 
@@ -313,20 +344,19 @@ setAttendanceStatus(row.attendance_status || 'present')
         return
       }
 
-      // Notify parent that lesson report is ready
-const { data: parentProfile } = await supabase
-  .from('user_profiles')
-  .select('email')
-  .eq('id', booking.parent_id)
-  .maybeSingle()
+      const { data: parentProfile } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('id', booking.parent_id)
+        .maybeSingle()
 
-await onLessonReportReady({
-  parentUserId: booking.parent_id,
-  parentEmail: parentProfile?.email ?? null,
-  studentName: booking.students?.full_name ?? undefined,
-  subjectName: booking.subjects?.name ?? undefined,
-  reportLink: '/parent/progress',
-})
+      await onLessonReportReady({
+        parentUserId: booking.parent_id,
+        parentEmail: parentProfile?.email ?? null,
+        studentName: booking.students?.full_name ?? undefined,
+        subjectName: booking.subjects?.name ?? undefined,
+        reportLink: '/parent/progress',
+      })
 
       setCompletionStatus('COMPLETED')
       setCompletedAt(completedTimestamp)
@@ -336,98 +366,100 @@ await onLessonReportReady({
   }
 
   async function startLesson() {
-  if (!booking || !canEdit) return
+    if (!booking || !canEdit) return
 
-  setUpdatingClassroom(true)
+    setUpdatingClassroom(true)
 
-  const startedAt = classroomStartedAt || new Date().toISOString()
+    const startedAt = classroomStartedAt || new Date().toISOString()
 
-  const { error } = await supabase
-    .from('lesson_bookings')
-    .update({
+    const { error } = await supabase
+      .from('lesson_bookings')
+      .update({
+        classroom_status: 'LIVE',
+        classroom_started_at: startedAt,
+        attendance_status: attendanceStatus,
+      })
+      .eq('id', booking.id)
+
+    setUpdatingClassroom(false)
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    setClassroomStatus('LIVE')
+    setClassroomStartedAt(startedAt)
+    setBooking({
+      ...booking,
       classroom_status: 'LIVE',
       classroom_started_at: startedAt,
       attendance_status: attendanceStatus,
     })
-    .eq('id', booking.id)
-
-  setUpdatingClassroom(false)
-
-  if (error) {
-    alert(error.message)
-    return
   }
 
-  setClassroomStatus('LIVE')
-  setClassroomStartedAt(startedAt)
-  setBooking({
-    ...booking,
-    classroom_status: 'LIVE',
-    classroom_started_at: startedAt,
-    attendance_status: attendanceStatus,
-  })
-}
+  async function endLesson() {
+    if (!booking || !canEdit) return
 
-async function endLesson() {
-  if (!booking || !canEdit) return
+    const confirmed = window.confirm(
+      'End this lesson and send the progress report to the parent?'
+    )
 
-  const confirmed = window.confirm(
-    'End this lesson and send the progress report to the parent?'
-  )
+    if (!confirmed) return
 
-  if (!confirmed) return
+    setUpdatingClassroom(true)
 
-  setUpdatingClassroom(true)
+    const endedAt = new Date().toISOString()
+    const start = classroomStartedAt
+      ? new Date(classroomStartedAt).getTime()
+      : Date.now()
+    const end = new Date(endedAt).getTime()
+    const minutes = Math.max(1, Math.round((end - start) / 60000))
 
-  const endedAt = new Date().toISOString()
-  const start = classroomStartedAt ? new Date(classroomStartedAt).getTime() : Date.now()
-  const end = new Date(endedAt).getTime()
-  const minutes = Math.max(1, Math.round((end - start) / 60000))
+    const { error } = await supabase
+      .from('lesson_bookings')
+      .update({
+        classroom_status: 'COMPLETED',
+        classroom_ended_at: endedAt,
+        classroom_duration_minutes: minutes,
+        attendance_status: attendanceStatus,
+        status: 'COMPLETED',
+      })
+      .eq('id', booking.id)
 
-  const { error } = await supabase
-    .from('lesson_bookings')
-    .update({
+    if (error) {
+      setUpdatingClassroom(false)
+      alert(error.message)
+      return
+    }
+
+    setClassroomStatus('COMPLETED')
+    setClassroomEndedAt(endedAt)
+    setDurationMinutes(minutes)
+
+    setBooking({
+      ...booking,
       classroom_status: 'COMPLETED',
       classroom_ended_at: endedAt,
       classroom_duration_minutes: minutes,
       attendance_status: attendanceStatus,
       status: 'COMPLETED',
     })
-    .eq('id', booking.id)
 
-  if (error) {
+    await saveLessonNotes('COMPLETED')
+
     setUpdatingClassroom(false)
-    alert(error.message)
-    return
   }
 
-  setClassroomStatus('COMPLETED')
-  setClassroomEndedAt(endedAt)
-  setDurationMinutes(minutes)
+  async function toggleVideoFullScreen() {
+    if (!videoRef.current) return
 
-  setBooking({
-    ...booking,
-    classroom_status: 'COMPLETED',
-    classroom_ended_at: endedAt,
-    classroom_duration_minutes: minutes,
-    attendance_status: attendanceStatus,
-    status: 'COMPLETED',
-  })
-
-  await saveLessonNotes('COMPLETED')
-
-  setUpdatingClassroom(false)
-}
-
-async function toggleVideoFullScreen() {
-  if (!videoRef.current) return
-
-  if (!document.fullscreenElement) {
-    await videoRef.current.requestFullscreen()
-  } else {
-    await document.exitFullscreen()
+    if (!document.fullscreenElement) {
+      await videoRef.current.requestFullscreen()
+    } else {
+      await document.exitFullscreen()
+    }
   }
-}
 
   if (loading) {
     return (
@@ -462,60 +494,84 @@ async function toggleVideoFullScreen() {
   const studentName = booking.students?.full_name || 'Student'
   const tutorName = booking.tutor_profiles?.full_name || 'Fountain Prep Tutor'
   const isCompleted = completionStatus === 'COMPLETED'
+  const isLive = classroomStatus === 'LIVE'
 
   return (
     <main className="page">
-      <section className="topbar">
-        <div>
-          <p className="eyebrow">Fountain Prep Classroom</p>
-          <h1>{subjectName}</h1>
-          <p className="muted">
-            {formatDate(booking.lesson_date)} • {formatTime(booking.lesson_time)} •{' '}
-            {booking.timezone || 'Local time'}
-          </p>
-        </div>
+      <section className="classroomShell">
+        <header className="lessonHeader">
+          <div>
+            <p className="eyebrow">Fountain Prep Classroom</p>
+            <h1>{subjectName}</h1>
+            <p className="muted">
+              {formatDate(booking.lesson_date)} •{' '}
+              {formatTime(booking.lesson_time)} •{' '}
+              {booking.timezone || 'Local time'}
+            </p>
+          </div>
 
-        <div className="topActions">
-          <Link href="/parent/dashboard" className="secondaryBtn">
-            Dashboard
-          </Link>
+          <div className="topActions">
+            <Link href="/parent/dashboard" className="secondaryBtn">
+              Dashboard
+            </Link>
 
-          {booking.meeting_link ? (
-            <a
-              href={booking.meeting_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="primaryBtn"
-            >
-              Open backup meeting link
-            </a>
-          ) : null}
-        </div>
-      </section>
+            {booking.meeting_link ? (
+              <a
+                href={booking.meeting_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="primaryBtn"
+              >
+                Open backup meeting
+              </a>
+            ) : null}
+          </div>
+        </header>
 
-      <section className="classroomGrid">
-        <div>
-          
+        <section className="videoArea">
+          <div className="statusStrip">
+            <div>
+              <p className="eyebrow">Live Lesson Control</p>
+              <h2>{statusTitle(classroomStatus)}</h2>
+              <p className="muted">
+                {isLive
+                  ? `Lesson is live${
+                      elapsedSeconds ? ` • ${formatElapsed(elapsedSeconds)}` : ''
+                    }`
+                  : classroomStatus === 'COMPLETED'
+                    ? `Lesson completed${
+                        durationMinutes ? ` • ${durationMinutes} minutes` : ''
+                      }`
+                    : 'Start the lesson when tutor and learner are ready.'}
+              </p>
+            </div>
+
+            <span className={isLive ? 'livePill active' : 'livePill'}>
+              {formatStatus(classroomStatus)}
+            </span>
+          </div>
+
           <LessonControlBar
-  canEdit={canEdit}
-  classroomStatus={classroomStatus}
-  elapsedSeconds={elapsedSeconds}
-  durationMinutes={durationMinutes}
-  attendanceStatus={attendanceStatus}
-  updatingClassroom={updatingClassroom}
-  onAttendanceChange={setAttendanceStatus}
-  onStartLesson={startLesson}
-  onEndLesson={endLesson}
-/>
+            canEdit={canEdit}
+            classroomStatus={classroomStatus}
+            elapsedSeconds={elapsedSeconds}
+            durationMinutes={durationMinutes}
+            attendanceStatus={attendanceStatus}
+            updatingClassroom={updatingClassroom}
+            onAttendanceChange={setAttendanceStatus}
+            onStartLesson={startLesson}
+            onEndLesson={endLesson}
+          />
 
-<div className="videoShell" ref={videoRef}>
-  <button
-  type="button"
-  className="fullScreenBtn"
-  onClick={toggleVideoFullScreen}
->
-  Full screen video
-</button>
+          <div className="videoShell" ref={videoRef}>
+            <button
+              type="button"
+              className="fullScreenBtn"
+              onClick={toggleVideoFullScreen}
+            >
+              Full screen
+            </button>
+
             {jitsiSrc ? (
               <iframe
                 src={jitsiSrc}
@@ -530,7 +586,9 @@ async function toggleVideoFullScreen() {
               </div>
             )}
           </div>
+        </section>
 
+        <section className="mainGrid">
           <div className="workspaceWide">
             <p className="eyebrow">Lesson Workspace</p>
             <h2>Learning notes and progress</h2>
@@ -540,33 +598,35 @@ async function toggleVideoFullScreen() {
                 : 'Your tutor’s lesson notes and homework will appear here.'}
             </p>
 
-            <WorkspaceField
-              label="Lesson Objectives"
-              value={lessonObjectives}
-              onChange={setLessonObjectives}
-              canEdit={canEdit && !isCompleted}
-            />
+            <div className="workspaceGrid">
+              <WorkspaceField
+                label="Lesson Objectives"
+                value={lessonObjectives}
+                onChange={setLessonObjectives}
+                canEdit={canEdit && !isCompleted}
+              />
 
-            <WorkspaceField
-              label="Tutor Notes"
-              value={tutorNotes}
-              onChange={setTutorNotes}
-              canEdit={canEdit && !isCompleted}
-            />
+              <WorkspaceField
+                label="Tutor Notes"
+                value={tutorNotes}
+                onChange={setTutorNotes}
+                canEdit={canEdit && !isCompleted}
+              />
 
-            <WorkspaceField
-              label="Homework"
-              value={homework}
-              onChange={setHomework}
-              canEdit={canEdit && !isCompleted}
-            />
+              <WorkspaceField
+                label="Homework"
+                value={homework}
+                onChange={setHomework}
+                canEdit={canEdit && !isCompleted}
+              />
 
-            <WorkspaceField
-              label="Resources"
-              value={resources}
-              onChange={setResources}
-              canEdit={canEdit && !isCompleted}
-            />
+              <WorkspaceField
+                label="Resources"
+                value={resources}
+                onChange={setResources}
+                canEdit={canEdit && !isCompleted}
+              />
+            </div>
 
             {canEdit ? (
               <div className="workspaceActions">
@@ -590,42 +650,47 @@ async function toggleVideoFullScreen() {
 
             {isCompleted ? (
               <p className="completedText">
-                Lesson completed {completedAt ? `on ${formatFullDate(completedAt)}` : ''}.
+                Lesson completed{' '}
+                {completedAt ? `on ${formatFullDate(completedAt)}` : ''}.
               </p>
             ) : null}
           </div>
-        </div>
 
-        <aside className="sidebar">
-          <div className="card">
-            <p className="eyebrow">Lesson Details</p>
-            <h2>{subjectName}</h2>
+          <aside className="sidebar">
+            <div className="card">
+              <p className="eyebrow">Lesson Details</p>
+              <h2>{subjectName}</h2>
 
-            <div className="detailList">
-              <Detail label="Student" value={studentName} />
-              <Detail label="Tutor" value={tutorName} />
-              <Detail label="Date" value={formatDate(booking.lesson_date)} />
-              <Detail label="Time" value={formatTime(booking.lesson_time)} />
-              <Detail label="Status" value={booking.status || 'Confirmed'} />
-              <Detail label="Workspace" value={isCompleted ? 'Completed' : 'In progress'} />
+              <div className="detailList">
+                <Detail label="Student" value={studentName} />
+                <Detail label="Tutor" value={tutorName} />
+                <Detail label="Date" value={formatDate(booking.lesson_date)} />
+                <Detail label="Time" value={formatTime(booking.lesson_time)} />
+                <Detail label="Status" value={booking.status || 'Confirmed'} />
+                <Detail
+                  label="Workspace"
+                  value={isCompleted ? 'Completed' : 'In progress'}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="card">
-            <p className="eyebrow">Parent Note</p>
-            <p className="note">
-              {booking.notes || 'No parent note was added for this lesson.'}
-            </p>
-          </div>
+            <div className="card">
+              <p className="eyebrow">Parent Note</p>
+              <p className="note">
+                {booking.notes || 'No parent note was added for this lesson.'}
+              </p>
+            </div>
 
-          <div className="card purple">
-            <p className="eyebrow light">Need Help?</p>
-            <h2>Support is available</h2>
-            <p>
-              If there is a technical issue, return to dashboard or contact Fountain Prep support.
-            </p>
-          </div>
-        </aside>
+            <div className="card purple">
+              <p className="eyebrow light">Need Help?</p>
+              <h2>Support is available</h2>
+              <p>
+                If there is a technical issue, return to dashboard or contact
+                Fountain Prep support.
+              </p>
+            </div>
+          </aside>
+        </section>
       </section>
 
       <style jsx>{styles}</style>
@@ -669,6 +734,30 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
+function statusTitle(status: string) {
+  if (status === 'LIVE') return 'Class in progress'
+  if (status === 'COMPLETED') return 'Lesson completed'
+  return 'Ready to start'
+}
+
+function formatStatus(value: string | null) {
+  if (!value) return 'Not started'
+
+  return value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatElapsed(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  const remaining = seconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(
+    2,
+    '0'
+  )}`
+}
+
 function formatDate(value: string | null) {
   if (!value) return 'Date not set'
 
@@ -697,30 +786,18 @@ function formatTime(value: string | null) {
 const styles = `
   .page {
     min-height: 100vh;
-    padding: 24px;
+    padding: 22px;
     color: #21152d;
     background:
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 32%),
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 34%),
+      radial-gradient(circle at top left, rgba(236, 72, 153, 0.07), transparent 30%),
       linear-gradient(180deg, #ffffff, #fbf8ff 45%, #f4edff);
   }
 
-  .topbar,
-  .panel,
-  .classroomGrid {
-    width: min(1480px, 100%);
+  .classroomShell,
+  .panel {
+    width: min(1500px, 100%);
     margin: 0 auto;
-  }
-
-  .topbar {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    align-items: center;
-    padding: 26px;
-    border-radius: 34px;
-    background: rgba(255,255,255,0.95);
-    border: 1px solid rgba(124,58,237,0.13);
-    box-shadow: 0 24px 70px rgba(71,43,117,0.10);
   }
 
   .panel {
@@ -728,6 +805,18 @@ const styles = `
     padding: 42px;
     border-radius: 34px;
     background: white;
+    border: 1px solid rgba(124,58,237,0.13);
+    box-shadow: 0 24px 70px rgba(71,43,117,0.10);
+  }
+
+  .lessonHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+    padding: 26px;
+    border-radius: 34px;
+    background: rgba(255,255,255,0.96);
     border: 1px solid rgba(124,58,237,0.13);
     box-shadow: 0 24px 70px rgba(71,43,117,0.10);
   }
@@ -747,17 +836,17 @@ const styles = `
 
   h1 {
     margin: 10px 0 0;
-    font-size: clamp(36px, 5vw, 64px);
+    font-size: clamp(38px, 5vw, 70px);
     line-height: 0.95;
-    letter-spacing: -0.06em;
+    letter-spacing: -0.065em;
     font-weight: 950;
   }
 
   h2 {
     margin: 8px 0 0;
-    font-size: 25px;
+    font-size: clamp(25px, 3vw, 36px);
     line-height: 1.05;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.045em;
     font-weight: 950;
   }
 
@@ -766,12 +855,14 @@ const styles = `
     color: #6f637e;
     font-size: 16px;
     font-weight: 750;
+    line-height: 1.55;
   }
 
   .topActions {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .primaryBtn,
@@ -789,6 +880,7 @@ const styles = `
     text-decoration: none;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
   }
 
   .primaryBtn,
@@ -816,19 +908,53 @@ const styles = `
     margin-top: 22px;
   }
 
-  .classroomGrid {
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    gap: 20px;
-    align-items: start;
+  .videoArea {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 36px;
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(124,58,237,0.12);
+    box-shadow: 0 24px 70px rgba(71,43,117,0.10);
+  }
+
+  .statusStrip {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    padding: 20px 22px;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, rgba(124,58,237,0.13), transparent 32%),
+      #ffffff;
+    border: 1px solid rgba(124,58,237,0.12);
+    margin-bottom: 14px;
+  }
+
+  .livePill {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #f5f0ff;
+    color: #6d28d9;
+    font-size: 13px;
+    font-weight: 950;
+    white-space: nowrap;
+  }
+
+  .livePill.active {
+    background: #ecfdf3;
+    color: #027a48;
   }
 
   .videoShell {
     position: relative;
     overflow: hidden;
-    min-height: 680px;
-    border-radius: 34px;
+    min-height: 72vh;
+    border-radius: 30px;
     background: #07020d;
     border: 1px solid rgba(124,58,237,0.18);
     box-shadow: 0 30px 90px rgba(71,43,117,0.18);
@@ -836,9 +962,11 @@ const styles = `
 
   .meetingFrame {
     width: 100%;
-    height: 680px;
+    height: 72vh;
+    min-height: 680px;
     border: 0;
     display: block;
+    background: #07020d;
   }
 
   .noMeeting {
@@ -855,25 +983,25 @@ const styles = `
   }
 
   .fullScreenBtn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 100;
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 16px;
-  background: rgba(255,255,255,.95);
-  color: #21152d;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(0,0,0,.18);
-  transition: all .2s ease;
-}
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 100;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 16px;
+    background: rgba(255,255,255,.95);
+    color: #21152d;
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    transition: all .2s ease;
+  }
 
-.fullScreenBtn:hover {
-  transform: translateY(-1px);
-  background: #ffffff;
-}
+  .fullScreenBtn:hover {
+    transform: translateY(-1px);
+    background: #ffffff;
+  }
 
   .videoShell:fullscreen {
     width: 100vw;
@@ -889,6 +1017,14 @@ const styles = `
     min-height: 100vh;
   }
 
+  .mainGrid {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 20px;
+    align-items: start;
+  }
+
   .sidebar {
     display: grid;
     gap: 16px;
@@ -898,15 +1034,18 @@ const styles = `
 
   .card,
   .workspaceWide {
-    padding: 22px;
-    border-radius: 28px;
+    padding: 24px;
+    border-radius: 30px;
     background: rgba(255,255,255,0.96);
     border: 1px solid rgba(124,58,237,0.13);
     box-shadow: 0 20px 55px rgba(71,43,117,0.08);
   }
 
-  .workspaceWide {
-    margin-top: 18px;
+  .workspaceGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 20px;
   }
 
   .card.purple {
@@ -955,10 +1094,6 @@ const styles = `
     font-weight: 750;
   }
 
-  .workspaceField {
-    margin-top: 18px;
-  }
-
   .workspaceField label {
     display: block;
     margin-bottom: 7px;
@@ -970,13 +1105,13 @@ const styles = `
   .workspaceField textarea,
   .readOnlyBox {
     width: 100%;
-    min-height: 96px;
-    padding: 14px;
-    border-radius: 18px;
+    min-height: 130px;
+    padding: 15px;
+    border-radius: 20px;
     border: 1px solid rgba(124,58,237,0.14);
     background: #fff;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.55;
     color: #2b1b3d;
   }
@@ -992,7 +1127,7 @@ const styles = `
   }
 
   .workspaceActions {
-    margin-top: 18px;
+    margin-top: 20px;
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
@@ -1007,15 +1142,30 @@ const styles = `
     font-weight: 900;
   }
 
-  @media (max-width: 980px) {
-    .page {
-      padding: 12px;
+  @media (max-width: 1100px) {
+    .mainGrid {
+      grid-template-columns: 1fr;
     }
 
-    .topbar {
+    .sidebar {
+      position: static;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sidebar .purple {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .page {
+      padding: 10px;
+    }
+
+    .lessonHeader {
       align-items: flex-start;
       flex-direction: column;
-      padding: 22px;
+      padding: 20px;
       border-radius: 28px;
     }
 
@@ -1027,23 +1177,55 @@ const styles = `
       width: 100%;
     }
 
-    .classroomGrid {
-      grid-template-columns: 1fr;
+    .statusStrip {
+      align-items: flex-start;
+      flex-direction: column;
+      padding: 18px;
+      border-radius: 24px;
     }
 
-    .videoShell,
-    .meetingFrame,
+    .videoArea {
+      padding: 10px;
+      border-radius: 28px;
+    }
+
+    .videoShell {
+      min-height: auto;
+      aspect-ratio: 16 / 10;
+      border-radius: 22px;
+    }
+
+    .meetingFrame {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      aspect-ratio: 16 / 10;
+    }
+
     .noMeeting {
-      min-height: 560px;
-      height: 560px;
+      min-height: 280px;
     }
 
+    .fullScreenBtn {
+      top: 10px;
+      left: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .workspaceGrid,
     .sidebar {
-      position: static;
+      grid-template-columns: 1fr;
     }
 
     .workspaceActions {
       flex-direction: column;
+    }
+
+    .card,
+    .workspaceWide {
+      padding: 20px;
+      border-radius: 26px;
     }
   }
 `

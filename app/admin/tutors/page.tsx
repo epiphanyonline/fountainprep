@@ -314,7 +314,10 @@ export default function AdminTutorsPage() {
       }
 
       interviewId = interviewRow.id
-      interviewLink = `${window.location.origin}/interview/${interviewId}`
+      const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+
+interviewLink = `${siteUrl}/interview/${interviewId}`
 
       const { error: linkUpdateError } = await supabase
         .from('tutor_interviews')
