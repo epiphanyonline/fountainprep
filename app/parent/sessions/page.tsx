@@ -367,12 +367,12 @@ function LessonCard({
 
         {canJoin ? (
           <a
-            href={lesson.meeting_link || '#'}
+            href={`/classroom/${lesson.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="primaryBtn full"
           >
-            Join Lesson
+            Enter Classroom
           </a>
         ) : lesson.payment_status !== 'PAID' ? (
           <Link href={`/payment?bookingId=${lesson.id}`} className="primaryBtn full">

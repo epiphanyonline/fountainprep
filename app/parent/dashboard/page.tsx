@@ -318,16 +318,14 @@ export default function ParentDashboardPage() {
                 <strong>{formatDate(nextLesson.lesson_date)}</strong>
                 <span>{nextLesson.lesson_time || 'Time pending'}</span>
 
-                {nextLesson.meeting_link ? (
-                  <a
-                    href={nextLesson.meeting_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="joinBtn"
-                  >
-                    Join Lesson
-                  </a>
-                ) : null}
+                {nextLesson.id && (
+  <a
+    href={`/classroom/${nextLesson.id}`}
+    className="joinBtn"
+  >
+    Enter Classroom
+  </a>
+)}
               </div>
             </div>
           ) : (
@@ -538,7 +536,7 @@ function LessonRow({
 
         {booking.meeting_link ? (
           <a
-            href={booking.meeting_link}
+            href={`/classroom/${booking.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="joinBtn smallJoin"

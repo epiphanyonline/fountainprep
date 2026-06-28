@@ -11,6 +11,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 )
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.fountainprep.com'
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
@@ -22,16 +24,14 @@ export async function GET(req: Request) {
 
     if (!process.env.RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY')
     if (!process.env.RESEND_FROM_EMAIL) throw new Error('Missing RESEND_FROM_EMAIL')
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
-    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
 
     const { data: reminders, error: reminderError } = await supabaseAdmin
       .from('lesson_reminders')
       .select('id, booking_id, reminder_type, scheduled_for')
       .eq('sent', false)
       .lte('scheduled_for', new Date().toISOString())
-      .limit(20)
+      .limit(30)
 
     if (reminderError) throw new Error(reminderError.message)
 
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
       const { data: booking, error: bookingError } = await supabaseAdmin
         .from('lesson_bookings')
         .select(
-          'id, parent_id, tutor_id, student_id, subject_id, lesson_date, lesson_time, timezone, meeting_link'
+          'id, parent_id, tutor_id, student_id, subject_id, lesson_date, lesson_time, timezone, status, payment_status'
         )
         .eq('id', reminder.booking_id)
         .maybeSingle()
@@ -56,10 +56,23 @@ export async function GET(req: Request) {
         continue
       }
 
+      if (booking.payment_status !== 'PAID' && booking.status !== 'CONFIRMED') {
+        await markReminderSkipped(reminder.id, 'Booking not confirmed or paid.')
+        continue
+      }
+
+      const classroomLink = `${appUrl}/classroom/${booking.id}`
+
       const { data: parentProfile } = await supabaseAdmin
         .from('parent_profiles')
-        .select('full_name, email')
+        .select('full_name')
         .eq('user_id', booking.parent_id)
+        .maybeSingle()
+
+      const { data: parentUserProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('email')
+        .eq('id', booking.parent_id)
         .maybeSingle()
 
       const { data: studentProfile } = await supabaseAdmin
@@ -70,9 +83,21 @@ export async function GET(req: Request) {
 
       const { data: tutorProfile } = await supabaseAdmin
         .from('tutor_profiles')
-        .select('full_name, email')
+        .select('id, user_id, full_name')
         .eq('id', booking.tutor_id)
         .maybeSingle()
+
+      let tutorEmail: string | null = null
+
+      if (tutorProfile?.user_id) {
+        const { data: tutorUserProfile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('email')
+          .eq('id', tutorProfile.user_id)
+          .maybeSingle()
+
+        tutorEmail = tutorUserProfile?.email ?? null
+      }
 
       const { data: subjectRow } = await supabaseAdmin
         .from('subjects')
@@ -87,54 +112,68 @@ export async function GET(req: Request) {
       const tutorName = tutorProfile?.full_name || 'your tutor'
       const subjectName = subjectRow?.name || 'lesson'
       const lessonDate = formatDate(booking.lesson_date)
-      const lessonTime = booking.lesson_time || 'Time pending'
-      const timezone = booking.timezone || 'Timezone pending'
+      const lessonTime = formatTime(booking.lesson_time)
+      const timezone = booking.timezone || 'Europe/London'
 
-      const joinLink =
-        booking.meeting_link ||
-        `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.fountainprep.com'}/parent/dashboard`
+      const parentEmail = parentUserProfile?.email ?? null
 
-      const parentHtml = lessonEmailHtml({
-        greetingName: parentProfile?.full_name || 'there',
-        title: 'FountainPrep Lesson Reminder',
-        intro: `${studentName} has a private 1-to-1 ${subjectName} ${reminderLabel}.`,
-        studentName,
-        subjectName,
-        tutorName,
-        lessonDate,
-        lessonTime,
-        timezone,
-        joinLink,
-      })
-
-      const tutorHtml = lessonEmailHtml({
-        greetingName: tutorName,
-        title: 'FountainPrep Tutor Reminder',
-        intro: `You have a private 1-to-1 ${subjectName} lesson with ${studentName} ${reminderLabel}.`,
-        studentName,
-        subjectName,
-        tutorName,
-        lessonDate,
-        lessonTime,
-        timezone,
-        joinLink,
-      })
-
-      if (parentProfile?.email) {
+      if (isValidEmail(parentEmail)) {
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL,
-          to: parentProfile.email,
-          subject: `FountainPrep reminder: ${studentName} has a lesson ${reminderLabel}`,
-          html: parentHtml,
+          to: parentEmail,
+          subject: `Fountain Prep reminder: ${studentName} has a lesson ${reminderLabel}`,
+          html: lessonEmailHtml({
+            greetingName: parentProfile?.full_name || 'there',
+            title: 'Fountain Prep Lesson Reminder',
+            intro: `${studentName} has a private 1-to-1 ${subjectName} ${reminderLabel}.`,
+            studentName,
+            subjectName,
+            tutorName,
+            lessonDate,
+            lessonTime,
+            timezone,
+            classroomLink,
+            cta: 'Enter Classroom',
+          }),
         })
       }
 
-      if (tutorProfile?.email) {
+      if (tutorProfile?.user_id) {
+        await createReminderNotification({
+          userId: tutorProfile.user_id,
+          role: 'tutor',
+          title: 'Lesson reminder',
+          message: `You have a ${subjectName} lesson with ${studentName} ${reminderLabel}.`,
+          link: classroomLink,
+        })
+      }
+
+      await createReminderNotification({
+        userId: booking.parent_id,
+        role: 'parent',
+        title: 'Lesson reminder',
+        message: `${studentName} has a ${subjectName} lesson ${reminderLabel}.`,
+        link: classroomLink,
+      })
+
+      if (isValidEmail(tutorEmail)) {
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL,
-          to: tutorProfile.email,
-          subject: `FountainPrep tutor reminder: lesson ${reminderLabel}`,
-          html: tutorHtml,
+          to: tutorEmail,
+          subject: `Fountain Prep tutor reminder: lesson ${reminderLabel}`,
+          html: lessonEmailHtml({
+            greetingName: tutorName,
+            title: 'Fountain Prep Tutor Reminder',
+            intro: `You have a private 1-to-1 ${subjectName} lesson with ${studentName} ${reminderLabel}.`,
+            studentName,
+            subjectName,
+            tutorName,
+            lessonDate,
+            lessonTime,
+            timezone,
+            classroomLink,
+            cta: 'Enter Classroom',
+          }),
         })
       }
 
@@ -172,6 +211,45 @@ export async function GET(req: Request) {
   }
 }
 
+async function createReminderNotification({
+  userId,
+  role,
+  title,
+  message,
+  link,
+}: {
+  userId: string
+  role: 'parent' | 'tutor'
+  title: string
+  message: string
+  link: string
+}) {
+  const { error } = await supabaseAdmin.from('notifications').insert({
+    user_id: userId,
+    role,
+    title,
+    message,
+    type: 'lesson_reminder',
+    link,
+    is_read: false,
+  })
+
+  if (error) {
+    console.warn('Reminder notification failed:', error.message)
+  }
+}
+
+async function markReminderSkipped(id: string, reason: string) {
+  await supabaseAdmin
+    .from('lesson_reminders')
+    .update({
+      sent: true,
+      sent_at: new Date().toISOString(),
+      notes: reason,
+    })
+    .eq('id', id)
+}
+
 function lessonEmailHtml({
   greetingName,
   title,
@@ -182,7 +260,8 @@ function lessonEmailHtml({
   lessonDate,
   lessonTime,
   timezone,
-  joinLink,
+  classroomLink,
+  cta,
 }: {
   greetingName: string
   title: string
@@ -193,33 +272,40 @@ function lessonEmailHtml({
   lessonDate: string
   lessonTime: string
   timezone: string
-  joinLink: string
+  classroomLink: string
+  cta: string
 }) {
   return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#241535">
-      <h1 style="color:#6d28d9;margin-bottom:12px">${title}</h1>
-      <p>Hello ${escapeHtml(greetingName)},</p>
-      <p>${escapeHtml(intro)}</p>
-
-      <div style="background:#f6f1ff;border:1px solid #e6d8ff;border-radius:18px;padding:18px;margin:20px 0">
-        <p><strong>Student:</strong> ${escapeHtml(studentName)}</p>
-        <p><strong>Subject:</strong> ${escapeHtml(subjectName)}</p>
-        <p><strong>Tutor:</strong> ${escapeHtml(tutorName)}</p>
-        <p><strong>Date:</strong> ${escapeHtml(lessonDate)}</p>
-        <p><strong>Time:</strong> ${escapeHtml(lessonTime)}</p>
-        <p><strong>Timezone:</strong> ${escapeHtml(timezone)}</p>
+    <div style="font-family:Arial,sans-serif;max-width:660px;margin:auto;padding:26px;color:#241535;background:#ffffff">
+      <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:24px;padding:26px;color:white">
+        <p style="margin:0 0 8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px">Fountain Prep</p>
+        <h1 style="margin:0;font-size:30px;line-height:1.05">${escapeHtml(title)}</h1>
       </div>
 
-      <p>
-        <a href="${joinLink}" style="display:inline-block;background:#6d28d9;color:white;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:bold">
-          Join Lesson
-        </a>
-      </p>
+      <div style="padding:24px 4px 0">
+        <p>Hello ${escapeHtml(greetingName)},</p>
+        <p>${escapeHtml(intro)}</p>
 
-      <p style="color:#6f637e;margin-top:24px">
-        Thank you,<br/>
-        FountainPrep
-      </p>
+        <div style="background:#f6f1ff;border:1px solid #e6d8ff;border-radius:18px;padding:18px;margin:20px 0">
+          <p><strong>Student:</strong> ${escapeHtml(studentName)}</p>
+          <p><strong>Subject:</strong> ${escapeHtml(subjectName)}</p>
+          <p><strong>Tutor:</strong> ${escapeHtml(tutorName)}</p>
+          <p><strong>Date:</strong> ${escapeHtml(lessonDate)}</p>
+          <p><strong>Time:</strong> ${escapeHtml(lessonTime)}</p>
+          <p><strong>Timezone:</strong> ${escapeHtml(timezone)}</p>
+        </div>
+
+        <p>
+          <a href="${escapeHtml(classroomLink)}" style="display:inline-block;background:#6d28d9;color:white;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:bold">
+            ${escapeHtml(cta)}
+          </a>
+        </p>
+
+        <p style="color:#6f637e;margin-top:24px">
+          Thank you,<br/>
+          Fountain Prep
+        </p>
+      </div>
     </div>
   `
 }
@@ -235,8 +321,17 @@ function formatDate(date: string | null) {
   }).format(new Date(`${date}T00:00:00`))
 }
 
+function formatTime(time: string | null) {
+  if (!time) return 'Time pending'
+  return time.slice(0, 5)
+}
+
+function isValidEmail(value?: string | null): value is string {
+  return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 function escapeHtml(value: string) {
-  return value
+  return String(value || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')

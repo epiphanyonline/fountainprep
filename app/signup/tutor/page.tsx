@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { sendEmail } from '../../lib/email'
 
 export default function TutorSignupPage() {
   const router = useRouter()
@@ -19,7 +20,6 @@ export default function TutorSignupPage() {
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-
     setLoading(true)
     setMessage('')
 
@@ -43,6 +43,30 @@ export default function TutorSignupPage() {
       return
     }
 
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to Fountain Prep Tutor Portal',
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241235">
+          <h2>Welcome to Fountain Prep, ${escapeHtml(fullName)}</h2>
+          <p>Your tutor account has been created.</p>
+          <p>Next steps:</p>
+          <ol>
+            <li>Confirm your email address.</li>
+            <li>Complete your tutor profile.</li>
+            <li>Upload your documents.</li>
+            <li>Set your availability.</li>
+            <li>Wait for admin approval.</li>
+          </ol>
+          <p>
+            <a href="https://www.fountainprep.com/login" style="display:inline-block;background:#6d28d9;color:white;padding:12px 18px;border-radius:14px;text-decoration:none;font-weight:700">
+              Login to Tutor Portal
+            </a>
+          </p>
+        </div>
+      `,
+    })
+
     if (!data.session) {
       setMessage('Check your email to confirm your account, then log in.')
       setLoading(false)
@@ -56,14 +80,7 @@ export default function TutorSignupPage() {
     <main className="page-wrap">
       <div className="container" style={{ maxWidth: 620 }}>
         <div className="card" style={{ padding: 32 }}>
-          <p
-            style={{
-              margin: 0,
-              color: '#6f42c1',
-              fontWeight: 700,
-              fontSize: 14,
-            }}
-          >
+          <p style={{ margin: 0, color: '#6f42c1', fontWeight: 700, fontSize: 14 }}>
             Tutor Portal
           </p>
 
@@ -76,65 +93,18 @@ export default function TutorSignupPage() {
           </p>
 
           <form className="form-stack" style={{ marginTop: 24 }} onSubmit={handleSignup}>
-            <input
-              placeholder="Full name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
+            <input placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="password" placeholder="Password (minimum 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <input
-              type="password"
-              placeholder="Password (minimum 6 characters)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-
-            <div
-              className="two-col-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 16,
-              }}
-            >
-              <input
-                placeholder="Phone number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-
-              <input
-                placeholder="Country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                required
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <input placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} required />
             </div>
 
-            <input
-              placeholder="Timezone"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              required
-            />
+            <input placeholder="Timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} required />
 
-            <div
-              className="panel"
-              style={{
-                padding: 18,
-                marginTop: 4,
-              }}
-            >
+            <div className="panel" style={{ padding: 18, marginTop: 4 }}>
               <p style={{ margin: 0, fontWeight: 700 }}>What happens next?</p>
               <p style={{ margin: '8px 0 0', color: 'var(--muted)' }}>
                 After creating your account, you will complete your tutor profile before admin review.
@@ -158,4 +128,13 @@ export default function TutorSignupPage() {
       </div>
     </main>
   )
+}
+
+function escapeHtml(value: string) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }

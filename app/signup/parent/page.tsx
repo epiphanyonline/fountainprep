@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { sendEmail } from '../../lib/email'
 
 export default function ParentSignupPage() {
   const [fullName, setFullName] = useState('')
@@ -38,7 +39,30 @@ export default function ParentSignupPage() {
       return
     }
 
-    setMessage('Signup successful. Check your email.')
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to Fountain Prep',
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241235">
+          <h2>Welcome to Fountain Prep, ${escapeHtml(fullName)}</h2>
+          <p>Your parent account has been created.</p>
+          <p>Next steps:</p>
+          <ol>
+            <li>Confirm your email address.</li>
+            <li>Add your child’s profile.</li>
+            <li>Choose a subject.</li>
+            <li>Book your first private 1-to-1 lesson.</li>
+          </ol>
+          <p>
+            <a href="https://www.fountainprep.com/login" style="display:inline-block;background:#6d28d9;color:white;padding:12px 18px;border-radius:14px;text-decoration:none;font-weight:700">
+              Login to Fountain Prep
+            </a>
+          </p>
+        </div>
+      `,
+    })
+
+    setMessage('Signup successful. Check your email to confirm your account.')
     setLoading(false)
   }
 
@@ -52,43 +76,12 @@ export default function ParentSignupPage() {
           </p>
 
           <div className="form-stack" style={{ marginTop: 20 }}>
-            <input
-              placeholder="Full name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-
-            <input
-              placeholder="Phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-
-            <input
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-            />
-
-            <input
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-            />
-
-            <input
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <input
-              placeholder="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <input placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            <input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input value={country} onChange={(e) => setCountry(e.target.value)} />
+            <input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
             <button className="btn-primary" disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}
@@ -100,4 +93,13 @@ export default function ParentSignupPage() {
       </div>
     </main>
   )
+}
+
+function escapeHtml(value: string) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }

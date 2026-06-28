@@ -439,12 +439,12 @@ setSavingId('')
                 <div className="lessonActions">
                   {lesson.meeting_link ? (
                     <a
-                      href={lesson.meeting_link}
+                      href={`/classroom/${lesson.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="primaryBtn"
                     >
-                      Join Lesson
+                      Enter Classroom
                     </a>
                   ) : (
                     <button className="secondaryBtn" disabled>

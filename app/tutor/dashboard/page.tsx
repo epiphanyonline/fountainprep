@@ -488,17 +488,15 @@ function LessonCard({
 
       <div className="lessonActions">
         {lesson.meeting_link ? (
-          <a
-            href={lesson.meeting_link}
-            target="_blank"
-            rel="noreferrer"
-            className="primaryLink actionBtn"
-          >
-            Join Lesson
-          </a>
-        ) : (
-          <span className="disabledButton">No meeting link yet</span>
-        )}
+  <Link
+    href={`/classroom/${lesson.id}`}
+    className="primaryLink actionBtn"
+  >
+    Join Lesson
+  </Link>
+) : (
+  <span className="disabledButton">No meeting link yet</span>
+)}
 
         {lesson.meeting_link ? (
           <button

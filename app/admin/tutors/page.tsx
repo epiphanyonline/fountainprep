@@ -2,7 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { onTutorApproved, onTutorListed } from '../../lib/events'
+import {
+  onTutorApproved,
+  onTutorInterviewInvite,
+  onTutorListed,
+} from '../../lib/events'
+
+type LatestInterview = {
+  id: string
+  interview_date: string
+  interview_time: string
+  interview_link: string
+  status: string
+  created_at: string
+}
 
 type TutorRow = {
   id: string
@@ -26,6 +39,7 @@ type TutorRow = {
   cv_signed_url?: string | null
   id_signed_url?: string | null
   qualification_signed_url?: string | null
+  latest_interview?: LatestInterview | null
 }
 
 type TutorUpdate = {
@@ -38,6 +52,12 @@ export default function AdminTutorsPage() {
   const [tutors, setTutors] = useState<TutorRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [interviewTutor, setInterviewTutor] = useState<TutorRow | null>(null)
+  const [interviewDate, setInterviewDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  )
+  const [interviewTime, setInterviewTime] = useState('18:00')
+  const [sendingInvite, setSendingInvite] = useState(false)
 
   async function signedUrl(path: string | null) {
     if (!path) return null
@@ -88,12 +108,13 @@ export default function AdminTutorsPage() {
     }
 
     const tutorRows = (data || []) as Omit<TutorRow, 'email'>[]
-
     const userIds = Array.from(
       new Set(tutorRows.map((tutor) => tutor.user_id).filter(Boolean))
     )
+    const tutorIds = tutorRows.map((tutor) => tutor.id)
 
     const emailMap = new Map<string, string | null>()
+    const interviewMap = new Map<string, LatestInterview>()
 
     if (userIds.length > 0) {
       const { data: profileRows, error: profileError } = await supabase
@@ -110,13 +131,49 @@ export default function AdminTutorsPage() {
       }
     }
 
+    if (tutorIds.length > 0) {
+      const { data: interviewRows, error: interviewError } = await supabase
+        .from('tutor_interviews')
+        .select(`
+          id,
+          tutor_id,
+          interview_date,
+          interview_time,
+          interview_link,
+          status,
+          created_at
+        `)
+        .in('tutor_id', tutorIds)
+        .order('created_at', { ascending: false })
+
+      if (interviewError) {
+        console.warn('Tutor interview lookup failed:', interviewError.message)
+      }
+
+      for (const interview of interviewRows ?? []) {
+        if (!interviewMap.has(interview.tutor_id)) {
+          interviewMap.set(interview.tutor_id, {
+            id: interview.id,
+            interview_date: interview.interview_date,
+            interview_time: interview.interview_time,
+            interview_link: interview.interview_link,
+            status: interview.status,
+            created_at: interview.created_at,
+          })
+        }
+      }
+    }
+
     const enriched = await Promise.all(
       tutorRows.map(async (tutor) => ({
         ...tutor,
         email: emailMap.get(tutor.user_id) ?? null,
+        latest_interview: interviewMap.get(tutor.id) ?? null,
         cv_signed_url: await signedUrl(tutor.cv_url),
         id_signed_url: await signedUrl(tutor.government_id_url),
-        qualification_signed_url: await signedUrl(tutor.qualification_document_url),
+        qualification_signed_url: await signedUrl(
+          tutor.qualification_document_url
+        ),
       }))
     )
 
@@ -187,6 +244,186 @@ export default function AdminTutorsPage() {
     }
   }
 
+  async function sendInterviewInvite() {
+  if (!interviewTutor) return
+
+  setSendingInvite(true)
+  setMessage('')
+
+  try {
+    if (!interviewTutor.email) {
+      throw new Error('Tutor email is missing.')
+    }
+
+    let interviewId = interviewTutor.latest_interview?.id || null
+    let interviewLink = ''
+
+    if (
+      interviewTutor.latest_interview &&
+      interviewTutor.latest_interview.status === 'SCHEDULED'
+    ) {
+      const { error: updateError } = await supabase
+        .from('tutor_interviews')
+        .update({
+          interview_date: interviewDate,
+          interview_time: interviewTime,
+          tutor_name: interviewTutor.full_name,
+          tutor_email: interviewTutor.email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', interviewTutor.latest_interview.id)
+
+      if (updateError) {
+        throw new Error(updateError.message)
+      }
+
+      interviewId = interviewTutor.latest_interview.id
+      interviewLink =
+        interviewTutor.latest_interview.interview_link ||
+        `${window.location.origin}/interview/${interviewId}`
+
+      const { error: linkUpdateError } = await supabase
+        .from('tutor_interviews')
+        .update({
+          interview_link: interviewLink,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', interviewId)
+
+      if (linkUpdateError) {
+        throw new Error(linkUpdateError.message)
+      }
+    } else {
+      const { data: interviewRow, error: interviewError } = await supabase
+        .from('tutor_interviews')
+        .insert({
+          tutor_id: interviewTutor.id,
+          tutor_user_id: interviewTutor.user_id,
+          tutor_name: interviewTutor.full_name,
+          tutor_email: interviewTutor.email,
+          interview_date: interviewDate,
+          interview_time: interviewTime,
+          interview_link: '',
+          status: 'SCHEDULED',
+        })
+        .select('id')
+        .single()
+
+      if (interviewError) {
+        throw new Error(interviewError.message)
+      }
+
+      interviewId = interviewRow.id
+      interviewLink = `${window.location.origin}/interview/${interviewId}`
+
+      const { error: linkUpdateError } = await supabase
+        .from('tutor_interviews')
+        .update({
+          interview_link: interviewLink,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', interviewId)
+
+      if (linkUpdateError) {
+        throw new Error(linkUpdateError.message)
+      }
+    }
+
+    await onTutorInterviewInvite({
+      tutorUserId: interviewTutor.user_id,
+      tutorName: interviewTutor.full_name,
+      tutorEmail: interviewTutor.email,
+      interviewDate,
+      interviewTime,
+      interviewLink,
+    })
+
+    setMessage(
+      interviewTutor.latest_interview?.status === 'SCHEDULED'
+        ? `Interview updated and invitation resent to ${interviewTutor.full_name}.`
+        : `Interview invitation sent to ${interviewTutor.full_name}.`
+    )
+
+    setInterviewTutor(null)
+    await loadTutors()
+  } catch (err) {
+    console.error(err)
+    setMessage(
+      err instanceof Error
+        ? err.message
+        : 'Unable to send interview invitation.'
+    )
+  }
+
+  setSendingInvite(false)
+}
+
+  async function markInterviewCompleted(tutor: TutorRow) {
+    if (!tutor.latest_interview) return
+
+    const { error } = await supabase
+      .from('tutor_interviews')
+      .update({
+        status: 'COMPLETED',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', tutor.latest_interview.id)
+
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+
+    setMessage(`Interview marked completed for ${tutor.full_name}.`)
+    await loadTutors()
+  }
+
+  async function cancelInterview(tutor: TutorRow) {
+    if (!tutor.latest_interview) return
+
+    const confirmed = window.confirm(
+      `Cancel the latest interview for ${tutor.full_name}?`
+    )
+
+    if (!confirmed) return
+
+    const { error } = await supabase
+      .from('tutor_interviews')
+      .update({
+        status: 'CANCELLED',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', tutor.latest_interview.id)
+
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+
+    setMessage(`Interview cancelled for ${tutor.full_name}.`)
+    await loadTutors()
+  }
+
+  async function markInterviewNoShow(tutor: TutorRow) {
+  if (!tutor.latest_interview) return
+
+  const { error } = await supabase
+    .from('tutor_interviews')
+    .update({
+      status: 'NO_SHOW',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', tutor.latest_interview.id)
+
+  if (error) {
+    setMessage(error.message)
+    return
+  }
+
+  setMessage(`Interview marked as no-show for ${tutor.full_name}.`)
+  await loadTutors()
+}
+
   async function deleteTutorAndDocuments(tutor: TutorRow) {
     const confirmed = window.confirm(
       `Delete ${tutor.full_name} and all uploaded documents? This cannot be undone.`
@@ -242,6 +479,11 @@ export default function AdminTutorsPage() {
     [tutors]
   )
 
+  const interviewCount = useMemo(
+    () => tutors.filter((t) => t.latest_interview).length,
+    [tutors]
+  )
+
   return (
     <main className="page">
       <section className="hero">
@@ -249,13 +491,15 @@ export default function AdminTutorsPage() {
         <h1>Tutor approval centre</h1>
         <p className="subtitle">
           Review tutor profiles, open CVs, verify identity documents, check
-          qualifications and control who appears on FountainPrep.
+          qualifications, schedule interviews and control who appears on
+          Fountain Prep.
         </p>
 
         <div className="kpiGrid">
           <Kpi label="Total Tutors" value={String(tutors.length)} />
           <Kpi label="Pending Review" value={String(pendingCount)} />
           <Kpi label="Verified" value={String(verifiedCount)} />
+          <Kpi label="Interviews" value={String(interviewCount)} />
           <Kpi label="Listed" value={String(listedCount)} />
         </div>
       </section>
@@ -273,21 +517,84 @@ export default function AdminTutorsPage() {
                   <h2>{tutor.full_name}</h2>
                   <p className="meta">
                     {tutor.years_of_experience} yrs experience • Submitted{' '}
-                    {formatDate(tutor.submitted_at || tutor.created_at)}
+                    {formatDisplayDate(tutor.submitted_at || tutor.created_at)}
                     {tutor.email ? ` • ${tutor.email}` : ''}
                   </p>
                 </div>
 
                 <div className="badgeWrap">
                   <StatusBadge label="Approval" value={tutor.approval_status} />
-                  <StatusBadge label="Verification" value={tutor.verification_status} />
-                  <StatusBadge label="Listed" value={tutor.is_listed ? 'yes' : 'no'} />
+                  <StatusBadge
+                    label="Verification"
+                    value={tutor.verification_status}
+                  />
+                  <StatusBadge
+                    label="Listed"
+                    value={tutor.is_listed ? 'yes' : 'no'}
+                  />
                 </div>
               </div>
 
               <p className="summary">
-                {tutor.qualification_summary || 'No qualification summary provided.'}
+                {tutor.qualification_summary ||
+                  'No qualification summary provided.'}
               </p>
+
+              {tutor.latest_interview ? (
+                <div className="interviewBox">
+                  <div>
+                    <p className="interviewLabel">Interview Status</p>
+                    <h3>{formatInterviewStatus(tutor.latest_interview.status)}</h3>
+                    <p className="interviewMeta">
+                      {formatDisplayDate(tutor.latest_interview.interview_date)} at{' '}
+                      {formatTime(tutor.latest_interview.interview_time)}
+                    </p>
+                  </div>
+
+                  <div className="interviewActions">
+                    <a
+                      href={tutor.latest_interview.interview_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="joinInterviewButton"
+                    >
+                      Join Interview
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setInterviewTutor(tutor)}
+                      className="rescheduleButton"
+                    >
+                      Resend / Reschedule
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => markInterviewCompleted(tutor)}
+                      className="completeButton"
+                    >
+                      Mark Completed
+                    </button>
+
+                    <button
+  type="button"
+  onClick={() => markInterviewNoShow(tutor)}
+  className="cancelButton"
+>
+  No Show
+</button>
+
+                    <button
+                      type="button"
+                      onClick={() => cancelInterview(tutor)}
+                      className="cancelButton"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="docPanel">
                 <div className="docHeader">
@@ -296,38 +603,83 @@ export default function AdminTutorsPage() {
                     <h3>Review uploaded files</h3>
                   </div>
                   <span className="docCount">
-                    {[tutor.cv_url, tutor.government_id_url, tutor.qualification_document_url].filter(Boolean).length}/3
+                    {[
+                      tutor.cv_url,
+                      tutor.government_id_url,
+                      tutor.qualification_document_url,
+                    ].filter(Boolean).length}
+                    /3
                   </span>
                 </div>
 
                 <div className="docGrid">
-                  <DocumentLink title="CV" subtitle={fileLabel(tutor.cv_url)} href={tutor.cv_signed_url} />
-                  <DocumentLink title="Government ID" subtitle={fileLabel(tutor.government_id_url)} href={tutor.id_signed_url} />
-                  <DocumentLink title="Qualification" subtitle={fileLabel(tutor.qualification_document_url)} href={tutor.qualification_signed_url} />
+                  <DocumentLink
+                    title="CV"
+                    subtitle={fileLabel(tutor.cv_url)}
+                    href={tutor.cv_signed_url}
+                  />
+                  <DocumentLink
+                    title="Government ID"
+                    subtitle={fileLabel(tutor.government_id_url)}
+                    href={tutor.id_signed_url}
+                  />
+                  <DocumentLink
+                    title="Qualification"
+                    subtitle={fileLabel(tutor.qualification_document_url)}
+                    href={tutor.qualification_signed_url}
+                  />
                 </div>
               </div>
 
               <div className="checksGrid">
-                <CheckItem label="GDPR" value={tutor.gdpr_agreed ? 'Agreed' : 'Not agreed'} />
-                <CheckItem label="Terms" value={tutor.terms_agreed ? 'Agreed' : 'Not agreed'} />
-                <CheckItem label="Safeguarding" value={tutor.safeguarding_agreed ? 'Agreed' : 'Not agreed'} />
+                <CheckItem
+                  label="GDPR"
+                  value={tutor.gdpr_agreed ? 'Agreed' : 'Not agreed'}
+                />
+                <CheckItem
+                  label="Terms"
+                  value={tutor.terms_agreed ? 'Agreed' : 'Not agreed'}
+                />
+                <CheckItem
+                  label="Safeguarding"
+                  value={tutor.safeguarding_agreed ? 'Agreed' : 'Not agreed'}
+                />
                 <CheckItem label="DBS" value={tutor.dbs_status || 'Pending'} />
               </div>
 
               <div className="actions">
+                {!tutor.latest_interview ? (
+                  <button
+                    type="button"
+                    className="btnPrimary"
+                    onClick={() => setInterviewTutor(tutor)}
+                  >
+                    Invite Interview
+                  </button>
+                ) : null}
+
                 <button className="btnPrimary" onClick={() => approveTutor(tutor)}>
                   Approve & List
                 </button>
 
-                <button className="btnSecondary" onClick={() => rejectTutor(tutor.id)}>
+                <button
+                  className="btnSecondary"
+                  onClick={() => rejectTutor(tutor.id)}
+                >
                   Reject
                 </button>
 
-                <button className="btnSecondary" onClick={() => toggleListing(tutor)}>
+                <button
+                  className="btnSecondary"
+                  onClick={() => toggleListing(tutor)}
+                >
                   {tutor.is_listed ? 'Unlist' : 'List'}
                 </button>
 
-                <button className="btnDanger" onClick={() => deleteTutorAndDocuments(tutor)}>
+                <button
+                  className="btnDanger"
+                  onClick={() => deleteTutorAndDocuments(tutor)}
+                >
                   Delete Tutor & Documents
                 </button>
               </div>
@@ -342,6 +694,60 @@ export default function AdminTutorsPage() {
           )}
         </div>
       </section>
+
+      {interviewTutor && (
+        <div className="modalOverlay">
+          <div className="modalCard">
+            <p className="eyebrow">Tutor interview</p>
+            <h2>
+              {interviewTutor.latest_interview
+                ? 'Resend or reschedule interview'
+                : 'Schedule interview'}
+            </h2>
+            <p>
+              {interviewTutor.full_name}
+              {interviewTutor.email ? ` • ${interviewTutor.email}` : ''}
+            </p>
+
+            <div className="modalGrid">
+              <label>
+                <span>Date</span>
+                <input
+                  type="date"
+                  value={interviewDate}
+                  onChange={(e) => setInterviewDate(e.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>Time</span>
+                <input
+                  type="time"
+                  value={interviewTime}
+                  onChange={(e) => setInterviewTime(e.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="modalButtons">
+              <button
+                className="btnSecondary"
+                onClick={() => setInterviewTutor(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="btnPrimary"
+                disabled={sendingInvite}
+                onClick={sendInterviewInvite}
+              >
+                {sendingInvite ? 'Sending...' : 'Send Interview'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{styles}</style>
     </main>
@@ -386,7 +792,7 @@ function DocumentLink({
 
 function CheckItem({ label, value }: { label: string; value: string }) {
   const clean = value.toLowerCase()
-  const good = clean.includes('agreed') || clean === 'verified'
+  const good = clean === 'agreed' || clean === 'verified'
 
   return (
     <div className="checkItem">
@@ -406,7 +812,11 @@ function StatusBadge({ label, value }: { label: string; value: string }) {
         ? 'badge bad'
         : 'badge warn'
 
-  return <span className={className}>{label}: {value}</span>
+  return (
+    <span className={className}>
+      {label}: {value}
+    </span>
+  )
 }
 
 function fileLabel(path: string | null) {
@@ -415,14 +825,32 @@ function fileLabel(path: string | null) {
   return fileName.length > 28 ? `${fileName.slice(0, 28)}...` : fileName
 }
 
-function formatDate(date: string | null) {
-  if (!date) return 'Not submitted'
+function formatDisplayDate(value?: string | null) {
+  if (!value) return 'Date not set'
 
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(date))
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(value))
+  } catch {
+    return value
+  }
+}
+
+function formatInterviewStatus(status?: string | null) {
+  if (!status) return 'Scheduled'
+
+  return status
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return 'Time not set'
+  return value.slice(0, 5)
 }
 
 const styles = `
@@ -479,7 +907,7 @@ const styles = `
   .kpiGrid {
     margin-top: 30px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
   }
 
@@ -591,6 +1019,85 @@ const styles = `
   .badge.bad {
     background: #fef3f2;
     color: #b42318;
+  }
+
+  .interviewBox {
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    padding: 20px;
+    border-radius: 26px;
+    background:
+      radial-gradient(circle at top right, rgba(124,58,237,0.16), transparent 36%),
+      linear-gradient(135deg, #ffffff, #fbf8ff);
+    border: 1px solid rgba(124,58,237,0.16);
+    box-shadow: 0 18px 45px rgba(71,43,117,0.08);
+  }
+
+  .interviewLabel {
+    margin: 0;
+    color: #6d28d9;
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .interviewBox h3 {
+    margin: 8px 0 0;
+    font-size: 24px;
+    font-weight: 950;
+    letter-spacing: -0.035em;
+  }
+
+  .interviewMeta {
+    margin: 6px 0 0;
+    color: #6f637e;
+    font-weight: 800;
+  }
+
+  .interviewActions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .joinInterviewButton,
+  .rescheduleButton,
+  .completeButton,
+  .cancelButton {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 950;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .joinInterviewButton {
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    border: 0;
+  }
+
+  .rescheduleButton,
+  .completeButton {
+    color: #351e55;
+    background: white;
+    border: 1px solid rgba(124,58,237,0.16);
+  }
+
+  .cancelButton {
+    color: #b42318;
+    background: #fff7f7;
+    border: 1px solid rgba(180,35,24,0.18);
   }
 
   .docPanel {
@@ -741,6 +1248,11 @@ const styles = `
     box-shadow: 0 16px 38px rgba(124,58,237,0.24);
   }
 
+  .btnPrimary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
   .btnSecondary {
     color: #351e55;
     background: white;
@@ -767,6 +1279,73 @@ const styles = `
   .emptyState p {
     margin: 10px 0 0;
     color: #6f637e;
+  }
+
+  .modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(25, 14, 39, 0.48);
+    display: grid;
+    place-items: center;
+    z-index: 5000;
+    padding: 18px;
+    backdrop-filter: blur(10px);
+  }
+
+  .modalCard {
+    width: min(540px, 100%);
+    background: white;
+    border-radius: 30px;
+    padding: 34px;
+    box-shadow: 0 35px 100px rgba(0,0,0,.18);
+    border: 1px solid rgba(124,58,237,0.12);
+  }
+
+  .modalCard h2 {
+    margin: 10px 0 0;
+    font-size: 34px;
+    line-height: 1.05;
+    font-weight: 950;
+    letter-spacing: -0.045em;
+  }
+
+  .modalCard p {
+    margin: 12px 0 26px;
+    color: #6f637e;
+    line-height: 1.55;
+  }
+
+  .modalGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .modalGrid label {
+    display: grid;
+    gap: 8px;
+  }
+
+  .modalGrid span {
+    font-size: 13px;
+    font-weight: 950;
+    color: #351e55;
+  }
+
+  .modalGrid input {
+    width: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #ddd2ef;
+    font-size: 16px;
+    outline: none;
+  }
+
+  .modalButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-top: 28px;
   }
 
   @media (max-width: 980px) {
@@ -796,23 +1375,34 @@ const styles = `
     }
 
     .cardTop,
-    .docHeader {
+    .docHeader,
+    .interviewBox {
       align-items: flex-start;
       flex-direction: column;
     }
 
-    .badgeWrap {
+    .badgeWrap,
+    .interviewActions {
       justify-content: flex-start;
     }
 
-    .actions {
+    .actions,
+    .modalButtons {
       flex-direction: column;
     }
 
     .btnPrimary,
     .btnSecondary,
-    .btnDanger {
+    .btnDanger,
+    .joinInterviewButton,
+    .rescheduleButton,
+    .completeButton,
+    .cancelButton {
       width: 100%;
+    }
+
+    .modalGrid {
+      grid-template-columns: 1fr;
     }
 
     .docCard {
