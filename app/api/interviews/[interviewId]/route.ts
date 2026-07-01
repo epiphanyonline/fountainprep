@@ -40,7 +40,7 @@ export async function GET(
       )
     }
 
-    const jitsiRoomUrl = `https://meet.jit.si/fountainprep-interview-${interview.id}`
+    const jitsiRoomUrl = `https://meet.jit.si/fountainprep-interview-${interview.id}#config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.startWithAudioMuted=false&config.startWithVideoMuted=false`
 
     return NextResponse.json({
       interview: {

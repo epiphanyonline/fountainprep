@@ -14,18 +14,23 @@ export default function ParentSignupPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSignup(e: React.FormEvent) {
+  async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
-    const { error } = await supabase.auth.signUp({
-      email,
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanName = fullName.trim()
+
+    await supabase.auth.signOut()
+
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
       password,
       options: {
         data: {
           role: 'PARENT',
-          full_name: fullName,
+          full_name: cleanName,
           phone,
           country,
           timezone,
@@ -39,12 +44,35 @@ export default function ParentSignupPage() {
       return
     }
 
+    const userId = data.user?.id
+
+    if (userId) {
+      await supabase.from('user_profiles').upsert({
+        id: userId,
+        email: cleanEmail,
+        role: 'PARENT',
+        full_name: cleanName,
+        phone,
+        country,
+        timezone,
+        is_active: true,
+      })
+
+      await supabase.from('parent_profiles').upsert({
+        user_id: userId,
+        full_name: cleanName,
+        phone,
+        country,
+        timezone,
+      })
+    }
+
     await sendEmail({
-      to: email,
+      to: cleanEmail,
       subject: 'Welcome to Fountain Prep',
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241235">
-          <h2>Welcome to Fountain Prep, ${escapeHtml(fullName)}</h2>
+          <h2>Welcome to Fountain Prep, ${escapeHtml(cleanName)}</h2>
           <p>Your parent account has been created.</p>
           <p>Next steps:</p>
           <ol>
@@ -76,12 +104,44 @@ export default function ParentSignupPage() {
           </p>
 
           <div className="form-stack" style={{ marginTop: 20 }}>
-            <input placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            <input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <input value={country} onChange={(e) => setCountry(e.target.value)} />
-            <input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input
+              placeholder="Full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
+
+            <input
+              placeholder="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+
+            <input
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+            />
+
+            <input
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            />
+
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+
+            <input
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
 
             <button className="btn-primary" disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}

@@ -131,7 +131,10 @@ const res = await fetch(`/api/interviews/${interviewId}?token=${token || ''}`, {
           </div>
 
           <a
-            href={interview.meeting_link || `https://meet.jit.si/fountainprep-interview-${interview.id}`}
+            href={
+  interview.meeting_link ||
+  `https://meet.jit.si/fountainprep-interview-${interview.id}#config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.startWithAudioMuted=false&config.startWithVideoMuted=false`
+}
             target="_blank"
             rel="noopener noreferrer"
             className="joinButton"
