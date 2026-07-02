@@ -6,6 +6,15 @@ import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { sendEmail } from '../../lib/email'
 
+const locationOptions = [
+  { country: 'Nigeria', timezone: 'Africa/Lagos' },
+  { country: 'United Kingdom', timezone: 'Europe/London' },
+  { country: 'United States', timezone: 'America/New_York' },
+  { country: 'Canada', timezone: 'America/Toronto' },
+  { country: 'Australia', timezone: 'Australia/Sydney' },
+  { country: 'Other', timezone: 'UTC' },
+]
+
 export default function TutorSignupPage() {
   const router = useRouter()
 
@@ -18,18 +27,27 @@ export default function TutorSignupPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
+  function handleCountryChange(value: string) {
+    const selected = locationOptions.find((item) => item.country === value)
+    setCountry(value)
+    setTimezone(selected?.timezone || 'UTC')
+  }
+
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanName = fullName.trim()
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         data: {
           role: 'TUTOR',
-          full_name: fullName,
+          full_name: cleanName,
           phone,
           country,
           timezone,
@@ -44,11 +62,11 @@ export default function TutorSignupPage() {
     }
 
     await sendEmail({
-      to: email,
+      to: cleanEmail,
       subject: 'Welcome to Fountain Prep Tutor Portal',
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241235">
-          <h2>Welcome to Fountain Prep, ${escapeHtml(fullName)}</h2>
+          <h2>Welcome to Fountain Prep, ${escapeHtml(cleanName)}</h2>
           <p>Your tutor account has been created.</p>
           <p>Next steps:</p>
           <ol>
@@ -99,10 +117,21 @@ export default function TutorSignupPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <input placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <input placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} required />
+
+              <select value={country} onChange={(e) => handleCountryChange(e.target.value)} required>
+                {locationOptions.map((item) => (
+                  <option key={item.country} value={item.country}>
+                    {item.country}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <input placeholder="Timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} required />
+
+            <p style={{ margin: '-6px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+              We use this to show lesson times correctly.
+            </p>
 
             <div className="panel" style={{ padding: 18, marginTop: 4 }}>
               <p style={{ margin: 0, fontWeight: 700 }}>What happens next?</p>

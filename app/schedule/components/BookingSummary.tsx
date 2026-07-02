@@ -1,6 +1,12 @@
 import type { BookingFrequency, BookingSummaryItem } from './ScheduleTypes'
 import { formatShortDate } from './scheduleUtils'
 
+type CurrencyDisplay = {
+  symbol: string
+  code: string
+  rate: number
+}
+
 type Props = {
   planName: string
   totalAmount: number
@@ -10,6 +16,7 @@ type Props = {
   bookingSummary: BookingSummaryItem[]
   saving: boolean
   canContinue: boolean
+  currency: CurrencyDisplay
   onContinue: () => void
   onBack: () => void
 }
@@ -19,13 +26,15 @@ export function BookingSummary({
   totalAmount,
   totalLessonsRequired,
   requiredSlotCount,
-  frequency,
   bookingSummary,
   saving,
   canContinue,
+  currency,
   onContinue,
   onBack,
 }: Props) {
+  const localTotal = `${currency.symbol}${Math.round(totalAmount * currency.rate)}`
+
   return (
     <aside className="sideCard">
       <p className="eyebrow">Weekly timetable summary</p>
@@ -33,7 +42,7 @@ export function BookingSummary({
 
       <div className="totalBox">
         <p>Total due</p>
-        <strong>£{totalAmount}</strong>
+        <strong>{localTotal}</strong>
         <span>{totalLessonsRequired} private 1-to-1 lessons</span>
       </div>
 
@@ -79,4 +88,3 @@ export function BookingSummary({
     </aside>
   )
 }
-

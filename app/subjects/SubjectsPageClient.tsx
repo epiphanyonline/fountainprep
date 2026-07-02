@@ -918,7 +918,7 @@ function CatalogueGrid({
 
             <div className="subject-actions">
               <Link href={viewCurriculumHref} className="btn-curriculum">
-                View Curriculum
+                See What They’ll Learn
               </Link>
 
               {!isLoggedIn ? (
@@ -926,25 +926,22 @@ function CatalogueGrid({
                   <Link href="/signup/parent" className="btn-secondary">
                     Create Profile
                   </Link>
-                  <Link href="/pricing" className="btn-primary">
-                    View Learning Plans
-                  </Link>
+                  <Link href="/signup/parent" className="btn-primary">
+  Create Parent Profile
+</Link>
                 </>
               ) : personalised && studentId ? (
                 <Link
                   href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
                   className="btn-primary"
                 >
-                  Continue to Learning Plans
+                  Choose This Subject
                 </Link>
               ) : (
                 <>
                   <Link href="/parent/students" className="btn-primary">
-                    Start Learning Plan
-                  </Link>
-                  <Link href="/pricing" className="btn-secondary">
-                    View Plans
-                  </Link>
+                    Choose This Subject
+                  </Link>                  
                 </>
               )}
             </div>
@@ -1134,7 +1131,7 @@ function ProgramGrid({
 
             <div className="program-actions">
               <Link href={viewCurriculumHref} className="btn-curriculum">
-                View Curriculum
+                See What They’ll Learn
               </Link>
 
               {!isLoggedIn ? (
@@ -1146,11 +1143,11 @@ function ProgramGrid({
                   href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
                   className="btn-primary"
                 >
-                  Continue to Learning Plans
+                  Choose This Subject
                 </Link>
               ) : (
                 <Link href="/parent/students" className="btn-primary">
-                  Start Learning Plan
+                  Choose This Subject
                 </Link>
               )}
             </div>

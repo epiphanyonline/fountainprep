@@ -51,6 +51,38 @@ const subjectLabels: Record<string, string> = {
   language: 'Language',
 }
 
+type CurrencyDisplay = {
+  symbol: string
+  code: string
+  rate: number
+}
+
+const currencyTable: Record<string, CurrencyDisplay> = {
+  UK: {
+    symbol: '£',
+    code: 'GBP',
+    rate: 1,
+  },
+
+  USA: {
+    symbol: '$',
+    code: 'USD',
+    rate: 1.27,
+  },
+
+  Canada: {
+    symbol: 'CA$',
+    code: 'CAD',
+    rate: 1.72,
+  },
+
+  Australia: {
+    symbol: 'A$',
+    code: 'AUD',
+    rate: 1.93,
+  },
+}
+
 export default function PricingPage() {
   return (
     <Suspense fallback={<PricingLoading />}>
@@ -68,6 +100,9 @@ function PricingContent() {
   const programId = searchParams.get('programId')
 
   const [student, setStudent] = useState<Student | null>(null)
+  const [currency, setCurrency] = useState<CurrencyDisplay>(
+  currencyTable.UK
+)
   const [loadingStudent, setLoadingStudent] = useState(true)
 
   const hasBookingContext = Boolean(studentId && subjectId)
@@ -100,11 +135,22 @@ function PricingContent() {
       }
 
       setStudent(data as Student)
-      setLoadingStudent(false)
+
+if (data.country_system && currencyTable[data.country_system]) {
+  setCurrency(currencyTable[data.country_system])
+}
+
+setLoadingStudent(false)
     }
 
     loadStudent()
   }, [studentId])
+
+  function convertPrice(gbp: number) {
+  const converted = Math.round(gbp * currency.rate)
+
+  return `${currency.symbol}${converted}`
+}
 
   function handleChoosePlan(planId: string) {
     if (!studentId || !subjectId) {
@@ -146,7 +192,7 @@ function PricingContent() {
 
         <div className="heroBadges">
           <span>✓ Private 1-to-1 lessons</span>
-          <span>✓ From £10/class</span>
+          <span>✓ From {convertPrice(10)}/class</span>
           <span>✓ Save with 3-month plan</span>
         </div>
 
@@ -218,7 +264,9 @@ function PricingContent() {
               <h2>{plan.title}</h2>
 
               <div className="priceBlock">
-                <p className="price">{plan.price}</p>
+                <p className="price">
+  {plan.id === 'monthly' ? convertPrice(10) : convertPrice(9)}
+</p>
                 <p className="priceSub">{plan.sub}</p>
               </div>
 
@@ -229,7 +277,10 @@ function PricingContent() {
                   <strong>Sessions:</strong> {plan.sessions}
                 </p>
                 <p>
-                  <strong>Total:</strong> {plan.total}
+                  <strong>Total:</strong>{' '}
+{plan.id === 'monthly'
+  ? `From ${convertPrice(40)}/month`
+  : `From ${convertPrice(108)} per 3 months`}
                 </p>
                 <p>
                   <strong>Best for:</strong> {plan.outcome}
@@ -254,9 +305,8 @@ function PricingContent() {
             <p className="eyebrow">What parents get</p>
             <h2>Private tutoring with structure, clarity, and value.</h2>
             <p>
-              At £10 per class, Fountain Prep gives families private learning
-              support at a price that remains far more affordable than many UK
-              tutoring options.
+              At {convertPrice(10)} per class, Fountain Prep gives families private learning
+support at a price that remains far more affordable than many UK tutoring options.
             </p>
           </div>
 

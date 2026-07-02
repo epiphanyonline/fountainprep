@@ -64,10 +64,10 @@ export default function HomePage() {
 
           <div className="fp-actions">
             <Link href="/parent/students" className="fp-primary">
-              Start with your child
+              Add Your Child
             </Link>
             <Link href="/subjects" className="fp-secondary">
-              Explore subjects
+              Browse Subjects
             </Link>
           </div>
 
@@ -223,10 +223,10 @@ export default function HomePage() {
 
         <div className="fp-actions centered-actions">
           <Link href="/parent/students" className="fp-primary">
-            Start with your child
+            Add Your Child
           </Link>
           <Link href="/subjects" className="fp-secondary">
-            View subjects
+            Browse Subjects
           </Link>
         </div>
       </section>

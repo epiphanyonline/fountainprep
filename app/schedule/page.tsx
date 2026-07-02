@@ -59,6 +59,11 @@ function ScheduleContent() {
   const programId = searchParams.get('programId')
   const planIdParam = searchParams.get('planId') || 'monthly'
   const planId = planIdParam === 'three_month' ? 'three_month' : 'monthly'
+  const [currency, setCurrency] = useState({
+  symbol: '£',
+  code: 'GBP',
+  rate: 1,
+})
 
   const [student, setStudent] = useState<Student | null>(null)
   const [subjectName, setSubjectName] = useState('Selected subject')
@@ -127,14 +132,27 @@ function ScheduleContent() {
   }, [activeTimesTutorId, tutorGroups])
 
   const bookingSummary = useMemo<BookingSummaryItem[]>(() => {
-    return selectedSlots.slice(0, requiredSlotCount).map((slot) => ({
-      id: slot.id,
-      tutor: slot.tutor_profiles?.full_name || 'Approved tutor',
-      weekday: getWeekdayName(slot.slot_date),
-      timeRange: slotTimeRange(slot),
-      startDate: slot.slot_date,
-      dates: Array.from({ length: weeksToBook }).map((_, i) => addWeeks(slot.slot_date, i)),
-    }))
+    return selectedSlots.map((slot, index) => ({
+  id: slot.id,
+
+  label:
+    frequency === 'TWO_DAYS_WEEKLY'
+      ? `Weekly Lesson ${index + 1}`
+      : 'Weekly Lesson',
+
+  tutor: slot.tutor_profiles?.full_name ?? '',
+
+  weekday: getWeekdayName(slot.slot_date),
+
+  timeRange: slotTimeRange(slot),
+
+  startDate: slot.slot_date,
+
+  dates: Array.from(
+    { length: weeksToBook },
+    (_, week) => addWeeks(slot.slot_date, week)
+  ),
+}))
   }, [selectedSlots, requiredSlotCount, weeksToBook])
 
   useEffect(() => {
@@ -179,6 +197,17 @@ function ScheduleContent() {
       }
 
       setStudent(studentRow as Student)
+
+      const countryCurrencyTable: Record<string, { symbol: string; code: string; rate: number }> = {
+  UK: { symbol: '£', code: 'GBP', rate: 1 },
+  USA: { symbol: '$', code: 'USD', rate: 1.27 },
+  Canada: { symbol: 'CA$', code: 'CAD', rate: 1.72 },
+  Australia: { symbol: 'A$', code: 'AUD', rate: 1.93 },
+}
+
+if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]) {
+  setCurrency(countryCurrencyTable[studentRow.country_system])
+}
 
       const { data: levelRows } = await supabase
         .from('learning_levels')
@@ -324,6 +353,10 @@ function ScheduleContent() {
     loadData()
   }, [router, studentId, subjectIdParam, planId])
 
+  function convertPrice(gbp: number) {
+  return `${currency.symbol}${Math.round(gbp * currency.rate)}`
+}
+
   function toggleSlot(slot: Slot) {
     setSelectedSlots((prev) => {
       const selected = prev.some((s) => s.id === slot.id)
@@ -454,7 +487,11 @@ function ScheduleContent() {
         <div className="summaryGrid">
           <SummaryCard label="Learner" value={student?.full_name || 'Selected learner'} />
           <SummaryCard label="Subject" value={subjectName} />
-          <SummaryCard label="Plan" value={planName} sub={`${totalLessonsRequired} lessons • £${totalAmount}`} />
+          <SummaryCard
+  label="Plan"
+  value={planName}
+  sub={`${totalLessonsRequired} lessons • ${convertPrice(totalAmount)}`}
+/>
         </div>
       </section>
 
@@ -478,12 +515,12 @@ function ScheduleContent() {
           <div className="frequencyBox">
             <button type="button" onClick={() => changeFrequency('WEEKLY_SAME_TIME')} className={frequency === 'WEEKLY_SAME_TIME' ? 'freq active' : 'freq'}>
               <strong>1 lesson weekly</strong>
-              <span>Choose one first lesson date • {weeksToBook} lessons • £{pricePerClass}/class</span>
+              <span>Choose one first lesson date • {weeksToBook} lessons • {convertPrice(pricePerClass)}/class</span>
             </button>
 
             <button type="button" onClick={() => changeFrequency('TWO_DAYS_WEEKLY')} className={frequency === 'TWO_DAYS_WEEKLY' ? 'freq active' : 'freq'}>
               <strong>2 lessons weekly</strong>
-              <span>Choose two first lesson dates • {weeksToBook * 2} lessons • £{pricePerClass}/class</span>
+              <span>Choose two first lesson dates • {weeksToBook * 2} lessons • {convertPrice(pricePerClass)}/class</span>
             </button>
           </div>
 
@@ -514,17 +551,18 @@ function ScheduleContent() {
         </div>
 
         <BookingSummary
-          planName={planName}
-          totalAmount={totalAmount}
-          totalLessonsRequired={totalLessonsRequired}
-          requiredSlotCount={requiredSlotCount}
-          frequency={frequency}
-          bookingSummary={bookingSummary}
-          saving={saving}
-          canContinue={selectedSlots.length >= requiredSlotCount}
-          onContinue={continueToPayment}
-          onBack={goBackToPricing}
-        />
+  planName={planName}
+  totalAmount={totalAmount}
+  totalLessonsRequired={totalLessonsRequired}
+  requiredSlotCount={requiredSlotCount}
+  frequency={frequency}
+  bookingSummary={bookingSummary}
+  saving={saving}
+  canContinue={selectedSlots.length >= requiredSlotCount}
+  currency={currency}
+  onContinue={continueToPayment}
+  onBack={goBackToPricing}
+/>
       </section>
 
       {activeTimesGroup && (
@@ -549,4 +587,3 @@ function ScheduleContent() {
     </main>
   )
 }
-

@@ -4,6 +4,15 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { sendEmail } from '../../lib/email'
 
+const locationOptions = [
+  { country: 'United Kingdom', timezone: 'Europe/London' },
+  { country: 'United States', timezone: 'America/New_York' },
+  { country: 'Canada', timezone: 'America/Toronto' },
+  { country: 'Australia', timezone: 'Australia/Sydney' },
+  { country: 'Nigeria', timezone: 'Africa/Lagos' },
+  { country: 'Other', timezone: 'UTC' },
+]
+
 export default function ParentSignupPage() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -13,6 +22,12 @@ export default function ParentSignupPage() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+
+  function handleCountryChange(value: string) {
+    const selected = locationOptions.find((item) => item.country === value)
+    setCountry(value)
+    setTimezone(selected?.timezone || 'UTC')
+  }
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -117,15 +132,24 @@ export default function ParentSignupPage() {
               onChange={(e) => setPhone(e.target.value)}
             />
 
-            <input
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-            />
+            <select value={country} onChange={(e) => handleCountryChange(e.target.value)} required>
+              {locationOptions.map((item) => (
+                <option key={item.country} value={item.country}>
+                  {item.country}
+                </option>
+              ))}
+            </select>
 
             <input
+              placeholder="Timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
+              required
             />
+
+            <p style={{ margin: '-6px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+              We use this to show lesson times and pricing correctly.
+            </p>
 
             <input
               type="email"
