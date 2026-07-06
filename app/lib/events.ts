@@ -271,6 +271,7 @@ export async function onTutorInterviewInvite({
   tutorEmail,
   interviewDate,
   interviewTime,
+  interviewEndTime,
   interviewLink,
 }: {
   tutorUserId: string
@@ -278,13 +279,18 @@ export async function onTutorInterviewInvite({
   tutorEmail?: string | null
   interviewDate: string
   interviewTime: string
+  interviewEndTime?: string
   interviewLink: string
 }) {
+  const timeRange = interviewEndTime
+    ? `${interviewTime} – ${interviewEndTime}`
+    : interviewTime
+
   await createNotification({
     userId: tutorUserId,
     role: 'tutor',
     title: 'Tutor interview invitation',
-    message: `You have been invited for a Fountain Prep tutor interview on ${interviewDate} at ${interviewTime}.`,
+    message: `You have been invited for a Fountain Prep tutor interview on ${interviewDate} at ${timeRange}.`,
     type: 'tutor_interview',
     link: interviewLink || '/tutor/dashboard',
   })
@@ -300,7 +306,8 @@ export async function onTutorInterviewInvite({
 
           <div style="background:#f6f1ff;border:1px solid #e6d8ff;border-radius:18px;padding:18px;margin:20px 0">
             <p><strong>Date:</strong> ${escapeHtml(interviewDate)}</p>
-            <p><strong>Time:</strong> ${escapeHtml(interviewTime)}</p>
+            <p><strong>Time:</strong> ${escapeHtml(timeRange)}</p>
+            <p style="margin:0;color:#6b5b7a">UK time (Europe/London)</p>
           </div>
 
           <p>
@@ -311,8 +318,52 @@ export async function onTutorInterviewInvite({
 
           <p>Please be ready to discuss your teaching experience, availability, subject strengths, safeguarding awareness, and how you support children in 1-to-1 lessons.</p>
 
-          <p>Thank you,<br/>Fountain Prep</p>
-        </div>
+<p style="margin-top:28px">
+  Kind regards,<br/>
+  <strong>The Fountain Prep Recruitment Team</strong>
+</p>
+
+<hr style="border:none;border-top:1px solid #ebe7f7;margin:32px 0 24px" />
+
+<div style="font-size:14px;color:#5b5672;line-height:1.7">
+  <strong style="display:block;font-size:18px;color:#241235;margin-bottom:8px">
+    Fountain Prep
+  </strong>
+
+  Private 1-to-1 tutoring helping families around the world build confidence in academics, culture and language.
+
+  <br><br>
+
+  🌍
+  <a href="https://www.fountainprep.com"
+     style="color:#6d28d9;text-decoration:none;font-weight:700">
+    www.fountainprep.com
+  </a>
+
+  <br>
+
+  📧
+  <a href="mailto:support@fountainprep.com"
+     style="color:#6d28d9;text-decoration:none;font-weight:700">
+    support@fountainprep.com
+  </a>
+
+  <br><br>
+
+  <div style="background:#f7f3ff;border:1px solid #e5d8ff;border-radius:14px;padding:14px">
+    Need help?
+
+    Simply reply to this email or contact
+    <a href="mailto:support@fountainprep.com"
+       style="color:#6d28d9;font-weight:700;text-decoration:none">
+      support@fountainprep.com
+    </a>.
+  </div>
+
+  <p style="margin-top:18px;color:#8b85a3;font-size:12px">
+    © ${new Date().getFullYear()} Fountain Prep. All rights reserved.
+  </p>
+</div>
       `,
     })
   }

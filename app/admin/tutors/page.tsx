@@ -57,7 +57,9 @@ export default function AdminTutorsPage() {
     new Date().toISOString().slice(0, 10)
   )
   const [interviewTime, setInterviewTime] = useState('18:00')
+  const [interviewEndTime, setInterviewEndTime] = useState('18:30')
   const [sendingInvite, setSendingInvite] = useState(false)
+  const [search, setSearch] = useState('')
 
   async function signedUrl(path: string | null) {
     if (!path) return null
@@ -271,13 +273,14 @@ export default function AdminTutorsPage() {
       const { error: updateError } = await supabase
         .from('tutor_interviews')
         .update({
-          interview_date: interviewDate,
-          interview_time: interviewTime,
-          tutor_name: interviewTutor.full_name,
-          tutor_email: interviewTutor.email,
-          interview_link: interviewLink,
-          updated_at: new Date().toISOString(),
-        })
+  interview_date: interviewDate,
+  interview_time: interviewTime,
+  interview_end_time: interviewEndTime,
+  tutor_name: interviewTutor.full_name,
+  tutor_email: interviewTutor.email,
+  interview_link: interviewLink,
+  updated_at: new Date().toISOString(),
+})
         .eq('id', interviewId)
 
       if (updateError) {
@@ -293,6 +296,7 @@ export default function AdminTutorsPage() {
           tutor_email: interviewTutor.email,
           interview_date: interviewDate,
           interview_time: interviewTime,
+          interview_end_time: interviewEndTime,
           interview_link: '',
           status: 'SCHEDULED',
         })
@@ -325,6 +329,7 @@ export default function AdminTutorsPage() {
       tutorEmail: interviewTutor.email,
       interviewDate,
       interviewTime,
+      interviewEndTime,
       interviewLink,
     })
 
@@ -474,6 +479,19 @@ export default function AdminTutorsPage() {
     [tutors]
   )
 
+  const filteredTutors = useMemo(() => {
+  const query = search.trim().toLowerCase()
+
+  if (!query) return tutors
+
+  return tutors.filter((tutor) => {
+    return (
+      tutor.full_name.toLowerCase().includes(query) ||
+      (tutor.email ?? '').toLowerCase().includes(query)
+    )
+  })
+}, [tutors, search])
+
   return (
     <main className="page">
       <section className="hero">
@@ -498,8 +516,39 @@ export default function AdminTutorsPage() {
         {loading && <p className="message">Loading tutors...</p>}
         {message && <p className="message">{message}</p>}
 
+        <div
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 16,
+    flexWrap: 'wrap',
+  }}
+>
+  <input
+    type="text"
+    placeholder="Search tutor by name or email..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    style={{
+      width: '100%',
+      maxWidth: 420,
+      padding: '14px 18px',
+      borderRadius: 14,
+      border: '1px solid #ddd6fe',
+      fontSize: 16,
+      outline: 'none',
+    }}
+  />
+
+  <span style={{ color: '#6b7280', fontWeight: 600 }}>
+    {filteredTutors.length} tutor{filteredTutors.length !== 1 ? 's' : ''} found
+  </span>
+</div>
+
         <div className="tutorGrid">
-          {tutors.map((tutor) => (
+          {filteredTutors.map((tutor) => (
             <article key={tutor.id} className="tutorCard">
               <div className="cardTop">
                 <div>
@@ -700,25 +749,33 @@ export default function AdminTutorsPage() {
             </p>
 
             <div className="modalGrid">
-              <label>
-                <span>Date</span>
-                <input
-                  type="date"
-                  value={interviewDate}
-                  onChange={(e) => setInterviewDate(e.target.value)}
-                />
-              </label>
+  <label>
+    <span>Date</span>
+    <input
+      type="date"
+      value={interviewDate}
+      onChange={(e) => setInterviewDate(e.target.value)}
+    />
+  </label>
 
-              <label>
-                <span>Time</span>
-                <input
-                  type="time"
-                  value={interviewTime}
-                  onChange={(e) => setInterviewTime(e.target.value)}
-                />
-              </label>
-            </div>
+  <label>
+    <span>Start time</span>
+    <input
+      type="time"
+      value={interviewTime}
+      onChange={(e) => setInterviewTime(e.target.value)}
+    />
+  </label>
 
+  <label>
+    <span>End time</span>
+    <input
+      type="time"
+      value={interviewEndTime}
+      onChange={(e) => setInterviewEndTime(e.target.value)}
+    />
+  </label>
+</div>
             <div className="modalButtons">
               <button
                 className="btnSecondary"

@@ -379,6 +379,10 @@ export default function AdminBookingsPage() {
                       />
                     </td>
 
+                    <p style={{ color: 'red', fontWeight: 700 }}>
+  Showing {filteredBookings.length} bookings
+</p>
+
                     <td style={styles.td}>
                       <Badge
                         text={progressNotes[booking.id] ? 'Submitted' : 'Missing'}

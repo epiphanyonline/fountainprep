@@ -3,6 +3,7 @@ export type EmailInput = {
   subject: string
   html: string
   text?: string
+  replyTo?: string
 }
 
 export async function sendEmail(input: EmailInput) {
