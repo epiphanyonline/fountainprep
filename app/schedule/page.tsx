@@ -238,12 +238,11 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
       const allowedLevelIds = new Set<string>()
 
       if (isLanguageSubject) {
-        if (allAgesLevel?.id) allowedLevelIds.add(allAgesLevel.id)
-        allowedLevelIds.add(studentRow.learning_level_id)
-      } else {
-        allowedLevelIds.add(studentRow.learning_level_id)
-        if (allAgesLevel?.id) allowedLevelIds.add(allAgesLevel.id)
-      }
+  levels.forEach((level) => allowedLevelIds.add(level.id))
+} else {
+  allowedLevelIds.add(studentRow.learning_level_id)
+  if (allAgesLevel?.id) allowedLevelIds.add(allAgesLevel.id)
+}
 
       const minimumNoticeDate = new Date()
       minimumNoticeDate.setHours(minimumNoticeDate.getHours() + FIRST_LESSON_NOTICE_HOURS)

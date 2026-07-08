@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       if (paymentUpdateError) throw paymentUpdateError
 
       const { error: bookingUpdateError } = await supabaseAdmin
-        .from('bookings')
+        .from('lesson_bookings')
         .update({
           status: 'CONFIRMED',
           payment_status: 'PAID',
