@@ -117,9 +117,10 @@ export default function RootLayout({
       </head>
 
       <body>
-        <Navbar />
-        {children}
-      </body>
+  <Navbar />
+  {children}
+  <Analytics />
+</body>
     </html>
   )
 }
