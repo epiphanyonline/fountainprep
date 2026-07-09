@@ -63,6 +63,13 @@ type TutorEarning = {
 
 const adminActions = [
   {
+  title: 'Business Intelligence',
+  text: 'Monitor platform growth, revenue, bookings, analytics and performance.',
+  href: '/admin/bi',
+  tag: 'Analytics',
+},
+
+  {
     title: 'Messages & Support',
     text: 'Handle enquiries, complaints, parent notes, tutor issues and safeguarding reports.',
     href: '/admin/messages',
@@ -129,6 +136,7 @@ export default function AdminDashboardPage() {
     { label: 'Payments', href: '/admin/payments' },
     { label: 'Reports', href: '/admin/reports' },
     { label: 'Tutors', href: '/admin/tutors' },
+    { label: 'Business Intelligence', href: '/admin/bi' },
   ]
 
   useEffect(() => {
@@ -361,6 +369,12 @@ export default function AdminDashboardPage() {
           <Link href="/admin/messages" className="primaryLink">Open Messages</Link>
           <Link href="/admin/tutors" className="secondaryLink">Review Tutors</Link>
           <Link href="/admin/bookings" className="secondaryLink">View Bookings</Link>
+          <Link
+    href="/admin/bi"
+    className="secondaryLink"
+>
+    Business Intelligence
+</Link>
         </div>
 
         <div className="kpiGrid">

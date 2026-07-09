@@ -3,45 +3,93 @@
 import Link from 'next/link'
 import SupportWidget from './components/SupportWidget'
 
-const subjects = ['Maths', 'English', 'Science', 'Coding', 'Yoruba', 'Igbo', 'Hausa', 'Music']
-
 const trustItems = [
-  'Private 1-to-1 lessons',
-  'Structured curriculum',
-  'Parent progress updates',
+  'African language specialists',
+  'Academic excellence',
+  'Progress reports after every lesson',
+  'Learn from anywhere',
 ]
 
 const features = [
   {
-    title: 'Private attention',
-    text: 'Your child gets focused support from a tutor who can adapt to their pace, confidence and learning gaps.',
+    icon: '👨‍🏫',
+    title: 'Private one-to-one lessons',
+    text: 'No crowded group classes. Every lesson is focused on one child, one tutor and one learning goal.',
   },
   {
-    title: 'Structured curriculum',
-    text: 'Lessons follow clear learning pathways, so parents can see progression instead of random tutoring sessions.',
+    icon: '📈',
+    title: 'Progress parents can see',
+    text: 'Parents receive clearer updates on what was taught, what improved and what the next lesson will focus on.',
   },
   {
-    title: 'Progress you can see',
-    text: 'Parents receive clearer updates on what was taught, what improved and what needs more practice.',
+    icon: '🧭',
+    title: 'Structured learning',
+    text: 'Lessons follow clear learning pathways, so tutoring feels purposeful rather than random.',
+  },
+  {
+    icon: '🌍',
+    title: 'Learn from anywhere',
+    text: 'Children can learn online with experienced tutors wherever your family lives.',
   },
 ]
 
 const steps = [
   {
     number: '01',
-    title: 'Add your child',
-    text: 'Create a simple profile with their age, class level and learning need.',
+    title: 'Choose a language or subject',
+    text: 'Start with African languages or academic tutoring based on your child’s need.',
   },
   {
     number: '02',
-    title: 'Choose a subject',
-    text: 'Select academic tutoring, African languages, coding, music or creative learning.',
+    title: 'Tell us about your child',
+    text: 'Share your child’s age, level, goal and preferred learning time.',
   },
   {
     number: '03',
-    title: 'Book privately',
-    text: 'Choose a learning plan and book a convenient lesson time.',
+    title: 'Browse suitable tutors',
+    text: 'Explore available tutors before creating an account or booking.',
   },
+  {
+    number: '04',
+    title: 'Choose a timetable',
+    text: 'Select the first lesson date and keep the same weekly learning pattern.',
+  },
+  {
+    number: '05',
+    title: 'Create your free account',
+    text: 'Sign up only when you are ready to continue with booking.',
+  },
+  {
+    number: '06',
+    title: 'Start learning',
+    text: 'Your child begins private lessons with progress updates for parents.',
+  },
+]
+
+const languagePaths = [
+  {
+    title: 'Yoruba',
+    text: 'Help your child speak confidently with family and stay connected to their roots.',
+  },
+  {
+    title: 'Igbo',
+    text: 'Build vocabulary, pronunciation and cultural confidence through private lessons.',
+  },
+  {
+    title: 'Hausa',
+    text: 'Develop practical communication skills with experienced language tutors.',
+  },
+]
+
+const academicSubjects = ['Maths', 'English', 'Science', 'Coding', 'Music']
+
+const promiseItems = [
+  'One-to-one teaching',
+  'Lesson attendance',
+  'Homework support',
+  'Progress report',
+  'Next lesson objectives',
+  'Parent updates',
 ]
 
 export default function HomePage() {
@@ -51,25 +99,29 @@ export default function HomePage() {
         <div className="fp-hero-copy">
           <div className="fp-pill">
             <span />
-            Private 1-to-1 online tutoring
+            Premium one-to-one online tutoring
           </div>
 
-          <h1>Private tutoring that helps your child learn with confidence.</h1>
+          <h1>The learning partner for families around the world.</h1>
 
           <p className="fp-lead">
-            Fountain Prep gives children focused private lessons in academics,
-            African languages, coding, music and confidence-building skills —
-            supported by structured curriculum pathways and parent progress updates.
+            Connecting children to their language, culture and academic success
+            through premium one-to-one online tutoring.
           </p>
 
           <div className="fp-actions">
-            <Link href="/parent/students" className="fp-primary">
-              Add Your Child
+            <Link href="/start?type=language" className="fp-primary">
+              Choose a Language
             </Link>
-            <Link href="/subjects" className="fp-secondary">
-              Browse Subjects
+
+            <Link href="/start?type=academic" className="fp-secondary">
+              Explore Academic Subjects
             </Link>
           </div>
+
+          <p className="fp-browse-note">
+            
+          </p>
 
           <div className="fp-trust">
             {trustItems.map((item) => (
@@ -97,6 +149,59 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="fp-choice">
+        <div className="fp-section-head centered">
+          <p>Start here</p>
+          <h2>What would you like your child to learn today?</h2>
+        </div>
+
+        <div className="fp-choice-grid">
+          <article className="fp-choice-card">
+            <div className="fp-choice-icon">🌍</div>
+            <h3>African Languages</h3>
+            <p>
+              Preserve your family’s language and culture through engaging
+              private lessons.
+            </p>
+
+            <div className="fp-mini-list">
+              <span>Yoruba</span>
+              <span>Igbo</span>
+              <span>Hausa</span>
+            </div>
+
+            <em>More African languages coming soon.</em>
+
+            <Link href="/start?type=language" className="fp-card-link">
+              Find Language Tutors →
+            </Link>
+          </article>
+
+          <article className="fp-choice-card">
+            <div className="fp-choice-icon">📚</div>
+            <h3>Academic Subjects</h3>
+            <p>
+              Build confidence and improve school performance with structured
+              private tutoring.
+            </p>
+
+            <div className="fp-mini-list">
+              <span>Maths</span>
+              <span>English</span>
+              <span>Science</span>
+              <span>Coding</span>
+              <span>Music</span>
+            </div>
+
+            <em>More academic subjects coming soon.</em>
+
+            <Link href="/start?type=academic" className="fp-card-link secondary">
+              Explore Subjects →
+            </Link>
+          </article>
+        </div>
+      </section>
+
       <section className="fp-proof">
         <div>
           <strong>Private</strong>
@@ -121,6 +226,7 @@ export default function HomePage() {
         <div className="fp-feature-grid">
           {features.map((feature) => (
             <article className="fp-card" key={feature.title}>
+              <div className="fp-feature-icon">{feature.icon}</div>
               <h3>{feature.title}</h3>
               <p>{feature.text}</p>
             </article>
@@ -128,15 +234,102 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="fp-section">
+        <div className="fp-section-head centered">
+          <p>Simple parent journey</p>
+          <h2>Explore first, then book when ready.</h2>
+        </div>
+
+        <div className="fp-step-grid">
+          {steps.map((step) => (
+            <article className="fp-step" key={step.number}>
+              <span>{step.number}</span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="fp-learning-paths">
+        <div className="fp-section-head">
+          <p>Featured learning paths</p>
+          <h2>African languages and academic confidence in one platform.</h2>
+        </div>
+
+        <div className="fp-path-split">
+          <div className="fp-path-panel">
+            <div className="fp-path-top">
+              <span>🌍</span>
+              <div>
+                <h3>African Languages</h3>
+                <p>Available now</p>
+              </div>
+            </div>
+
+            <div className="fp-path-list">
+              {languagePaths.map((item) => (
+                <article key={item.title}>
+                  <strong>{item.title}</strong>
+                  <p>{item.text}</p>
+                  <small>Plans from £9</small>
+                </article>
+              ))}
+            </div>
+
+            <Link href="/start?type=language" className="fp-wide-link">
+              View language tutors →
+            </Link>
+          </div>
+
+          <div className="fp-path-panel">
+            <div className="fp-path-top">
+              <span>📚</span>
+              <div>
+                <h3>Academic Subjects</h3>
+                <p>Structured private support</p>
+              </div>
+            </div>
+
+            <div className="fp-subject-grid">
+              {academicSubjects.map((subject) => (
+                <Link
+                  href="/start?type=academic"
+                  key={subject}
+                  className="fp-subject"
+                >
+                  {subject}
+                </Link>
+              ))}
+            </div>
+
+            <div className="fp-price-note">
+              <strong>Plans from £9</strong>
+              <span>Private one-to-one lessons with progress visibility.</span>
+            </div>
+
+            <Link href="/start?type=academic" className="fp-wide-link secondary">
+              Explore academic tutoring →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="fp-value">
         <div>
-          <p>Parent confidence</p>
-          <h2>A better tutoring experience.</h2>
+          <p>The Fountain Prep Promise</p>
+          <h2>Every lesson should give parents confidence.</h2>
           <span>
             Parents want to know that tutoring is making a difference. Fountain Prep
             combines private teaching, curriculum structure and progress visibility
             so every lesson feels purposeful.
           </span>
+
+          <div className="fp-promise-grid">
+            {promiseItems.map((item) => (
+              <div key={item}>✓ {item}</div>
+            ))}
+          </div>
         </div>
 
         <div className="fp-report">
@@ -159,36 +352,6 @@ export default function HomePage() {
             <b>Next focus</b>
             <span>Fluency and sentence building</span>
           </div>
-        </div>
-      </section>
-
-      <section className="fp-section">
-        <div className="fp-section-head centered">
-          <p>Simple parent journey</p>
-          <h2>Start private tutoring in three easy steps.</h2>
-        </div>
-
-        <div className="fp-step-grid">
-          {steps.map((step) => (
-            <article className="fp-step" key={step.number}>
-              <span>{step.number}</span>
-              <h3>{step.title}</h3>
-              <p>{step.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="fp-subjects">
-        <p>Popular learning areas</p>
-        <h2>Academic subjects, African languages, coding and creative skills.</h2>
-
-        <div className="fp-subject-grid">
-          {subjects.map((subject) => (
-            <Link href="/subjects" key={subject} className="fp-subject">
-              {subject}
-            </Link>
-          ))}
         </div>
       </section>
 
@@ -215,18 +378,20 @@ export default function HomePage() {
       </section>
 
       <section className="fp-final">
-        <p>Start today</p>
-        <h2>Give your child focused private tutoring they can grow with.</h2>
+        <p>Fountain Prep</p>
+        <h2>The learning partner for families around the world.</h2>
         <span>
-          Add your child, choose a subject and book a trusted private tutor online.
+          Whether your goal is preserving your family’s language, strengthening
+          cultural identity or helping your child succeed academically, Fountain Prep
+          is here to support every step of the journey.
         </span>
 
         <div className="fp-actions centered-actions">
-          <Link href="/parent/students" className="fp-primary">
-            Add Your Child
+          <Link href="/start?type=language" className="fp-primary">
+            Choose a Language
           </Link>
-          <Link href="/subjects" className="fp-secondary">
-            Browse Subjects
+          <Link href="/start?type=academic" className="fp-secondary">
+            Explore Academic Subjects
           </Link>
         </div>
       </section>
@@ -244,10 +409,11 @@ export default function HomePage() {
         }
 
         .fp-hero,
+        .fp-choice,
         .fp-proof,
         .fp-section,
+        .fp-learning-paths,
         .fp-value,
-        .fp-subjects,
         .fp-support-strip,
         .fp-final {
           width: min(1160px, 100%);
@@ -294,8 +460,9 @@ export default function HomePage() {
 
         .fp-hero h1,
         .fp-section h2,
+        .fp-choice h2,
+        .fp-learning-paths h2,
         .fp-value h2,
-        .fp-subjects h2,
         .fp-support-strip h2,
         .fp-final h2 {
           margin: 0;
@@ -305,8 +472,8 @@ export default function HomePage() {
         }
 
         .fp-hero h1 {
-          max-width: 650px;
-          font-size: clamp(42px, 5.2vw, 70px);
+          max-width: 670px;
+          font-size: clamp(42px, 5.2vw, 72px);
           line-height: 0.96;
         }
 
@@ -327,7 +494,9 @@ export default function HomePage() {
         }
 
         .fp-primary,
-        .fp-secondary {
+        .fp-secondary,
+        .fp-card-link,
+        .fp-wide-link {
           min-height: 56px;
           padding: 0 26px;
           border-radius: 18px;
@@ -339,17 +508,28 @@ export default function HomePage() {
           font-weight: 950;
         }
 
-        .fp-primary {
+        .fp-primary,
+        .fp-card-link,
+        .fp-wide-link {
           color: #fff;
           background: linear-gradient(135deg, #7c3aed, #5b21b6);
           box-shadow: 0 18px 42px rgba(109, 40, 217, 0.28);
         }
 
-        .fp-secondary {
+        .fp-secondary,
+        .fp-card-link.secondary,
+        .fp-wide-link.secondary {
           color: #241535;
           background: #fff;
           border: 1px solid rgba(124, 58, 237, 0.16);
           box-shadow: 0 14px 34px rgba(55, 35, 95, 0.06);
+        }
+
+        .fp-browse-note {
+          margin: 14px 0 0;
+          color: #6b5b7a;
+          font-size: 14px;
+          font-weight: 850;
         }
 
         .fp-trust {
@@ -434,23 +614,132 @@ export default function HomePage() {
           bottom: 20px;
         }
 
-        .fp-proof {
-          margin-top: 18px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
+        .fp-choice,
+        .fp-section,
+        .fp-learning-paths {
+          margin-top: 78px;
         }
 
-        .fp-proof div,
+        .fp-section-head {
+          max-width: 780px;
+        }
+
+        .fp-section-head.centered {
+          text-align: center;
+          margin: 0 auto;
+        }
+
+        .fp-section-head p,
+        .fp-choice p,
+        .fp-learning-paths p,
+        .fp-value p,
+        .fp-support-strip p,
+        .fp-final p {
+          margin: 0 0 10px;
+          color: #6d28d9;
+          font-size: 14px;
+          font-weight: 950;
+        }
+
+        .fp-section h2,
+        .fp-choice h2,
+        .fp-learning-paths h2,
+        .fp-value h2,
+        .fp-support-strip h2,
+        .fp-final h2 {
+          font-size: clamp(34px, 4.3vw, 56px);
+          line-height: 1.04;
+        }
+
+        .fp-choice-grid {
+          margin-top: 26px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 18px;
+        }
+
+        .fp-choice-card,
         .fp-card,
         .fp-step,
         .fp-report,
-        .fp-subjects,
+        .fp-path-panel,
+        .fp-proof div,
+        .fp-value,
         .fp-support-strip,
         .fp-final {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(124, 58, 237, 0.1);
           box-shadow: 0 18px 48px rgba(55, 35, 95, 0.07);
+        }
+
+        .fp-choice-card {
+          padding: 30px;
+          border-radius: 32px;
+        }
+
+        .fp-choice-icon,
+        .fp-feature-icon {
+          width: 54px;
+          height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 18px;
+          background: #f3eaff;
+          font-size: 28px;
+          margin-bottom: 18px;
+        }
+
+        .fp-choice-card h3,
+        .fp-path-panel h3 {
+          margin: 0;
+          color: #241535;
+          font-size: 28px;
+          letter-spacing: -0.04em;
+          font-weight: 950;
+        }
+
+        .fp-choice-card p {
+          margin: 12px 0 0;
+          color: #6d647c;
+          font-size: 16px;
+          line-height: 1.7;
+        }
+
+        .fp-mini-list {
+          margin-top: 18px;
+          display: flex;
+          gap: 9px;
+          flex-wrap: wrap;
+        }
+
+        .fp-mini-list span {
+          padding: 9px 12px;
+          border-radius: 999px;
+          background: #f5efff;
+          color: #4c1d95;
+          font-weight: 900;
+          font-size: 13px;
+        }
+
+        .fp-choice-card em {
+          margin-top: 16px;
+          display: block;
+          color: #7a6d85;
+          font-style: normal;
+          font-weight: 800;
+        }
+
+        .fp-card-link {
+          width: 100%;
+          margin-top: 22px;
+        }
+
+        .fp-proof {
+          margin-top: 18px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 14px;
         }
 
         .fp-proof div {
@@ -472,43 +761,10 @@ export default function HomePage() {
           line-height: 1.55;
         }
 
-        .fp-section {
-          margin-top: 78px;
-        }
-
-        .fp-section-head {
-          max-width: 780px;
-        }
-
-        .fp-section-head.centered {
-          text-align: center;
-          margin: 0 auto;
-        }
-
-        .fp-section-head p,
-        .fp-value p,
-        .fp-subjects p,
-        .fp-support-strip p,
-        .fp-final p {
-          margin: 0 0 10px;
-          color: #6d28d9;
-          font-size: 14px;
-          font-weight: 950;
-        }
-
-        .fp-section h2,
-        .fp-value h2,
-        .fp-subjects h2,
-        .fp-support-strip h2,
-        .fp-final h2 {
-          font-size: clamp(34px, 4.3vw, 56px);
-          line-height: 1.04;
-        }
-
         .fp-feature-grid {
           margin-top: 26px;
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 16px;
         }
 
@@ -536,6 +792,135 @@ export default function HomePage() {
           line-height: 1.68;
         }
 
+        .fp-step-grid {
+          margin-top: 26px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+
+        .fp-step span {
+          display: inline-flex;
+          margin-bottom: 18px;
+          color: #6d28d9;
+          font-size: 24px;
+          font-weight: 950;
+        }
+
+        .fp-path-split {
+          margin-top: 26px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 18px;
+        }
+
+        .fp-path-panel {
+          border-radius: 34px;
+          padding: 28px;
+        }
+
+        .fp-path-top {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        .fp-path-top span {
+          width: 54px;
+          height: 54px;
+          border-radius: 18px;
+          background: #f3eaff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+        }
+
+        .fp-path-top p {
+          margin: 4px 0 0;
+          color: #6d28d9;
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .fp-path-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .fp-path-list article {
+          padding: 18px;
+          border-radius: 22px;
+          background: #fff;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+        }
+
+        .fp-path-list strong {
+          display: block;
+          font-size: 20px;
+          color: #241535;
+          font-weight: 950;
+        }
+
+        .fp-path-list p {
+          margin: 8px 0 0;
+          color: #6d647c;
+          line-height: 1.6;
+          font-weight: 500;
+        }
+
+        .fp-path-list small {
+          display: inline-flex;
+          margin-top: 12px;
+          color: #6d28d9;
+          font-weight: 950;
+          font-size: 13px;
+        }
+
+        .fp-subject-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+
+        .fp-subject {
+          min-height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 18px;
+          color: #2a1640;
+          background: #fff;
+          text-decoration: none;
+          font-weight: 950;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          box-shadow: 0 12px 28px rgba(55, 35, 95, 0.05);
+        }
+
+        .fp-price-note {
+          margin-top: 18px;
+          padding: 18px;
+          border-radius: 22px;
+          background: #f7f1ff;
+          border: 1px solid #e5d8ff;
+        }
+
+        .fp-price-note strong,
+        .fp-price-note span {
+          display: block;
+        }
+
+        .fp-price-note span {
+          margin-top: 5px;
+          color: #6d647c;
+        }
+
+        .fp-wide-link {
+          width: 100%;
+          margin-top: 18px;
+        }
+
         .fp-value {
           margin-top: 78px;
           display: grid;
@@ -547,8 +932,6 @@ export default function HomePage() {
           background:
             radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 34%),
             linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 239, 255, 0.95));
-          border: 1px solid rgba(124, 58, 237, 0.11);
-          box-shadow: 0 24px 76px rgba(55, 35, 95, 0.08);
         }
 
         .fp-value span {
@@ -557,6 +940,23 @@ export default function HomePage() {
           color: #6d647c;
           font-size: 16.5px;
           line-height: 1.75;
+        }
+
+        .fp-promise-grid {
+          margin-top: 22px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        .fp-promise-grid div {
+          padding: 11px 13px;
+          border-radius: 16px;
+          background: #fff;
+          color: #574764;
+          font-size: 13px;
+          font-weight: 900;
+          border: 1px solid rgba(124, 58, 237, 0.08);
         }
 
         .fp-report {
@@ -598,22 +998,6 @@ export default function HomePage() {
           line-height: 1.55;
         }
 
-        .fp-step-grid {
-          margin-top: 26px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-        }
-
-        .fp-step span {
-          display: inline-flex;
-          margin-bottom: 18px;
-          color: #6d28d9;
-          font-size: 24px;
-          font-weight: 950;
-        }
-
-        .fp-subjects,
         .fp-support-strip,
         .fp-final {
           margin-top: 78px;
@@ -622,27 +1006,6 @@ export default function HomePage() {
           background:
             radial-gradient(circle at top right, rgba(124, 58, 237, 0.13), transparent 36%),
             linear-gradient(135deg, #ffffff, #f5efff);
-        }
-
-        .fp-subject-grid {
-          margin-top: 26px;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-        }
-
-        .fp-subject {
-          min-height: 54px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 18px;
-          color: #2a1640;
-          background: #fff;
-          text-decoration: none;
-          font-weight: 950;
-          border: 1px solid rgba(124, 58, 237, 0.1);
-          box-shadow: 0 12px 28px rgba(55, 35, 95, 0.05);
         }
 
         .fp-support-strip {
@@ -684,7 +1047,7 @@ export default function HomePage() {
 
         .fp-final span {
           display: block;
-          max-width: 660px;
+          max-width: 700px;
           margin: 18px auto 0;
           color: #6d647c;
           font-size: 17px;
@@ -758,33 +1121,38 @@ export default function HomePage() {
             bottom: 12px;
           }
 
-          .fp-proof,
-          .fp-feature-grid,
-          .fp-step-grid,
-          .fp-value,
-          .fp-support-strip {
-            grid-template-columns: 1fr;
-          }
-
+          .fp-choice,
           .fp-section,
+          .fp-learning-paths,
           .fp-value,
-          .fp-subjects,
           .fp-support-strip,
           .fp-final {
             margin-top: 56px;
           }
 
+          .fp-choice-grid,
+          .fp-proof,
+          .fp-feature-grid,
+          .fp-step-grid,
+          .fp-path-split,
           .fp-value,
-          .fp-subjects,
+          .fp-support-strip {
+            grid-template-columns: 1fr;
+          }
+
+          .fp-value,
+          .fp-choice-card,
+          .fp-path-panel,
           .fp-support-strip,
           .fp-final {
-            padding: 26px 20px;
+            padding: 24px 20px;
             border-radius: 30px;
           }
 
           .fp-section h2,
+          .fp-choice h2,
+          .fp-learning-paths h2,
           .fp-value h2,
-          .fp-subjects h2,
           .fp-support-strip h2,
           .fp-final h2 {
             font-size: clamp(31px, 8.6vw, 42px);
@@ -799,8 +1167,9 @@ export default function HomePage() {
             padding: 21px;
           }
 
-          .fp-subject-grid {
-            grid-template-columns: repeat(2, 1fr);
+          .fp-subject-grid,
+          .fp-promise-grid {
+            grid-template-columns: 1fr;
           }
 
           .fp-support-hint {
@@ -815,10 +1184,6 @@ export default function HomePage() {
 
           .fp-hero-image-wrap {
             height: 335px;
-          }
-
-          .fp-subject-grid {
-            grid-template-columns: 1fr;
           }
         }
       `}</style>
