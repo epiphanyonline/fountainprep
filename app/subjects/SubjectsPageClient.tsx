@@ -398,7 +398,7 @@ export default function SubjectsPageClient() {
             <div className="hero-actions">
               {!isLoggedIn ? (
                 <>
-                  <Link href="/signup/parent" className="btn-primary">
+                  <Link href="/signup" className="btn-primary">
                     Create Parent Profile
                   </Link>
                   <Link href="/login" className="btn-secondary">
@@ -923,10 +923,10 @@ function CatalogueGrid({
 
               {!isLoggedIn ? (
                 <>
-                  <Link href="/signup/parent" className="btn-secondary">
+                  <Link href="/signup" className="btn-secondary">
                     Create Profile
                   </Link>
-                  <Link href="/signup/parent" className="btn-primary">
+                  <Link href="/signup" className="btn-primary">
   Create Parent Profile
 </Link>
                 </>
@@ -1015,36 +1015,51 @@ function CatalogueGrid({
         }
 
         .subject-actions {
-          display: flex;
-          gap: 12px;
-          margin-top: 22px;
-          flex-wrap: wrap;
-        }
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+}
 
-        .btn-curriculum {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 44px;
-          padding: 12px 18px;
-          border-radius: 999px;
-          background: #f5f0ff;
-          color: #6f42c1;
-          border: 1px solid rgba(111, 66, 193, 0.18);
-          box-shadow: 0 10px 26px rgba(111, 66, 193, 0.08);
-          font-weight: 900;
-          text-decoration: none;
-          transition:
-            transform 0.18s ease,
-            box-shadow 0.18s ease,
-            background 0.18s ease;
-        }
+        :global(.btn-curriculum) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 13px 18px;
+  box-sizing: border-box;
 
-        .btn-curriculum:hover {
-          transform: translateY(-1px);
-          background: #efe7ff;
-          box-shadow: 0 14px 34px rgba(111, 66, 193, 0.12);
-        }
+  border: 2px solid #6f42c1;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #6f42c1;
+
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+:global(.btn-curriculum:hover) {
+  background: #6f42c1;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+}
+
+:global(.btn-curriculum:focus-visible) {
+  outline: 3px solid rgba(111, 66, 193, 0.25);
+  outline-offset: 3px;
+}
 
         @media (max-width: 1000px) {
           .subject-grid {
@@ -1062,9 +1077,13 @@ function CatalogueGrid({
             padding: 22px;
           }
 
-          .subject-actions {
-            flex-direction: column;
-          }
+          .subject-actions,
+.program-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+}
 
           .subject-actions a {
             width: 100%;
@@ -1135,7 +1154,7 @@ function ProgramGrid({
               </Link>
 
               {!isLoggedIn ? (
-                <Link href="/signup/parent" className="btn-primary">
+                <Link href="/signup" className="btn-primary">
                   Create Parent Profile
                 </Link>
               ) : personalised && studentId ? (
@@ -1227,36 +1246,51 @@ function ProgramGrid({
         }
 
         .program-actions {
-          display: flex;
-          gap: 12px;
-          margin-top: 22px;
-          flex-wrap: wrap;
-        }
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+}
 
-        .btn-curriculum {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 44px;
-          padding: 12px 18px;
-          border-radius: 999px;
-          background: #f5f0ff;
-          color: #6f42c1;
-          border: 1px solid rgba(111, 66, 193, 0.18);
-          box-shadow: 0 10px 26px rgba(111, 66, 193, 0.08);
-          font-weight: 900;
-          text-decoration: none;
-          transition:
-            transform 0.18s ease,
-            box-shadow 0.18s ease,
-            background 0.18s ease;
-        }
+        :global(.btn-curriculum) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 13px 18px;
+  box-sizing: border-box;
 
-        .btn-curriculum:hover {
-          transform: translateY(-1px);
-          background: #efe7ff;
-          box-shadow: 0 14px 34px rgba(111, 66, 193, 0.12);
-        }
+  border: 2px solid #6f42c1;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #6f42c1;
+
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+:global(.btn-curriculum:hover) {
+  background: #6f42c1;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+}
+
+:global(.btn-curriculum:focus-visible) {
+  outline: 3px solid rgba(111, 66, 193, 0.25);
+  outline-offset: 3px;
+}
 
         @media (max-width: 1000px) {
           .program-grid {

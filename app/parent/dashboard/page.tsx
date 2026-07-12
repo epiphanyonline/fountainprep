@@ -12,6 +12,7 @@ type ParentProfile = {
   country_of_residence: string | null
   timezone: string
   preferred_currency: string
+  account_type: 'PARENT' | 'ADULT_LEARNER'
 }
 
 type LessonBooking = {
@@ -116,12 +117,12 @@ export default function ParentDashboardPage() {
       }
 
       const { data: parentProfile, error } = await supabase
-        .from('parent_profiles')
-        .select(
-          'id, full_name, phone, country_of_residence, timezone, preferred_currency'
-        )
-        .eq('user_id', user.id)
-        .maybeSingle()
+  .from('parent_profiles')
+  .select(
+    'id, full_name, phone, country_of_residence, timezone, preferred_currency, account_type'
+  )
+  .eq('user_id', user.id)
+  .maybeSingle()
 
       if (error) {
         setMessage(error.message)
@@ -133,6 +134,11 @@ export default function ParentDashboardPage() {
         router.push('/parent/onboarding')
         return
       }
+
+      if (parentProfile.account_type === 'ADULT_LEARNER') {
+  router.replace('/learner/dashboard')
+  return
+}
 
       setProfile(parentProfile as ParentProfile)
 

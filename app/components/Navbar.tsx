@@ -12,6 +12,7 @@ type UserProfile = {
   id: string
   role: string
   full_name: string | null
+  account_type?: 'PARENT' | 'ADULT_LEARNER' | null
 }
 
 export default function Navbar() {
@@ -37,15 +38,41 @@ export default function Navbar() {
         return
       }
 
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('id, role, full_name')
-        .eq('id', user.id)
-        .maybeSingle()
+      const { data: userProfile } = await supabase
+  .from('user_profiles')
+  .select('id, role, full_name')
+  .eq('id', user.id)
+  .maybeSingle()
 
-      setProfile(data ?? null)
+if (!userProfile) {
+  setProfile(null)
+  setLoading(false)
+  return
+}
 
-      if (data) {
+let accountType: 'PARENT' | 'ADULT_LEARNER' | null = null
+
+if (userProfile.role === 'PARENT') {
+  const { data: parentProfile } = await supabase
+    .from('parent_profiles')
+    .select('account_type')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  accountType =
+    parentProfile?.account_type === 'ADULT_LEARNER'
+      ? 'ADULT_LEARNER'
+      : 'PARENT'
+}
+
+const completeProfile: UserProfile = {
+  ...userProfile,
+  account_type: accountType,
+}
+
+setProfile(completeProfile)
+
+      if (userProfile) {
   const { count } = await supabase
     .from('notifications')
     .select('*', {
@@ -88,30 +115,58 @@ export default function Navbar() {
   }
 
   function dashboardHref() {
-    if (!profile) return '/login'
-    if (profile.role === 'ADMIN') return '/admin'
-    if (profile.role === 'TUTOR') return '/tutor/dashboard'
-    if (profile.role === 'PARENT') return '/parent/dashboard'
-    return '/account'
+  if (!profile) return '/login'
+
+  if (profile.role === 'ADMIN') {
+    return '/admin'
   }
 
-  const publicLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Subjects', href: '/subjects' },
-    { label: 'Parents', href: '/signup/parent' },
-    { label: 'Tutors', href: '/signup/tutor' },
-  ]
+  if (profile.role === 'TUTOR') {
+    return '/tutor/dashboard'
+  }
 
-  const authedLinks = [
-    ...(profile?.role === 'PARENT'
-      ? [{ label: 'Start Learning', href: '/parent/students' }]
-      : []),
-    ...(profile?.role === 'TUTOR'
-      ? [{ label: 'Availability', href: '/tutor/availability' }]
-      : []),
-    { label: 'Dashboard', href: dashboardHref() },
-    { label: 'Account', href: '/account' },
-  ]
+  if (
+    profile.role === 'PARENT' &&
+    profile.account_type === 'ADULT_LEARNER'
+  ) {
+    return '/learner/dashboard'
+  }
+
+  if (profile.role === 'PARENT') {
+    return '/parent/dashboard'
+  }
+
+  return '/account'
+}
+
+  const publicLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Subjects', href: '/subjects' },
+  { label: 'Join Fountain Prep', href: '/signup' },
+]
+
+  const isAdultLearner =
+  profile?.role === 'PARENT' &&
+  profile.account_type === 'ADULT_LEARNER'
+
+const authedLinks =
+  isAdultLearner
+    ? [
+        { label: 'My Learning', href: '/learner/dashboard' },
+        { label: 'Account', href: '/account' },
+      ]
+    : [
+        ...(profile?.role === 'PARENT'
+          ? [{ label: 'My Children', href: '/parent/students' }]
+          : []),
+
+        ...(profile?.role === 'TUTOR'
+          ? [{ label: 'Availability', href: '/tutor/availability' }]
+          : []),
+
+        { label: 'Dashboard', href: dashboardHref() },
+        { label: 'Account', href: '/account' },
+      ]
 
   const links = !loading && profile ? authedLinks : publicLinks
 
@@ -193,14 +248,7 @@ export default function Navbar() {
                 {item.label}
               </Link>
             ))}
-
-            {profile && (
-  <NotificationBell
-    count={notificationCount}
-    href="/notifications"
-  />
-)}
-
+  
             {!loading && !profile ? (
               <Link href="/login" className="mobile-link primary">
                 Login
@@ -402,28 +450,29 @@ export default function Navbar() {
         }
 
         @media (max-width: 420px) {
-          .site-nav {
-            min-height: 64px;
-            .brand-logo {
-  width: 40px;
-  height: 40px;
-}
-          }
+  .site-nav {
+    min-height: 64px;
+  }
 
-          .brand-text {
-            font-size: 25px;
-          }
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+  }
 
-          .mobile-menu-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 16px;
-          }
+  .brand-text {
+    font-size: 25px;
+  }
 
-          .mobile-panel-inner {
-            grid-template-columns: 1fr;
-          }
-        }
+  .mobile-menu-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+  }
+
+  .mobile-panel-inner {
+    grid-template-columns: 1fr;
+  }
+}          
       `}</style>
     </header>
   )

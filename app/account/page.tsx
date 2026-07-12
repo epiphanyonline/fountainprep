@@ -11,6 +11,7 @@ type UserProfile = {
   email: string | null
   role: string
   full_name: string | null
+  account_type?: 'PARENT' | 'ADULT_LEARNER' | null
 }
 
 export default function AccountPage() {
@@ -32,19 +33,37 @@ export default function AccountPage() {
         return
       }
 
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, public_id, email, role, full_name')
-        .eq('id', user.id)
-        .single()
+      const { data: userProfile, error } = await supabase
+  .from('user_profiles')
+  .select('id, public_id, email, role, full_name')
+  .eq('id', user.id)
+  .single()
 
-      if (error || !data) {
-        setMessage('Profile not found.')
-        setLoading(false)
-        return
-      }
+if (error || !userProfile) {
+  setMessage('Profile not found.')
+  setLoading(false)
+  return
+}
 
-      setProfile(data)
+let accountType: 'PARENT' | 'ADULT_LEARNER' | null = null
+
+if (userProfile.role === 'PARENT') {
+  const { data: parentProfile } = await supabase
+    .from('parent_profiles')
+    .select('account_type')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  accountType =
+    parentProfile?.account_type === 'ADULT_LEARNER'
+      ? 'ADULT_LEARNER'
+      : 'PARENT'
+}
+
+setProfile({
+  ...userProfile,
+  account_type: accountType,
+})
       setMessage('')
       setLoading(false)
     }
@@ -69,20 +88,56 @@ export default function AccountPage() {
   }
 
   function dashboardLink() {
-    if (!profile) return '/'
-    if (profile.role === 'ADMIN') return '/admin'
-    if (profile.role === 'TUTOR') return '/tutor/dashboard'
-    if (profile.role === 'PARENT') return '/parent/dashboard'
-    return '/'
+  if (!profile) return '/'
+
+  if (profile.role === 'ADMIN') return '/admin'
+  if (profile.role === 'TUTOR') return '/tutor/dashboard'
+
+  if (
+    profile.role === 'PARENT' &&
+    profile.account_type === 'ADULT_LEARNER'
+  ) {
+    return '/learner/dashboard'
   }
 
+  if (profile.role === 'PARENT') return '/parent/dashboard'
+
+  return '/'
+}
+
   function publicIdLabel() {
-    if (!profile) return 'Account ID'
-    if (profile.role === 'TUTOR') return 'Tutor ID'
-    if (profile.role === 'PARENT') return 'Parent ID'
-    if (profile.role === 'ADMIN') return 'Admin ID'
-    return 'Account ID'
+  if (!profile) return 'Account ID'
+
+  if (
+    profile.role === 'PARENT' &&
+    profile.account_type === 'ADULT_LEARNER'
+  ) {
+    return 'Learner ID'
   }
+
+  if (profile.role === 'TUTOR') return 'Tutor ID'
+  if (profile.role === 'PARENT') return 'Parent ID'
+  if (profile.role === 'ADMIN') return 'Admin ID'
+
+  return 'Account ID'
+}
+
+function roleLabel() {
+  if (!profile) return '-'
+
+  if (
+    profile.role === 'PARENT' &&
+    profile.account_type === 'ADULT_LEARNER'
+  ) {
+    return 'Adult Learner'
+  }
+
+  if (profile.role === 'PARENT') return 'Parent or Guardian'
+  if (profile.role === 'TUTOR') return 'Tutor'
+  if (profile.role === 'ADMIN') return 'Administrator'
+
+  return profile.role
+}
 
   if (loading) {
     return (
@@ -123,7 +178,7 @@ export default function AccountPage() {
 
             <div className="kpi-row">
               <span className="kpi-label">Role</span>
-              <span className="kpi-value">{profile.role}</span>
+              <span className="kpi-value">{roleLabel()}</span>
             </div>
 
             <div className="kpi-row">
@@ -181,7 +236,9 @@ export default function AccountPage() {
             }}
           >
             <Link href={dashboardLink()} className="btn-primary">
-              Go to Dashboard
+              {profile.account_type === 'ADULT_LEARNER'
+  ? 'Go to My Learning'
+  : 'Go to Dashboard'}
             </Link>
 
             <button onClick={handleLogout} className="btn-secondary">

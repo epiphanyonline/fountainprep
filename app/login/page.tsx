@@ -24,27 +24,74 @@ export default function LoginPage() {
   }
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setNotice('')
+  e.preventDefault()
+  setLoading(true)
+  setNotice('')
 
-    const { error } = await supabase.auth.signInWithPassword({
+  const { data: loginData, error: loginError } =
+    await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
 
-    if (error) {
-      showNotice(
-        'error',
-        'Login was not successful. Please check your email and password, or use the reset option below.'
-      )
-      setLoading(false)
+  if (loginError || !loginData.user) {
+    showNotice(
+      'error',
+      'Login was not successful. Please check your email and password, or use the reset option below.'
+    )
+    setLoading(false)
+    return
+  }
+
+  const user = loginData.user
+
+  showNotice('success', 'Login successful. Preparing your dashboard...')
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError || !userProfile) {
+    router.push('/account')
+    router.refresh()
+    return
+  }
+
+  if (userProfile.role === 'ADMIN') {
+    router.push('/admin')
+    router.refresh()
+    return
+  }
+
+  if (userProfile.role === 'TUTOR') {
+    router.push('/tutor/dashboard')
+    router.refresh()
+    return
+  }
+
+  if (userProfile.role === 'PARENT') {
+    const { data: parentProfile } = await supabase
+      .from('parent_profiles')
+      .select('account_type')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (parentProfile?.account_type === 'ADULT_LEARNER') {
+      router.push('/learner/dashboard')
+      router.refresh()
       return
     }
 
-    showNotice('success', 'Login successful. Taking you to your account...')
-    router.push('/account')
+    router.push('/parent/dashboard')
+    router.refresh()
+    return
   }
+
+  router.push('/account')
+  router.refresh()
+}
 
   async function handlePasswordReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
