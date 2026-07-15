@@ -230,7 +230,7 @@ export default function TutorDashboardPage() {
         <div className="heroTop">
           <p className="eyebrow">Tutor Operations Centre</p>
 
-          <Link href="/tutor/onboarding" className="miniLink">
+          <Link href="/tutor/profile" className="miniLink">
             Edit Profile
           </Link>
         </div>
@@ -316,7 +316,7 @@ export default function TutorDashboardPage() {
           ) : null}
 
           <Link href="/tutor/onboarding" className="primaryLink fullLink">
-            Update Tutor Profile
+            Edit Professional Profile
           </Link>
         </aside>
       </section>
