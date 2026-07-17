@@ -851,87 +851,100 @@ export const scheduleStyles = `
   }
 
   @media (max-width: 920px) {
-    .page {
-      padding: 18px 12px 70px;
-    }
-
-    .hero {
-      padding: 28px 20px;
-      border-radius: 30px;
-    }
-
-    .summaryGrid,
-    .layout,
-    .frequencyBox,
-    .timeGrid {
-      grid-template-columns: 1fr;
-    }
-
-    .tutorTop,
-    .tutorActions {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .sideCard {
-      position: sticky;
-      bottom: 10px;
-      z-index: 20;
-      max-height: 62vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 70px rgba(47, 25, 80, 0.2);
-    }
-
-    .mainCard,
-    .sideCard {
-      padding: 20px;
-      border-radius: 28px;
-    }
-
-    h1 {
-      font-size: 2.55rem;
-    }
+  .page {
+    padding: 18px 12px 70px;
   }
 
-  @media (max-width: 640px) {
-    .timesOverlay {
-      align-items: flex-end;
-    }
-
-    .timesPanel {
-      width: 100%;
-      height: 88vh;
-      border-left: 0;
-      border-radius: 28px 28px 0 0;
-    }
-
-    .timesPanelTop,
-    .timesPanelBody,
-    .timesPanelFooter {
-      padding-left: 18px;
-      padding-right: 18px;
-    }
-
-    .timesPanelFooter {
-      grid-template-columns: 1fr;
-    }
+  .hero {
+    padding: 28px 20px;
+    border-radius: 30px;
   }
 
-  @media (max-width: 520px) {
-    .profileModal {
-      padding: 18px;
-      border-radius: 26px;
-    }
-
-    .profileTop {
-      gap: 10px;
-    }
-
-    .profilePhoto,
-    .profileInitial {
-      width: 54px;
-      height: 54px;
-      border-radius: 18px;
-    }
+  .summaryGrid,
+  .frequencyBox,
+  .timeGrid {
+    grid-template-columns: 1fr;
   }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .tutorTop,
+  .tutorActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* FIX: Stop the booking summary from floating over the tutor cards */
+  .sideCard {
+    position: static;
+    top: auto;
+    bottom: auto;
+    z-index: auto;
+
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+
+    margin-top: 24px;
+
+    box-shadow: 0 20px 40px rgba(47, 25, 80, 0.08);
+  }
+
+  .mainCard,
+  .sideCard {
+    padding: 20px;
+    border-radius: 28px;
+  }
+
+  h1 {
+    font-size: 2.55rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .timesOverlay {
+    align-items: flex-end;
+  }
+
+  .timesPanel {
+    width: 100%;
+    height: 88vh;
+    border-left: 0;
+    border-radius: 28px 28px 0 0;
+  }
+
+  .timesPanelTop,
+  .timesPanelBody,
+  .timesPanelFooter {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .timesPanelFooter {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .profileModal {
+    padding: 18px;
+    border-radius: 26px;
+  }
+
+  .profileTop {
+    gap: 10px;
+  }
+
+  .profilePhoto,
+  .profileInitial {
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+  }
+}
 `
