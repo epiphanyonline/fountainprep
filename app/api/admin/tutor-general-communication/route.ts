@@ -1,13 +1,29 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
 const resendApiKey = process.env.RESEND_API_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!resendApiKey) {
   throw new Error('Missing RESEND_API_KEY')
 }
 
+if (!supabaseUrl) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL')
+}
+
+if (!serviceRoleKey) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
+}
+
 const resend = new Resend(resendApiKey)
+
+const supabaseAdmin = createClient(
+  supabaseUrl,
+  serviceRoleKey
+)
 
 type Recipient = {
   tutorId?: string
@@ -408,6 +424,35 @@ export async function POST(request: Request) {
     ).length
 
     const failed = results.length - sent
+
+    const communicationStatus =
+      failed === 0
+        ? 'SENT'
+        : sent > 0
+          ? 'PARTIAL'
+          : 'FAILED'
+
+    const { error: communicationError } = await supabaseAdmin
+      .from('tutor_communications')
+      .insert({
+        communication_type: 'GENERAL',
+        subject,
+        heading,
+        message,
+        button_text: buttonText,
+        button_url: buttonUrl,
+        recipient_count: validRecipients.length,
+        sent_count: sent,
+        failed_count: failed,
+        status: communicationStatus,
+      })
+
+    if (communicationError) {
+      console.error(
+        'Unable to save communication history:',
+        communicationError.message
+      )
+    }
 
     return NextResponse.json({
       success: failed === 0,

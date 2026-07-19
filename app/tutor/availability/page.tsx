@@ -4,10 +4,18 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import {
+  addCalendarDays,
+  dateKeyInTimezone,
+  resolveViewerTimezone,
+  weekdayForDateKey,
+  zonedDateTimeToUtc,
+} from '../../lib/timezone'
 
 type TutorProfile = {
   id: string
   full_name: string
+  timezone: string
 }
 
 type LearningLevel = {
@@ -183,7 +191,7 @@ export default function TutorAvailabilityPage() {
 
       const { data: tutorProfile, error: tutorError } = await supabase
         .from('tutor_profiles')
-        .select('id, full_name')
+        .select('id, full_name, timezone')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -209,6 +217,7 @@ export default function TutorAvailabilityPage() {
       const cleanSubjects = (subjectRows ?? []) as Subject[]
 
       setTutor(tutorProfile as TutorProfile)
+      setTimezone(resolveViewerTimezone(tutorProfile.timezone || 'Africa/Lagos'))
       setLevels(cleanLevels)
       setSubjects(cleanSubjects)
 
@@ -335,39 +344,41 @@ export default function TutorAvailabilityPage() {
     })
   }
 
-  function getNextDatesForDay(jsDay: number, weeks = 8) {
+  function getNextDatesForDay(
+    jsDay: number,
+    timeZone: string,
+    weeks = 8
+  ) {
     const dates: string[] = []
-    const today = new Date()
+    const todayKey = dateKeyInTimezone(new Date(), timeZone)
 
     for (let i = 0; i < weeks * 7; i += 1) {
-      const current = new Date(today)
-      current.setDate(today.getDate() + i)
+      const candidate = addCalendarDays(todayKey, i)
 
-      if (current.getDay() === jsDay) {
-        dates.push(current.toISOString().split('T')[0])
+      if (weekdayForDateKey(candidate) === jsDay) {
+        dates.push(candidate)
       }
     }
 
     return dates.slice(0, weeks)
   }
 
-  function buildTimestamp(date: string, time: string, nextDay: boolean) {
-  const cleanTime = time.slice(0, 5)
-  const timestamp = new Date(`${date}T${cleanTime}:00`)
-
-  if (nextDay) {
-    timestamp.setDate(timestamp.getDate() + 1)
+  function buildTimestamp(
+    date: string,
+    time: string,
+    nextDay: boolean,
+    timeZone: string
+  ) {
+    const calendarDate = nextDay ? addCalendarDays(date, 1) : date
+    return zonedDateTimeToUtc(calendarDate, time.slice(0, 5), timeZone).toISOString()
   }
-
-  return timestamp.toISOString()
-}
 
   async function generateSlotsForWeeklyRows(rows: WeeklyAvailability[]) {
     const slotRows = rows.flatMap((row) => {
       const matchingDay = days.find((day) => day.jsDay === row.day_of_week)
       if (!matchingDay) return []
 
-      const dates = getNextDatesForDay(row.day_of_week, 8)
+      const dates = getNextDatesForDay(row.day_of_week, row.timezone, 8)
 
       return dates.map((date) => ({
         tutor_id: tutor?.id,
@@ -377,8 +388,13 @@ export default function TutorAvailabilityPage() {
         slot_date: date,
         start_time: row.start_time,
         end_time: row.end_time,
-        starts_at: buildTimestamp(date, row.start_time, false),
-        ends_at: buildTimestamp(date, row.end_time, row.ends_next_day),
+        starts_at: buildTimestamp(date, row.start_time, false, row.timezone),
+        ends_at: buildTimestamp(
+          date,
+          row.end_time,
+          row.ends_next_day,
+          row.timezone
+        ),
         timezone: row.timezone,
         is_available: true,
         is_booked: false,

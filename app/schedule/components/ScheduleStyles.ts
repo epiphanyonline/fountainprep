@@ -814,6 +814,161 @@ export const scheduleStyles = `
     color: #fff;
   }
 
+  .timezoneSummary {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+  }
+
+  .timezoneSummary strong,
+  .timezoneSummary span {
+    display: block;
+  }
+
+  .timezoneSummary span {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
+  .primarySmall:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .mobileContinueBar {
+    display: none;
+  }
+
+  .readyOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 160;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(28, 15, 43, 0.58);
+    backdrop-filter: blur(10px);
+  }
+
+  .readyModal {
+    width: min(100%, 540px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 30px;
+    border-radius: 32px;
+    background: #fff;
+    border: 1px solid rgba(124, 58, 237, 0.16);
+    box-shadow: 0 36px 110px rgba(28, 15, 43, 0.34);
+    text-align: center;
+  }
+
+  .readyCheck {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 16px;
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(135deg, #12a064, #087443);
+    font-size: 28px;
+    font-weight: 950;
+    box-shadow: 0 15px 35px rgba(18, 160, 100, 0.25);
+  }
+
+  .readyModal h2 {
+    margin: 9px 0 0;
+    font-size: 2rem;
+    letter-spacing: -0.045em;
+  }
+
+  .readyCopy {
+    margin: 12px auto 0;
+    max-width: 430px;
+    color: #6d6078;
+    line-height: 1.65;
+  }
+
+  .readyDetails {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+    text-align: left;
+  }
+
+  .readyDetails div {
+    padding: 15px;
+    border-radius: 18px;
+    background: #f8f4ff;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+  }
+
+  .readyDetails span,
+  .readyDetails strong,
+  .readyDetails small {
+    display: block;
+  }
+
+  .readyDetails span,
+  .readyDetails small {
+    color: #74677f;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .readyDetails strong {
+    margin: 5px 0;
+    color: #28153a;
+  }
+
+  .readyTotal {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    padding: 15px 2px;
+    color: #4e3e5c;
+    font-weight: 850;
+  }
+
+  .readyTotal strong {
+    color: #241438;
+  }
+
+  .readyPayBtn,
+  .readyReviewBtn {
+    width: 100%;
+    min-height: 54px;
+    border-radius: 17px;
+    font: inherit;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  .readyPayBtn {
+    border: 0;
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 16px 38px rgba(124, 58, 237, 0.28);
+  }
+
+  .readyReviewBtn {
+    margin-top: 10px;
+    color: #4a2a70;
+    background: #fff;
+    border: 1px solid rgba(124, 58, 237, 0.18);
+  }
+
+  .readyPayBtn:disabled,
+  .readyReviewBtn:disabled {
+    opacity: 0.58;
+    cursor: wait;
+  }
+
   @media (min-width: 921px) {
     .layout {
       min-height: calc(100vh - 126px);
@@ -852,7 +1007,7 @@ export const scheduleStyles = `
 
   @media (max-width: 920px) {
   .page {
-    padding: 18px 12px 70px;
+    padding: 18px 12px 150px;
   }
 
   .hero {
@@ -899,6 +1054,56 @@ export const scheduleStyles = `
   .sideCard {
     padding: 20px;
     border-radius: 28px;
+  }
+
+  .mobileContinueBar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(124, 58, 237, 0.18);
+    box-shadow: 0 20px 55px rgba(47, 25, 80, 0.24);
+    backdrop-filter: blur(16px);
+  }
+
+  .mobileContinueBar span,
+  .mobileContinueBar strong {
+    display: block;
+  }
+
+  .mobileContinueBar span {
+    color: #6d6078;
+    font-size: 0.78rem;
+    font-weight: 850;
+  }
+
+  .mobileContinueBar strong {
+    margin-top: 3px;
+    color: #271238;
+  }
+
+  .mobileContinueBar button {
+    min-height: 48px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  .mobileContinueBar button:disabled {
+    opacity: 0.55;
+    cursor: wait;
   }
 
   h1 {

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { BookingJourney } from '../components/BookingJourney'
 
 type Student = {
   id: string
@@ -104,12 +105,30 @@ function PricingContent() {
   currencyTable.UK
 )
   const [loadingStudent, setLoadingStudent] = useState(true)
+  const [resolvedSubjectName, setResolvedSubjectName] = useState('')
+  const [selectingPlan, setSelectingPlan] = useState('')
 
   const hasBookingContext = Boolean(studentId && subjectId)
 
   const subjectName = useMemo(() => {
     if (!subjectId) return 'Subject not selected'
-    return subjectLabels[subjectId] || 'Selected subject'
+    return subjectLabels[subjectId.toLowerCase()] || resolvedSubjectName || 'Selected subject'
+  }, [subjectId, resolvedSubjectName])
+
+  useEffect(() => {
+    async function loadSubjectName() {
+      if (!subjectId || subjectLabels[subjectId.toLowerCase()]) return
+
+      const { data } = await supabase
+        .from('subjects')
+        .select('name')
+        .eq('id', subjectId)
+        .maybeSingle()
+
+      if (data?.name) setResolvedSubjectName(data.name)
+    }
+
+    loadSubjectName()
   }, [subjectId])
 
   useEffect(() => {
@@ -122,10 +141,31 @@ function PricingContent() {
 
       setLoadingStudent(true)
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data: parentProfile } = await supabase
+        .from('parent_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!parentProfile) {
+        router.push('/parent/onboarding')
+        return
+      }
+
       const { data, error } = await supabase
         .from('student_profiles')
         .select('id, full_name, child_age, country_system, country_class_label')
         .eq('id', studentId)
+        .eq('parent_id', parentProfile.id)
         .maybeSingle()
 
       if (error || !data) {
@@ -144,7 +184,7 @@ setLoadingStudent(false)
     }
 
     loadStudent()
-  }, [studentId])
+  }, [studentId, router])
 
   function convertPrice(gbp: number) {
   const converted = Math.round(gbp * currency.rate)
@@ -157,6 +197,8 @@ setLoadingStudent(false)
       router.push('/parent/students')
       return
     }
+
+    setSelectingPlan(planId)
 
     const params = new URLSearchParams()
     params.set('studentId', studentId)
@@ -179,6 +221,14 @@ setLoadingStudent(false)
 
   return (
     <main className="pricingPage">
+      {hasBookingContext ? (
+        <BookingJourney
+          currentStep={3}
+          childName={student?.full_name}
+          subjectName={subjectName}
+        />
+      ) : null}
+
       <section className="hero">
         <p className="eyebrow">Private 1-to-1 learning plans</p>
 
@@ -291,8 +341,11 @@ setLoadingStudent(false)
                 type="button"
                 onClick={() => handleChoosePlan(plan.id)}
                 className="chooseButton"
+                disabled={Boolean(selectingPlan)}
               >
-                Choose {plan.title}
+                {selectingPlan === plan.id
+                  ? 'Opening Tutor Schedule...'
+                  : `Choose ${plan.title} → Pick Tutor & Time`}
               </button>
             </article>
           ))}
@@ -558,6 +611,11 @@ const pricingStyles = `
     font-size: 15px;
     cursor: pointer;
     box-shadow: 0 16px 38px rgba(124, 58, 237, 0.28);
+  }
+
+  .chooseButton:disabled {
+    opacity: 0.68;
+    cursor: wait;
   }
 
   .primaryButton,

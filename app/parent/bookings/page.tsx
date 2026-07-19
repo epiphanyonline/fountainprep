@@ -1,56 +1,72 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import {
+  bookingInstant,
+  formatBookingDate,
+  formatBookingTime,
+  resolveViewerTimezone,
+} from '../../lib/timezone'
 
 type ParentProfile = {
   id: string
   full_name: string
+  timezone: string | null
 }
 
 type BookingRow = {
   id: string
-  booking_ref: string | null
-  booking_date: string
-  start_time: string
-  end_time: string
-  duration_minutes: number
-  lesson_status: string
-  lesson_title: string | null
-  created_at: string
+  student_id: string
   subject_id: string
-  tutor_id: string
+  tutor_id: string | null
+  plan_id: string
+  lesson_date: string | null
+  lesson_time: string | null
+  timezone: string | null
+  status: string
+  payment_status: string
+  amount_gbp: number | null
+  booking_frequency: string | null
+  parent_booking_group_id: string | null
+  created_at: string | null
 }
 
-type SubjectRow = {
+type NameRow = {
   id: string
-  name: string
+  full_name?: string
+  name?: string
 }
 
-type TutorRow = {
+type BookingGroup = {
   id: string
-  full_name: string
+  lessons: BookingRow[]
+  paymentBooking: BookingRow
+  firstLesson: BookingRow
+  status: string
+  totalAmount: number
 }
 
-type BookingDisplayRow = BookingRow & {
-  subject_name: string
-  tutor_name: string
+const planLabels: Record<string, string> = {
+  monthly: 'Monthly Plan',
+  three_month: '3-Month Plan',
 }
 
 export default function ParentBookingsPage() {
   const router = useRouter()
-
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('Loading...')
+  const [message, setMessage] = useState('Loading your bookings...')
   const [parent, setParent] = useState<ParentProfile | null>(null)
-  const [bookings, setBookings] = useState<BookingDisplayRow[]>([])
+  const [bookings, setBookings] = useState<BookingRow[]>([])
+  const [students, setStudents] = useState<Record<string, string>>({})
+  const [subjects, setSubjects] = useState<Record<string, string>>({})
+  const [tutors, setTutors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     async function loadBookings() {
       setLoading(true)
-      setMessage('Loading...')
 
       const {
         data: { user },
@@ -74,7 +90,7 @@ export default function ParentBookingsPage() {
 
       const { data: parentProfile, error: parentError } = await supabase
         .from('parent_profiles')
-        .select('id, full_name')
+        .select('id, full_name, timezone')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -83,14 +99,27 @@ export default function ParentBookingsPage() {
         return
       }
 
-      setParent(parentProfile)
+      setParent(parentProfile as ParentProfile)
 
       const { data: bookingRows, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(
-          'id, booking_ref, booking_date, start_time, end_time, duration_minutes, lesson_status, lesson_title, created_at, subject_id, tutor_id'
-        )
-        .eq('parent_id', parentProfile.id)
+        .from('lesson_bookings')
+        .select(`
+          id,
+          student_id,
+          subject_id,
+          tutor_id,
+          plan_id,
+          lesson_date,
+          lesson_time,
+          timezone,
+          status,
+          payment_status,
+          amount_gbp,
+          booking_frequency,
+          parent_booking_group_id,
+          created_at
+        `)
+        .eq('parent_id', user.id)
         .order('created_at', { ascending: false })
 
       if (bookingsError) {
@@ -99,43 +128,30 @@ export default function ParentBookingsPage() {
         return
       }
 
-      const bookingsData = bookingRows ?? []
+      const cleanBookings = (bookingRows ?? []) as BookingRow[]
+      setBookings(cleanBookings)
 
-      if (bookingsData.length === 0) {
-        setBookings([])
-        setMessage('')
-        setLoading(false)
-        return
-      }
-
-      const subjectIds = Array.from(new Set(bookingsData.map((b) => b.subject_id)))
-      const tutorIds = Array.from(new Set(bookingsData.map((b) => b.tutor_id)))
-
-      const { data: subjectRows } = await supabase
-        .from('subjects')
-        .select('id, name')
-        .in('id', subjectIds)
-
-      const { data: tutorRows } = await supabase
-        .from('tutor_profiles')
-        .select('id, full_name')
-        .in('id', tutorIds)
-
-      const subjectMap = new Map<string, string>(
-        (subjectRows ?? []).map((s: SubjectRow) => [s.id, s.name])
+      const studentIds = unique(cleanBookings.map((item) => item.student_id))
+      const subjectIds = unique(cleanBookings.map((item) => item.subject_id))
+      const tutorIds = unique(
+        cleanBookings.map((item) => item.tutor_id).filter(Boolean) as string[]
       )
 
-      const tutorMap = new Map<string, string>(
-        (tutorRows ?? []).map((t: TutorRow) => [t.id, t.full_name])
-      )
+      const [studentResult, subjectResult, tutorResult] = await Promise.all([
+        studentIds.length
+          ? supabase.from('student_profiles').select('id, full_name').in('id', studentIds)
+          : Promise.resolve({ data: [] }),
+        subjectIds.length
+          ? supabase.from('subjects').select('id, name').in('id', subjectIds)
+          : Promise.resolve({ data: [] }),
+        tutorIds.length
+          ? supabase.from('tutor_profiles').select('id, full_name').in('id', tutorIds)
+          : Promise.resolve({ data: [] }),
+      ])
 
-      const displayRows: BookingDisplayRow[] = bookingsData.map((booking) => ({
-        ...booking,
-        subject_name: subjectMap.get(booking.subject_id) ?? '-',
-        tutor_name: tutorMap.get(booking.tutor_id) ?? '-',
-      }))
-
-      setBookings(displayRows)
+      setStudents(toNameMap((studentResult.data ?? []) as NameRow[], 'Selected child'))
+      setSubjects(toNameMap((subjectResult.data ?? []) as NameRow[], 'Selected subject'))
+      setTutors(toNameMap((tutorResult.data ?? []) as NameRow[], 'Approved tutor'))
       setMessage('')
       setLoading(false)
     }
@@ -143,172 +159,221 @@ export default function ParentBookingsPage() {
     loadBookings()
   }, [router])
 
+  const groups = useMemo(() => groupBookings(bookings), [bookings])
+  const viewerTimezone = resolveViewerTimezone(parent?.timezone)
+
   return (
-    <main className="page-wrap">
-      <div className="container">
-        <section
-          className="card"
-          style={{
-            padding: 32,
-            background:
-              'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(244,237,255,0.95) 100%)',
-          }}
-        >
-          <p style={{ margin: 0, color: '#6f42c1', fontWeight: 700, fontSize: 14 }}>
-            Parent Portal
-          </p>
+    <main className="page">
+      <section className="hero">
+        <p className="eyebrow">Parent Portal</p>
+        <h1>My Bookings</h1>
+        <p className="subtitle">
+          {parent
+            ? `See every plan for ${parent.full_name}, continue an unfinished payment, or open the complete lesson timetable.`
+            : 'See your plans, payments, and complete lesson timetable.'}
+        </p>
 
-          <h1 className="page-title" style={{ marginTop: 10 }}>
-            My Bookings
-          </h1>
+        <div className="heroActions">
+          <Link href="/parent/students" className="primaryBtn">
+            Book Another Lesson
+          </Link>
+          <Link href="/parent/sessions" className="secondaryBtn">
+            View Full Timetable
+          </Link>
+          <Link href="/parent/dashboard" className="secondaryBtn">
+            Back to Dashboard
+          </Link>
+        </div>
+      </section>
 
-          <p className="page-subtitle">
-            {parent
-              ? `Track and manage bookings for ${parent.full_name}.`
-              : 'Track and manage your lessons from one place.'}
-          </p>
+      {loading ? <div className="notice">Loading your bookings...</div> : null}
+      {!loading && message ? <div className="notice error">{message}</div> : null}
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-            <Link href="/parent/students" className="btn-primary">
-              Choose Child
-            </Link>
-
-            <Link href="/subjects" className="btn-secondary">
-              Choose Subject
-            </Link>
-
-            <Link href="/parent/dashboard" className="btn-secondary">
-              Back to Dashboard
-            </Link>
-          </div>
+      {!loading && !message && groups.length === 0 ? (
+        <section className="emptyCard">
+          <p className="eyebrow">Ready when you are</p>
+          <h2>No bookings yet</h2>
+          <p>Choose a child to start. The booking journey will guide you through subject, plan, timetable, and payment.</p>
+          <Link href="/parent/students" className="primaryBtn">
+            Start Booking
+          </Link>
         </section>
+      ) : null}
 
-        <section style={{ marginTop: 28 }}>
-          {loading ? <p>Loading bookings...</p> : null}
-          {message ? <p>{message}</p> : null}
+      {!loading && groups.length > 0 ? (
+        <section className="bookingList" aria-label="Booking plans">
+          {groups.map((group) => {
+            const first = group.firstLesson
+            const needsPayment =
+              group.status === 'PENDING_PAYMENT' ||
+              group.lessons.some((item) => item.payment_status !== 'PAID')
 
-          {!loading && bookings.length === 0 ? (
-            <div className="card" style={{ padding: 28, textAlign: 'center' }}>
-              <h2 style={{ marginTop: 0 }}>No bookings yet</h2>
-              <p className="page-subtitle" style={{ maxWidth: 560, margin: '0 auto' }}>
-                You have not created any lesson bookings yet. Add or choose a child, then select a subject and time.
-              </p>
-
-              <div style={{ marginTop: 20 }}>
-                <Link href="/parent/students" className="btn-primary">
-                  Start Booking
-                </Link>
-              </div>
-            </div>
-          ) : null}
-
-          {!loading && bookings.length > 0 ? (
-            <div style={{ display: 'grid', gap: 18 }}>
-              {bookings.map((booking) => (
-                <div key={booking.id} className="card" style={{ padding: 24 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 16,
-                      alignItems: 'start',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <div>
-                      <h2 style={{ margin: '0 0 8px', fontSize: 24 }}>
-                        {booking.lesson_title || 'Lesson'}
-                      </h2>
-
-                      <p className="page-subtitle" style={{ marginBottom: 12 }}>
-                        Tutor: <strong>{booking.tutor_name}</strong> • Subject:{' '}
-                        <strong>{booking.subject_name}</strong>
-                      </p>
-
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <StatusChip value={booking.lesson_status} />
-                        <SmallInfoChip label={`Ref: ${booking.booking_ref || '-'}`} />
-                        <SmallInfoChip label={`${booking.duration_minutes} mins`} />
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right', minWidth: 180 }}>
-                      <p style={{ margin: 0, fontWeight: 700 }}>{booking.booking_date}</p>
-                      <p className="page-subtitle" style={{ marginTop: 6 }}>
-                        {booking.start_time} - {booking.end_time}
-                      </p>
-                    </div>
+            return (
+              <article key={group.id} className="bookingCard">
+                <div className="bookingTop">
+                  <div>
+                    <p className="eyebrow">
+                      {planLabels[first.plan_id] || first.plan_id || 'Lesson Plan'}
+                    </p>
+                    <h2>{subjects[first.subject_id] || 'Selected subject'}</h2>
+                    <p className="meta">
+                      For <strong>{students[first.student_id] || 'Selected child'}</strong>
+                      {' · '}Tutor <strong>{first.tutor_id ? tutors[first.tutor_id] || 'Approved tutor' : 'To be assigned'}</strong>
+                    </p>
                   </div>
-
-                  <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-                    <Link href={`/parent/bookings/${booking.id}`} className="btn-secondary">
-                      View Booking
-                    </Link>
-
-                    {booking.lesson_status === 'pending_payment' ? (
-                      <Link href={`/parent/payments/${booking.id}`} className="btn-primary">
-                        Continue Payment
-                      </Link>
-                    ) : null}
-                  </div>
+                  <StatusChip value={group.status} />
                 </div>
-              ))}
-            </div>
-          ) : null}
+
+                <div className="infoGrid">
+                  <Info label="First lesson" value={formatBookingDate(first.lesson_date, first.lesson_time, first.timezone, viewerTimezone)} />
+                  <Info label="Your time" value={formatBookingTime(first.lesson_date, first.lesson_time, first.timezone, viewerTimezone)} />
+                  <Info label="Lessons" value={String(group.lessons.length)} />
+                  <Info label="Plan total" value={`£${group.totalAmount.toFixed(2)}`} />
+                </div>
+
+                <p className="timezoneNote">Times are shown in {viewerTimezone}. The tutor’s original timezone is converted automatically.</p>
+
+                <div className="cardActions">
+                  <Link href="/parent/sessions" className="secondaryBtn">
+                    View Schedule
+                  </Link>
+                  {needsPayment ? (
+                    <Link href={`/payment?bookingId=${group.paymentBooking.id}`} className="primaryBtn">
+                      Continue Payment
+                    </Link>
+                  ) : null}
+                </div>
+              </article>
+            )
+          })}
         </section>
-      </div>
+      ) : null}
+
+      <style jsx>{styles}</style>
     </main>
   )
 }
 
+function unique(values: string[]) {
+  return Array.from(new Set(values))
+}
+
+function toNameMap(rows: NameRow[], fallback: string) {
+  const map: Record<string, string> = {}
+  rows.forEach((row) => {
+    map[row.id] = row.full_name || row.name || fallback
+  })
+  return map
+}
+
+function lessonTimeValue(lesson: BookingRow) {
+  if (!lesson.lesson_date || !lesson.lesson_time) return Number.MAX_SAFE_INTEGER
+  return bookingInstant(lesson.lesson_date, lesson.lesson_time, lesson.timezone).getTime()
+}
+
+function groupBookings(bookings: BookingRow[]): BookingGroup[] {
+  const grouped = new Map<string, BookingRow[]>()
+
+  bookings.forEach((booking) => {
+    const id = booking.parent_booking_group_id || booking.id
+    grouped.set(id, [...(grouped.get(id) ?? []), booking])
+  })
+
+  return Array.from(grouped.entries())
+    .map(([id, rows]) => {
+      const lessons = [...rows].sort((a, b) => lessonTimeValue(a) - lessonTimeValue(b))
+      const paymentBooking = lessons.find((item) => Number(item.amount_gbp || 0) > 0) || lessons[0]
+      const allCompleted = lessons.every((item) => item.status === 'COMPLETED')
+      const allPaid = lessons.every((item) => item.payment_status === 'PAID')
+      const anyPending = lessons.some(
+        (item) => item.status === 'PENDING_PAYMENT' || item.payment_status !== 'PAID'
+      )
+
+      return {
+        id,
+        lessons,
+        paymentBooking,
+        firstLesson: lessons[0],
+        status: allCompleted
+          ? 'COMPLETED'
+          : allPaid
+            ? 'CONFIRMED'
+            : anyPending
+              ? 'PENDING_PAYMENT'
+              : lessons[0].status,
+        totalAmount: lessons.reduce((sum, item) => sum + Number(item.amount_gbp || 0), 0),
+      }
+    })
+    .sort((a, b) => {
+      const aCreated = a.paymentBooking.created_at ? Date.parse(a.paymentBooking.created_at) : 0
+      const bCreated = b.paymentBooking.created_at ? Date.parse(b.paymentBooking.created_at) : 0
+      return bCreated - aCreated
+    })
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="info">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  )
+}
+
 function StatusChip({ value }: { value: string }) {
-  let bg = '#f3effb'
-  let color = '#6f42c1'
+  const normalized = value.toUpperCase()
+  const label = normalized.replaceAll('_', ' ')
+  const className =
+    normalized === 'COMPLETED'
+      ? 'status completed'
+      : normalized === 'CONFIRMED'
+        ? 'status confirmed'
+        : normalized === 'CANCELLED' || normalized === 'PAYMENT_FAILED'
+          ? 'status failed'
+          : 'status pending'
 
-  if (value === 'confirmed') {
-    bg = 'rgba(46, 204, 113, 0.14)'
-    color = '#1e9f5a'
-  } else if (value === 'completed') {
-    bg = 'rgba(52, 152, 219, 0.14)'
-    color = '#2f77c7'
-  } else if (value === 'cancelled') {
-    bg = 'rgba(231, 76, 60, 0.14)'
-    color = '#d64533'
-  } else if (value === 'pending_payment') {
-    bg = 'rgba(243, 156, 18, 0.14)'
-    color = '#c88308'
+  return <span className={className}>{label}</span>
+}
+
+const styles = `
+  .page { min-height: 100vh; padding: 42px 18px 90px; background: linear-gradient(180deg,#fff,#fbf8ff 45%,#f4edff); color: #21152d; }
+  .hero, .bookingList, .notice, .emptyCard { max-width: 1120px; margin-left: auto; margin-right: auto; }
+  .hero { padding: 44px; border-radius: 38px; background: radial-gradient(circle at top right,rgba(124,58,237,.17),transparent 34%),rgba(255,255,255,.97); border: 1px solid rgba(124,58,237,.13); box-shadow: 0 28px 80px rgba(71,43,117,.11); }
+  .eyebrow { margin: 0; color: #6d28d9; font-weight: 950; font-size: 14px; }
+  h1 { margin: 12px 0 0; font-size: clamp(42px,7vw,70px); line-height: .98; letter-spacing: -.055em; }
+  .subtitle, .meta, .timezoneNote, .emptyCard p { color: #6f637e; line-height: 1.7; }
+  .subtitle { max-width: 760px; margin: 18px 0 0; font-size: 18px; }
+  .heroActions, .cardActions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+  .primaryBtn, .secondaryBtn { min-height: 52px; padding: 0 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 17px; text-decoration: none; font-weight: 950; }
+  .primaryBtn { color: white; background: linear-gradient(135deg,#7c3aed,#6d28d9); box-shadow: 0 14px 34px rgba(124,58,237,.25); }
+  .secondaryBtn { color: #351e55; background: white; border: 1px solid rgba(124,58,237,.17); }
+  .notice { margin-top: 20px; padding: 16px 18px; border-radius: 18px; background: white; border: 1px solid rgba(124,58,237,.15); font-weight: 850; }
+  .notice.error { color: #b42318; background: #fff5f5; border-color: #fecaca; }
+  .bookingList { display: grid; gap: 20px; margin-top: 28px; }
+  .bookingCard, .emptyCard { padding: 28px; border-radius: 30px; background: rgba(255,255,255,.97); border: 1px solid rgba(124,58,237,.13); box-shadow: 0 22px 60px rgba(71,43,117,.08); }
+  .emptyCard { margin-top: 28px; text-align: center; }
+  .emptyCard h2 { margin: 10px 0; font-size: 32px; }
+  .emptyCard .primaryBtn { margin-top: 10px; }
+  .bookingTop { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+  .bookingTop h2 { margin: 9px 0 0; font-size: 32px; letter-spacing: -.04em; }
+  .meta { margin: 10px 0 0; }
+  .status { padding: 9px 13px; border-radius: 999px; font-size: 12px; font-weight: 950; white-space: nowrap; }
+  .status.confirmed { color: #027a48; background: #ecfdf3; }
+  .status.completed { color: #175cd3; background: #eff8ff; }
+  .status.pending { color: #b54708; background: #fffaeb; }
+  .status.failed { color: #b42318; background: #fef3f2; }
+  .infoGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-top: 22px; }
+  .info { padding: 15px; border-radius: 18px; background: #fbf8ff; border: 1px solid rgba(124,58,237,.1); }
+  .info span { display: block; color: #7a7088; font-size: 12px; font-weight: 850; }
+  .info strong { display: block; margin-top: 7px; font-size: 15px; }
+  .timezoneNote { margin: 14px 0 0; font-size: 13px; }
+  @media (max-width: 820px) {
+    .page { padding: 24px 12px 70px; }
+    .hero { padding: 32px 20px; border-radius: 28px; }
+    .bookingCard { padding: 22px 18px; }
+    .bookingTop { flex-direction: column; }
+    .infoGrid { grid-template-columns: 1fr 1fr; }
+    .primaryBtn, .secondaryBtn { width: 100%; }
   }
-
-  return (
-    <span
-      style={{
-        padding: '8px 12px',
-        borderRadius: 999,
-        background: bg,
-        color,
-        fontWeight: 700,
-        fontSize: 13,
-      }}
-    >
-      {value}
-    </span>
-  )
-}
-
-function SmallInfoChip({ label }: { label: string }) {
-  return (
-    <span
-      style={{
-        padding: '8px 12px',
-        borderRadius: 999,
-        background: '#fff',
-        border: '1px solid var(--border)',
-        color: 'var(--muted)',
-        fontWeight: 600,
-        fontSize: 13,
-      }}
-    >
-      {label}
-    </span>
-  )
-}
+  @media (max-width: 520px) { .infoGrid { grid-template-columns: 1fr; } }
+`

@@ -4,10 +4,17 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import {
+  bookingInstant,
+  formatBookingDate,
+  formatBookingTime,
+  resolveViewerTimezone,
+} from '../../lib/timezone'
 
 type ParentProfile = {
   id: string
   full_name: string
+  timezone: string
 }
 
 type LessonBooking = {
@@ -71,7 +78,7 @@ export default function ParentSessionsPage() {
 
       const { data: parentProfile, error: parentError } = await supabase
         .from('parent_profiles')
-        .select('id, full_name')
+        .select('id, full_name, timezone')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -165,19 +172,39 @@ export default function ParentSessionsPage() {
   }, [router])
 
   const upcomingLessons = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
+    const now = new Date()
 
     return lessons.filter(
       (lesson) =>
         lesson.lesson_date &&
-        lesson.lesson_date >= today &&
+        lesson.lesson_time &&
+        bookingInstant(
+          lesson.lesson_date,
+          lesson.lesson_time,
+          lesson.timezone
+        ) >= now &&
         (lesson.status === 'CONFIRMED' || lesson.payment_status === 'PAID')
     )
   }, [lessons])
 
-  const pendingPayments = useMemo(() => {
-    return lessons.filter((lesson) => lesson.payment_status !== 'PAID')
-  }, [lessons])
+  const viewerTimezone = resolveViewerTimezone(parent?.timezone)
+
+  const pendingPaymentGroups = useMemo(() => {
+  const groups = new Set<string>()
+
+  lessons.forEach((lesson) => {
+    if (
+      lesson.payment_status !== 'PAID' &&
+      lesson.status === 'PENDING_PAYMENT'
+    ) {
+      groups.add(
+        lesson.parent_booking_group_id || lesson.id
+      )
+    }
+  })
+
+  return groups
+}, [lessons])
 
   if (loading) {
     return (
@@ -208,7 +235,10 @@ export default function ParentSessionsPage() {
 
         <div className="stats">
           <Stat label="Upcoming Lessons" value={String(upcomingLessons.length)} />
-          <Stat label="Pending Payments" value={String(pendingPayments.length)} />
+          <Stat
+  label="Awaiting Payment"
+  value={String(pendingPaymentGroups.size)}
+/>
           <Stat label="Learning Type" value="1-to-1" />
         </div>
 
@@ -251,6 +281,7 @@ export default function ParentSessionsPage() {
                     ? tutors[lesson.tutor_id] || 'Approved tutor'
                     : 'Tutor pending'
                 }
+                viewerTimezone={viewerTimezone}
               />
             ))}
           </div>
@@ -286,8 +317,19 @@ export default function ParentSessionsPage() {
                 </p>
 
                 <p>
-                  {formatDate(lesson.lesson_date)} •{' '}
-                  {lesson.lesson_time || 'Time pending'}
+                  {formatBookingDate(
+                    lesson.lesson_date,
+                    lesson.lesson_time,
+                    lesson.timezone,
+                    viewerTimezone
+                  )}{' '}
+                  •{' '}
+                  {formatBookingTime(
+                    lesson.lesson_date,
+                    lesson.lesson_time,
+                    lesson.timezone,
+                    viewerTimezone
+                  )}
                 </p>
 
                 <StatusBadge
@@ -329,11 +371,13 @@ function LessonCard({
   studentName,
   subjectName,
   tutorName,
+  viewerTimezone,
 }: {
   lesson: LessonBooking
   studentName: string
   subjectName: string
   tutorName: string
+  viewerTimezone: string
 }) {
   const canJoin =
     lesson.payment_status === 'PAID' &&
@@ -352,9 +396,26 @@ function LessonCard({
         </p>
 
         <div className="infoGrid">
-          <Info label="Date" value={formatDate(lesson.lesson_date)} />
-          <Info label="Time" value={lesson.lesson_time || 'Time pending'} />
-          <Info label="Timezone" value={lesson.timezone || 'Europe/London'} />
+          <Info
+            label="Date"
+            value={formatBookingDate(
+              lesson.lesson_date,
+              lesson.lesson_time,
+              lesson.timezone,
+              viewerTimezone
+            )}
+          />
+          <Info
+            label="Time"
+            value={formatBookingTime(
+              lesson.lesson_date,
+              lesson.lesson_time,
+              lesson.timezone,
+              viewerTimezone
+            )}
+          />
+          <Info label="Your timezone" value={viewerTimezone} />
+          <Info label="Tutor timetable" value={lesson.timezone || 'Europe/London'} />
           <Info label="Status" value={lesson.status} />
         </div>
       </div>
@@ -433,17 +494,6 @@ function EmptyState({
       </Link>
     </div>
   )
-}
-
-function formatDate(date: string | null) {
-  if (!date) return 'Date pending'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`))
 }
 
 const styles = `

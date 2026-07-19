@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { BookingJourney } from '../../components/BookingJourney'
 
 type ParentProfile = {
   id: string
@@ -93,6 +94,7 @@ export default function ParentStudentsPage() {
   const [levels, setLevels] = useState<LearningLevel[]>([])
   const [message, setMessage] = useState('Loading...')
   const [saving, setSaving] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
 
   const [fullName, setFullName] = useState('')
   const [childAge, setChildAge] = useState('')
@@ -150,7 +152,9 @@ export default function ParentStudentsPage() {
         return
       }
 
-      setStudents(studentRows ?? [])
+      const loadedStudents = studentRows ?? []
+      setStudents(loadedStudents)
+      setShowAddForm(loadedStudents.length === 0)
       setMessage('')
     }
 
@@ -189,18 +193,6 @@ export default function ParentStudentsPage() {
 
   const classOptions = classOptionsByCountry[countrySystem] ?? classOptionsByCountry.Other
 
-  async function reloadStudents(parentId: string) {
-    const { data: studentRows } = await supabase
-      .from('student_profiles')
-      .select(
-        'id, full_name, child_age, country_system, country_class_label, school_year_level, curriculum_type, subjects_needed, parent_goal_for_student, learning_level_id'
-      )
-      .eq('parent_id', parentId)
-      .order('created_at', { ascending: false })
-
-    setStudents(studentRows ?? [])
-  }
-
   async function handleAddStudent(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!parent) return
@@ -226,7 +218,11 @@ export default function ParentStudentsPage() {
       parent_goal_for_student: goal.trim() || null,
     }
 
-    const { error } = await supabase.from('student_profiles').insert(payload)
+    const { data: createdStudent, error } = await supabase
+      .from('student_profiles')
+      .insert(payload)
+      .select('id')
+      .single()
 
     if (error) {
       setMessage(error.message)
@@ -234,15 +230,14 @@ export default function ParentStudentsPage() {
       return
     }
 
-    await reloadStudents(parent.id)
+    if (!createdStudent?.id) {
+      setMessage('The child was saved, but the next step could not be opened. Please select the child from the list.')
+      setSaving(false)
+      return
+    }
 
-    setFullName('')
-    setChildAge('')
-    setCountrySystem('UK')
-    setCountryClassLabel('')
-    setGoal('')
-    setSaving(false)
-    setMessage('Child profile added successfully. You can now choose a subject.')
+    setMessage('Child saved. Opening subjects...')
+    router.push(`/subjects?studentId=${createdStudent.id}`)
   }
 
   function getLevelName(levelId: string | null) {
@@ -253,15 +248,32 @@ export default function ParentStudentsPage() {
   return (
     <main className="page-wrap">
       <div className="container">
+        <BookingJourney currentStep={1} />
+
+        <section className="card" style={{ padding: 28, marginBottom: 24 }}>
+          <p style={{ margin: 0, color: '#6f42c1', fontWeight: 900, fontSize: 14 }}>
+            Step 1 — Choose who is learning
+          </p>
+          <h1 className="page-title" style={{ margin: '9px 0 0', fontSize: 38 }}>
+            Select a child to continue
+          </h1>
+          <p className="page-subtitle" style={{ marginBottom: 0 }}>
+            One click opens the subjects matched to that child. If they are new, add their details once and we will continue automatically.
+          </p>
+        </section>
+
         <div
           className="dashboard-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '0.95fr 1.05fr',
+            gridTemplateColumns: showAddForm
+              ? 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))'
+              : '1fr',
             gap: 24,
             alignItems: 'start',
           }}
         >
+          {showAddForm ? (
           <section className="card" style={{ padding: 32 }}>
             <p style={{ margin: 0, color: '#6f42c1', fontWeight: 800, fontSize: 14 }}>
               Student Setup
@@ -287,7 +299,7 @@ export default function ParentStudentsPage() {
                 className="two-col-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                   gap: 14,
                 }}
               >
@@ -360,16 +372,17 @@ export default function ParentStudentsPage() {
               />
 
               <button className="btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : 'Add Child'}
+                {saving ? 'Saving...' : 'Save Child & Choose Subject →'}
               </button>
             </form>
 
             {message ? <Notice message={message} /> : null}
           </section>
+          ) : null}
 
           <aside className="card" style={{ padding: 28 }}>
             <h2 style={{ marginTop: 0, fontSize: 24 }}>
-              Your Children {parent ? `• ${parent.full_name}` : ''}
+              Choose a Child {parent ? `• ${parent.full_name}` : ''}
             </h2>
 
             {students.length === 0 ? (
@@ -403,13 +416,24 @@ export default function ParentStudentsPage() {
                         className="btn-primary"
                         style={{ display: 'inline-block' }}
                       >
-                        Choose Subject
+                        Select {student.full_name.split(' ')[0]} & Continue →
                       </Link>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            {!showAddForm && students.length > 0 ? (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ marginTop: 18 }}
+                onClick={() => setShowAddForm(true)}
+              >
+                Add Another Child
+              </button>
+            ) : null}
           </aside>
         </div>
       </div>

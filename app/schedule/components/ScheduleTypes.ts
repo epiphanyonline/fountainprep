@@ -66,6 +66,6 @@ export type BookingSummaryItem = {
   tutor: string
   weekday: string
   timeRange: string
-  startDate: string
-  dates: string[]
+  startDateLabel: string
+  tutorTimezone: string
 }

@@ -4,10 +4,18 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import {
+  bookingInstant,
+  dateKeyInTimezone,
+  formatBookingDate,
+  formatBookingTime,
+  resolveViewerTimezone,
+} from '../../lib/timezone'
 
 type TutorProfile = {
   id: string
   full_name: string
+  timezone: string | null
 }
 
 type LessonBooking = {
@@ -97,7 +105,7 @@ export default function TutorSessionsPage() {
 
       const { data: tutorProfile, error: tutorError } = await supabase
         .from('tutor_profiles')
-        .select('id, full_name')
+        .select('id, full_name, timezone')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -228,12 +236,19 @@ export default function TutorSessionsPage() {
   }, [lessons])
 
   const upcomingLessons = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-
     return confirmedLessons.filter(
-      (lesson) => lesson.lesson_date && lesson.lesson_date >= today
+      (lesson) =>
+        lesson.lesson_date &&
+        lesson.lesson_time &&
+        bookingInstant(
+          lesson.lesson_date,
+          lesson.lesson_time,
+          lesson.timezone
+        ).getTime() >= Date.now()
     )
   }, [confirmedLessons])
+
+  const viewerTimezone = resolveViewerTimezone(tutor?.timezone)
 
   function updateForm(lessonId: string, field: keyof NoteForm, value: string) {
     setForms((prev) => ({
@@ -270,7 +285,8 @@ export default function TutorSessionsPage() {
           homework: form.homework.trim(),
           tutor_comment: form.tutor_comment.trim(),
           attendance: form.attendance,
-          lesson_date: lesson.lesson_date || new Date().toISOString().split('T')[0],
+          lesson_date:
+            lesson.lesson_date || dateKeyInTimezone(new Date(), viewerTimezone),
         })
         .eq('id', existing.id)
         .eq('tutor_id', tutor.id)
@@ -291,7 +307,8 @@ export default function TutorSessionsPage() {
         homework: form.homework.trim(),
         tutor_comment: form.tutor_comment.trim(),
         attendance: form.attendance,
-        lesson_date: lesson.lesson_date || new Date().toISOString().split('T')[0],
+        lesson_date:
+          lesson.lesson_date || dateKeyInTimezone(new Date(), viewerTimezone),
         
       })
 
@@ -430,9 +447,25 @@ setSavingId('')
                 </div>
 
                 <div className="infoGrid">
-                  <Info label="Date" value={formatDate(lesson.lesson_date)} />
-                  <Info label="Time" value={lesson.lesson_time || 'Time pending'} />
-                  <Info label="Timezone" value={lesson.timezone || 'Europe/London'} />
+                  <Info
+                    label="Date"
+                    value={formatBookingDate(
+                      lesson.lesson_date,
+                      lesson.lesson_time,
+                      lesson.timezone,
+                      viewerTimezone
+                    )}
+                  />
+                  <Info
+                    label="Time"
+                    value={formatBookingTime(
+                      lesson.lesson_date,
+                      lesson.lesson_time,
+                      lesson.timezone,
+                      viewerTimezone
+                    )}
+                  />
+                  <Info label="Shown in" value={viewerTimezone} />
                   <Info label="Payment" value={lesson.payment_status} />
                 </div>
 
@@ -570,17 +603,6 @@ function Info({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   )
-}
-
-function formatDate(date: string | null) {
-  if (!date) return 'Date pending'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`))
 }
 
 const styles = `

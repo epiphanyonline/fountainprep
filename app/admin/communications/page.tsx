@@ -35,8 +35,24 @@ type EventWithSummary = TutorEvent & {
   confirmed_count: number;
 };
 
+type GeneralCommunication = {
+  id: string;
+  communication_type: string;
+  subject: string;
+  heading: string | null;
+  message: string;
+  button_text: string | null;
+  button_url: string | null;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  status: string;
+  created_at: string;
+};
+
 type OrientationTutor = {
   id: string;
+  user_id: string;
   full_name: string;
   email: string | null;
   approval_status: string;
@@ -55,9 +71,13 @@ export default function AdminCommunicationsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventWithSummary | null>(
     null,
   );
-  const [activeTab, setActiveTab] = useState<"events" | "orientation">(
-    "events",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "events" | "general" | "orientation"
+  >("events");
+  const [generalCommunications, setGeneralCommunications] = useState<
+    GeneralCommunication[]
+  >([]);
+  const [generalLoading, setGeneralLoading] = useState(true);
   const [orientationTutors, setOrientationTutors] = useState<
     OrientationTutor[]
   >([]);
@@ -65,6 +85,7 @@ export default function AdminCommunicationsPage() {
   const [sendingOrientation, setSendingOrientation] = useState(false);
   const [sendingTutorId, setSendingTutorId] = useState<string | null>(null);
   const [showPendingTutors, setShowPendingTutors] = useState(false);
+  const [showCompletedTutors, setShowCompletedTutors] = useState(false)
 
   async function loadEvents() {
     setLoading(true);
@@ -151,16 +172,49 @@ export default function AdminCommunicationsPage() {
     setLoading(false);
   }
 
+  async function loadGeneralCommunications() {
+    setGeneralLoading(true);
+
+    const { data, error } = await supabase
+      .from("tutor_communications")
+      .select(
+        `
+        id,
+        communication_type,
+        subject,
+        heading,
+        message,
+        button_text,
+        button_url,
+        recipient_count,
+        sent_count,
+        failed_count,
+        status,
+        created_at
+      `,
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(error.message);
+      setGeneralLoading(false);
+      return;
+    }
+
+    setGeneralCommunications((data ?? []) as GeneralCommunication[]);
+    setGeneralLoading(false);
+  }
+
   async function loadOrientationTutors() {
     setOrientationLoading(true);
 
-    const { data, error } = await supabase
+    const { data: tutorRows, error: tutorError } = await supabase
       .from("tutor_profiles")
       .select(
         `
         id,
+        user_id,
         full_name,
-        email,
         approval_status,
         orientation_completed,
         orientation_score,
@@ -170,18 +224,60 @@ export default function AdminCommunicationsPage() {
       .eq("approval_status", "approved")
       .order("full_name", { ascending: true });
 
-    if (error) {
-      setMessage(error.message);
+    if (tutorError) {
+      setMessage(tutorError.message);
       setOrientationLoading(false);
       return;
     }
 
-    setOrientationTutors((data ?? []) as OrientationTutor[]);
+    const userIds = Array.from(
+      new Set(
+        (tutorRows ?? [])
+          .map((tutor) => tutor.user_id)
+          .filter(Boolean),
+      ),
+    );
+
+    const emailMap = new Map<string, string | null>();
+
+    if (userIds.length > 0) {
+      const { data: profileRows, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("id, email")
+        .in("id", userIds);
+
+      if (profileError) {
+        console.warn(
+          "Unable to load tutor email addresses:",
+          profileError.message,
+        );
+      }
+
+      for (const profile of profileRows ?? []) {
+        emailMap.set(profile.id, profile.email ?? null);
+      }
+    }
+
+    const tutorsWithEmails: OrientationTutor[] = (tutorRows ?? []).map(
+      (tutor) => ({
+        id: tutor.id,
+        user_id: tutor.user_id,
+        full_name: tutor.full_name,
+        email: emailMap.get(tutor.user_id) ?? null,
+        approval_status: tutor.approval_status,
+        orientation_completed: tutor.orientation_completed ?? false,
+        orientation_score: tutor.orientation_score ?? null,
+        orientation_completed_at: tutor.orientation_completed_at ?? null,
+      }),
+    );
+
+    setOrientationTutors(tutorsWithEmails);
     setOrientationLoading(false);
   }
 
   useEffect(() => {
     loadEvents();
+    loadGeneralCommunications();
     loadOrientationTutors();
   }, []);
 
@@ -450,6 +546,16 @@ export default function AdminCommunicationsPage() {
           <button
             type="button"
             className={
+              activeTab === "general" ? "tabButton active" : "tabButton"
+            }
+            onClick={() => setActiveTab("general")}
+          >
+            General Communications
+          </button>
+
+          <button
+            type="button"
+            className={
               activeTab === "orientation" ? "tabButton active" : "tabButton"
             }
             onClick={() => setActiveTab("orientation")}
@@ -599,6 +705,98 @@ export default function AdminCommunicationsPage() {
               )}
             </div>
           </>
+        ) : activeTab === "general" ? (
+          <section className="generalPanel">
+            <div className="orientationIntro">
+              <div>
+                <p className="eyebrow">Tutor communication</p>
+                <h2>General communications</h2>
+                <p>
+                  View announcements, orientation reminders and other non-event
+                  emails sent to approved tutors.
+                </p>
+              </div>
+            </div>
+
+            {generalLoading ? (
+              <p className="message">Loading general communications...</p>
+            ) : (
+              <div className="generalCommunicationGrid">
+                {generalCommunications.map((communication) => (
+                  <article
+                    key={communication.id}
+                    className="generalCommunicationCard"
+                  >
+                    <div className="generalCommunicationHeader">
+                      <div>
+                        <div className="badgeRow">
+                          <span className="typeBadge">
+                            General Communication
+                          </span>
+                          <StatusBadge status={communication.status} />
+                        </div>
+
+                        <h2>{communication.subject}</h2>
+
+                        {communication.heading && (
+                          <h3>{communication.heading}</h3>
+                        )}
+                      </div>
+
+                      <div className="dateBox">
+                        <span>Sent</span>
+                        <strong>
+                          {formatCommunicationDate(communication.created_at)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <p className="eventDescription">
+                      {communication.message}
+                    </p>
+
+                    <div className="generalDetails">
+                      <Detail
+                        label="Recipients"
+                        value={String(communication.recipient_count)}
+                      />
+                      <Detail
+                        label="Sent"
+                        value={String(communication.sent_count)}
+                      />
+                      <Detail
+                        label="Failed"
+                        value={String(communication.failed_count)}
+                      />
+                    </div>
+
+                    {communication.button_url && (
+                      <div className="actions">
+                        <a
+                          href={communication.button_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="joinButton"
+                        >
+                          {communication.button_text || "Open Link"}
+                        </a>
+                      </div>
+                    )}
+                  </article>
+                ))}
+
+                {generalCommunications.length === 0 && (
+                  <div className="emptyState">
+                    <h2>No general communications yet</h2>
+                    <p>
+                      General announcements and tutor reminder emails will
+                      appear here after they are sent.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         ) : (
           <section className="orientationPanel">
             <div className="orientationIntro">
@@ -649,52 +847,115 @@ export default function AdminCommunicationsPage() {
                 </div>
 
                 <div className="orientationActions">
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={() => setShowPendingTutors((current) => !current)}
-                  >
-                    {showPendingTutors
-                      ? "Hide Pending Tutors"
-                      : "View Pending Tutors"}
-                  </button>
-                </div>
+  <button
+    type="button"
+    className="secondaryButton"
+    onClick={() => setShowPendingTutors((current) => !current)}
+  >
+    {showPendingTutors
+      ? "Hide Pending Tutors"
+      : `View Pending Tutors (${pendingOrientationTutors.length})`}
+  </button>
 
-                {showPendingTutors && (
-                  <div className="pendingTutorList">
-                    {pendingOrientationTutors.map((tutor) => (
-                      <div className="pendingTutorRow" key={tutor.id}>
-                        <div>
-                          <strong>{tutor.full_name}</strong>
-                          <span>{tutor.email}</span>
-                        </div>
+  <button
+    type="button"
+    className="secondaryButton"
+    onClick={() => setShowCompletedTutors((current) => !current)}
+  >
+    {showCompletedTutors
+      ? "Hide Completed Tutors"
+      : `View Completed Tutors (${completedOrientationTutors.length})`}
+  </button>
+</div>
 
-                        <div className="pendingTutorMeta">
-                          <small>Orientation pending</small>
-                          <button
-                            type="button"
-                            className="secondaryButton"
-                            disabled={sendingTutorId === tutor.id}
-                            onClick={() => sendOrientationReminder([tutor.id])}
-                          >
-                            {sendingTutorId === tutor.id
-                              ? "Sending..."
-                              : "Send Reminder"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+{showPendingTutors && (
+  <div className="pendingTutorList">
+    {pendingOrientationTutors.map((tutor) => (
+      <div className="pendingTutorRow" key={tutor.id}>
+        <div>
+          <strong>{tutor.full_name}</strong>
+          <span>{tutor.email || "Email not available"}</span>
+        </div>
 
-                    {pendingOrientationTutors.length === 0 && (
-                      <div className="emptyState">
-                        <h2>Everyone has completed orientation</h2>
-                        <p>
-                          There are no approved tutors waiting for a reminder.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
+        <div className="pendingTutorMeta">
+          <small>Orientation pending</small>
+
+          <button
+            type="button"
+            className="secondaryButton"
+            disabled={sendingTutorId === tutor.id}
+            onClick={() => sendOrientationReminder([tutor.id])}
+          >
+            {sendingTutorId === tutor.id
+              ? "Sending..."
+              : "Send Reminder"}
+          </button>
+        </div>
+      </div>
+    ))}
+
+    {pendingOrientationTutors.length === 0 && (
+      <div className="emptyState">
+        <h2>Everyone has completed orientation</h2>
+
+        <p>
+          There are no approved tutors waiting for a reminder.
+        </p>
+      </div>
+    )}
+  </div>
+)}
+
+{showCompletedTutors && (
+  <div className="completedTutorList">
+    {completedOrientationTutors.map((tutor) => (
+      <div className="pendingTutorRow" key={tutor.id}>
+        <div>
+          <strong>{tutor.full_name}</strong>
+          <span>{tutor.email || "Email not available"}</span>
+        </div>
+
+        <div className="completedTutorMeta">
+          <small>Orientation completed</small>
+
+          <span>
+            Score:{" "}
+            <strong>
+              {tutor.orientation_score !== null
+                ? `${tutor.orientation_score}%`
+                : "Not recorded"}
+            </strong>
+          </span>
+
+          <span>
+            Completed:{" "}
+            <strong>
+              {tutor.orientation_completed_at
+                ? new Intl.DateTimeFormat("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }).format(
+                    new Date(tutor.orientation_completed_at),
+                  )
+                : "Date not recorded"}
+            </strong>
+          </span>
+        </div>
+      </div>
+    ))}
+
+    {completedOrientationTutors.length === 0 && (
+      <div className="emptyState">
+        <h2>No completed orientations yet</h2>
+
+        <p>
+          Tutors who complete orientation will appear here.
+        </p>
+      </div>
+    )}
+  </div>
+)}
               </>
             )}
           </section>
@@ -797,6 +1058,20 @@ function formatEventDate(value: string) {
       month: "short",
       year: "numeric",
     }).format(new Date(`${value}T12:00:00`));
+  } catch {
+    return value;
+  }
+}
+
+function formatCommunicationDate(value: string) {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
   } catch {
     return value;
   }
@@ -1337,6 +1612,12 @@ const styles = `
     cursor: pointer;
   }
 
+  .completedTutorList {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
   .pendingTutorList {
     display: grid;
     gap: 10px;
@@ -1389,6 +1670,87 @@ const styles = `
     cursor: pointer;
   }
 
+  .generalPanel {
+    padding: 30px;
+    border-radius: 30px;
+    background: rgba(255,255,255,.95);
+    border: 1px solid rgba(126,87,194,.12);
+    box-shadow: 0 22px 62px rgba(71,43,117,.08);
+  }
+
+  .generalCommunicationGrid {
+    display: grid;
+    gap: 18px;
+    margin-top: 26px;
+  }
+
+  .generalCommunicationCard {
+    padding: 26px;
+    border-radius: 26px;
+    background: #ffffff;
+    border: 1px solid rgba(126,87,194,.12);
+    box-shadow: 0 16px 42px rgba(71,43,117,.07);
+  }
+
+  .generalCommunicationHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 22px;
+  }
+
+  .generalCommunicationCard h2 {
+    margin: 14px 0 0;
+    font-size: clamp(25px, 3vw, 36px);
+    line-height: 1.08;
+    letter-spacing: -.04em;
+  }
+
+  .generalCommunicationCard h3 {
+    margin: 10px 0 0;
+    color: #6d28d9;
+    font-size: 17px;
+  }
+
+  .generalDetails {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 10px;
+  }
+
+  .orientationActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.completedTutorMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.completedTutorMeta small {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #027a48;
+  background: #ecfdf3;
+  font-weight: 900;
+}
+
+.completedTutorMeta span {
+  color: #6f637e;
+  font-size: 13px;
+}
+
+.completedTutorMeta strong {
+  color: #21152d;
+}
+
   @media (max-width: 900px) {
     .page {
       padding: 20px 10px 70px;
@@ -1402,7 +1764,8 @@ const styles = `
     .cardHeader,
     .inviteeRow,
     .orientationIntro,
-    .pendingTutorRow {
+    .pendingTutorRow,
+    .generalCommunicationHeader {
 
       align-items: flex-start;
       flex-direction: column;
@@ -1416,12 +1779,17 @@ const styles = `
 
     .kpiGrid,
     .eventDetails,
-    .orientationKpiGrid {
+    .orientationKpiGrid,
+    .generalDetails {
       grid-template-columns: 1fr 1fr;
     }
 
     .orientationPrimaryButton {
       width: 100%;
+    }
+
+    .generalPanel {
+      padding: 20px;
     }
 
     .pendingTutorMeta {
@@ -1457,7 +1825,8 @@ const styles = `
 
     .kpiGrid,
     .eventDetails,
-    .orientationKpiGrid {
+    .orientationKpiGrid,
+    .generalDetails {
       grid-template-columns: 1fr;
     }
 
@@ -1481,6 +1850,13 @@ const styles = `
     .eventCard,
     .modalCard {
       padding: 20px;
-    }
+    }    
+
+@media (max-width: 900px) {
+  .completedTutorMeta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
   }
 `;

@@ -1,5 +1,4 @@
 import type { BookingFrequency, BookingSummaryItem } from './ScheduleTypes'
-import { formatShortDate } from './scheduleUtils'
 
 type CurrencyDisplay = {
   symbol: string
@@ -17,6 +16,7 @@ type Props = {
   saving: boolean
   canContinue: boolean
   currency: CurrencyDisplay
+  viewerTimezone: string
   onContinue: () => void
   onBack: () => void
 }
@@ -30,40 +30,51 @@ export function BookingSummary({
   saving,
   canContinue,
   currency,
+  viewerTimezone,
   onContinue,
   onBack,
 }: Props) {
-  const localTotal = `${currency.symbol}${Math.round(totalAmount * currency.rate)}`
+  const approximateLocalTotal = `${currency.symbol}${Math.round(
+    totalAmount * currency.rate
+  )}`
 
   return (
-    <aside className="sideCard">
-      <p className="eyebrow">Weekly timetable summary</p>
+    <aside className="sideCard" id="booking-summary">
+      <p className="eyebrow">Booking summary</p>
       <h2>{planName}</h2>
+
+      <div className="timezoneSummary">
+        <strong>Times shown in your timezone</strong>
+        <span>{viewerTimezone}</span>
+      </div>
 
       <div className="totalBox">
         <p>Total due</p>
-        <strong>{localTotal}</strong>
-        <span>{totalLessonsRequired} private 1-to-1 lessons</span>
+        <strong>£{totalAmount}</strong>
+        <span>{totalLessonsRequired} private 1-to-1 lessons • charged in GBP</span>
+        {currency.code !== 'GBP' ? (
+          <small>Approximately {approximateLocalTotal} {currency.code}</small>
+        ) : null}
       </div>
 
       <div className="selectedBox">
         {bookingSummary.length === 0 ? (
           <p className="muted">
-            Choose {requiredSlotCount === 2 ? 'the first two weekly lesson dates' : 'the first weekly lesson date'} to continue.
+            {requiredSlotCount === 2
+              ? 'Choose the first time for both weekly lessons.'
+              : 'Choose your first weekly lesson time.'}
           </p>
         ) : (
           bookingSummary.map((item, index) => (
             <div key={item.id} className="selectedItem">
-              <small>Weekly Lesson {requiredSlotCount === 2 ? index + 1 : ''}</small>
+              <small>
+                {requiredSlotCount === 2 ? `Weekly lesson ${index + 1}` : 'Weekly lesson'}
+              </small>
               <strong>Every {item.weekday}</strong>
               <p>{item.timeRange}</p>
-              <p>First lesson: {formatShortDate(item.startDate)}</p>
-              <div className="datePills">
-                {item.dates.map((date) => (
-                  <span key={date}>{formatShortDate(date)}</span>
-                ))}
-              </div>
-              <em>Remaining lessons are scheduled automatically.</em>
+              <p>First lesson: {item.startDateLabel}</p>
+              <p>Tutor: {item.tutor}</p>
+              <em>Tutor timetable: {item.tutorTimezone}</em>
             </div>
           ))
         )}
@@ -71,19 +82,23 @@ export function BookingSummary({
 
       <div className="timetableHelp">
         <strong>How your timetable works</strong>
-        <span>✓ You are choosing the first lesson date only.</span>
-        <span>✓ The same day and time repeats weekly.</span>
-        <span>✓ Your tutor is reserved for this weekly pattern after payment.</span>
-        <span>✓ Your full timetable appears in the Parent Dashboard.</span>
-        <span>✓ Changes can later be requested through Fountain Prep messages.</span>
+        <span>✓ You choose the first lesson time.</span>
+        <span>✓ The tutor keeps that weekly timetable.</span>
+        <span>✓ Your local display adjusts automatically when timezones or daylight saving differ.</span>
+        <span>✓ The complete timetable appears after payment.</span>
       </div>
 
-      <button type="button" onClick={onContinue} disabled={saving || !canContinue} className="primaryBtn">
-        {saving ? 'Creating timetable...' : 'Reserve Weekly Timetable'}
+      <button
+        type="button"
+        onClick={onContinue}
+        disabled={saving || !canContinue}
+        className="primaryBtn"
+      >
+        {saving ? 'Creating timetable...' : `Continue to Payment — £${totalAmount}`}
       </button>
 
       <button type="button" onClick={onBack} className="ghostBtn">
-        Back to Payment Plans
+        Back to Plans
       </button>
     </aside>
   )

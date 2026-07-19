@@ -3,9 +3,9 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { BookingJourney } from '../components/BookingJourney'
 
 import { BookingSummary } from './components/BookingSummary'
-import { ProgressStepper } from './components/ProgressStepper'
 import { ScheduleLoading } from './components/ScheduleLoading'
 import { scheduleStyles } from './components/ScheduleStyles'
 import { SummaryCard } from './components/SummaryCard'
@@ -27,10 +27,11 @@ import type {
 import {
   DEFAULT_TIMEZONE,
   FIRST_LESSON_NOTICE_HOURS,
-  addWeeks,
   displaySubjectName,
-  formatTime,
+  formatSlotShortDate,
+  formatSlotTimeRange,
   getWeekdayName,
+  getSlotWeekday,
   languageNames,
   normaliseSubjectName,
   planLabels,
@@ -38,7 +39,8 @@ import {
   planWeeks,
   removeDuplicateSlots,
   resolveSubject,
-  slotTimeRange,
+  resolveViewerTimezone,
+  slotViewerDateKey,
   toTutorProfile,
 } from './components/scheduleUtils'
 
@@ -64,6 +66,7 @@ function ScheduleContent() {
   code: 'GBP',
   rate: 1,
 })
+  const [parentTimezone, setParentTimezone] = useState(DEFAULT_TIMEZONE)
 
   const [student, setStudent] = useState<Student | null>(null)
   const [subjectName, setSubjectName] = useState('Selected subject')
@@ -74,9 +77,9 @@ function ScheduleContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('Loading available tutor slots...')
-  const [debugMessage, setDebugMessage] = useState('')
   const [profileTutor, setProfileTutor] = useState<TutorProfile | null>(null)
   const [activeTimesTutorId, setActiveTimesTutorId] = useState<string | null>(null)
+  const [showReadyPrompt, setShowReadyPrompt] = useState(false)
 
   const planName = planLabels[planId]
   const weeksToBook = planWeeks[planId]
@@ -97,16 +100,17 @@ function ScheduleContent() {
 
     return Array.from(map.entries())
       .map(([tutorId, tutorSlots]) => {
-        const sorted = [...tutorSlots].sort((a, b) => {
-          const dateCompare = a.slot_date.localeCompare(b.slot_date)
-          if (dateCompare !== 0) return dateCompare
-          return a.start_time.localeCompare(b.start_time)
-        })
+        const sorted = [...tutorSlots].sort((a, b) =>
+          (a.starts_at || `${a.slot_date}T${a.start_time}`).localeCompare(
+            b.starts_at || `${b.slot_date}T${b.start_time}`
+          )
+        )
 
         const slotsByDate: Record<string, Slot[]> = {}
         sorted.forEach((slot) => {
-          if (!slotsByDate[slot.slot_date]) slotsByDate[slot.slot_date] = []
-          slotsByDate[slot.slot_date].push(slot)
+          const viewerDate = slotViewerDateKey(slot, parentTimezone)
+          if (!slotsByDate[viewerDate]) slotsByDate[viewerDate] = []
+          slotsByDate[viewerDate].push(slot)
         })
 
         return {
@@ -118,13 +122,15 @@ function ScheduleContent() {
         }
       })
       .sort((a, b) => {
-        const dateCompare = a.firstSlot.slot_date.localeCompare(b.firstSlot.slot_date)
-        if (dateCompare !== 0) return dateCompare
-        const timeCompare = a.firstSlot.start_time.localeCompare(b.firstSlot.start_time)
-        if (timeCompare !== 0) return timeCompare
+        const firstStart =
+          a.firstSlot.starts_at || `${a.firstSlot.slot_date}T${a.firstSlot.start_time}`
+        const secondStart =
+          b.firstSlot.starts_at || `${b.firstSlot.slot_date}T${b.firstSlot.start_time}`
+        const instantCompare = firstStart.localeCompare(secondStart)
+        if (instantCompare !== 0) return instantCompare
         return (a.tutor.full_name || '').localeCompare(b.tutor.full_name || '')
       })
-  }, [slots])
+  }, [slots, parentTimezone])
 
   const activeTimesGroup = useMemo(() => {
     if (!activeTimesTutorId) return null
@@ -142,24 +148,20 @@ function ScheduleContent() {
 
   tutor: slot.tutor_profiles?.full_name ?? '',
 
-  weekday: getWeekdayName(slot.slot_date),
+  weekday: getSlotWeekday(slot, parentTimezone),
 
-  timeRange: slotTimeRange(slot),
+  timeRange: formatSlotTimeRange(slot, parentTimezone),
 
-  startDate: slot.slot_date,
+  startDateLabel: formatSlotShortDate(slot, parentTimezone),
 
-  dates: Array.from(
-    { length: weeksToBook },
-    (_, week) => addWeeks(slot.slot_date, week)
-  ),
+  tutorTimezone: slot.timezone || 'Africa/Lagos',
 }))
-  }, [selectedSlots, requiredSlotCount, weeksToBook])
+  }, [selectedSlots, frequency, parentTimezone])
 
   useEffect(() => {
     async function loadData() {
       setLoading(true)
       setMessage('Loading available tutor slots...')
-      setDebugMessage('')
       setSlots([])
       setSelectedSlots([])
 
@@ -178,10 +180,24 @@ function ScheduleContent() {
         return
       }
 
+      const { data: parentProfile, error: parentError } = await supabase
+        .from('parent_profiles')
+        .select('id, timezone')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (parentError || !parentProfile) {
+        router.push('/parent/onboarding')
+        return
+      }
+
+      setParentTimezone(resolveViewerTimezone(parentProfile.timezone))
+
       const { data: studentRow, error: studentError } = await supabase
         .from('student_profiles')
         .select('id, full_name, child_age, country_system, country_class_label, learning_level_id')
         .eq('id', studentId)
+        .eq('parent_id', parentProfile.id)
         .maybeSingle()
 
       if (studentError || !studentRow) {
@@ -336,7 +352,6 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
       const uniqueSlots = removeDuplicateSlots(cleanSlots)
 
       setSlots(uniqueSlots)
-      setDebugMessage(`Matched ${uniqueSlots.length} first-lesson start option(s) from ${subjectTutorIds.length} approved tutor(s).`)
 
       setMessage(
         uniqueSlots.length
@@ -360,14 +375,47 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
     setSelectedSlots((prev) => {
       const selected = prev.some((s) => s.id === slot.id)
       if (selected) return prev.filter((s) => s.id !== slot.id)
-      if (frequency === 'WEEKLY_SAME_TIME') return [slot]
-      if (prev.length >= 2) return [prev[1], slot]
-      return [...prev, slot]
+      let next: Slot[]
+
+      if (frequency === 'WEEKLY_SAME_TIME') {
+        next = [slot]
+      } else {
+        // A two-day timetable must stay with one tutor. Selecting a different
+        // tutor starts a new timetable with that tutor.
+        const sameTutor = prev.filter((item) => item.tutor_id === slot.tutor_id)
+        const selectedTutorWeekday = getWeekdayName(slot.slot_date)
+        const sameWeekdayIndex = sameTutor.findIndex(
+          (item) => getWeekdayName(item.slot_date) === selectedTutorWeekday
+        )
+
+        // Choosing another time on the same tutor-local weekday replaces the
+        // previous time instead of creating two lessons on one day.
+        if (sameWeekdayIndex >= 0) {
+          next = [...sameTutor]
+          next[sameWeekdayIndex] = slot
+        } else if (sameTutor.length >= 2) {
+          next = [sameTutor[1], slot]
+        } else if (sameTutor.length !== prev.length) {
+          next = [...sameTutor, slot]
+        } else {
+          next = [...prev, slot]
+        }
+      }
+
+      if (next.length >= requiredSlotCount) {
+        window.setTimeout(() => {
+          setActiveTimesTutorId(null)
+          setShowReadyPrompt(true)
+        }, 180)
+      }
+
+      return next
     })
   }
 
   function changeFrequency(next: BookingFrequency) {
     setFrequency(next)
+    setShowReadyPrompt(false)
     if (next === 'WEEKLY_SAME_TIME') {
       setSelectedSlots((prev) => prev.slice(0, 1))
     } else {
@@ -398,74 +446,76 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
     setSaving(true)
     setMessage('Creating your weekly learning timetable...')
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const bookingGroupId = crypto.randomUUID()
     const seedSlots = selectedSlots.slice(0, requiredSlotCount)
 
-    const bookingRows = seedSlots.flatMap((slot, slotIndex) =>
-      Array.from({ length: weeksToBook }).map((_, weekIndex) => ({
-        parent_id: user.id,
-        student_id: studentId,
-        subject_id: resolvedSubjectId,
-        program_id: programId || null,
-        plan_id: planId,
-        tutor_id: slot.tutor_id,
-        availability_slot_id: weekIndex === 0 ? slot.id : null,
-        lesson_date: addWeeks(slot.slot_date, weekIndex),
-        lesson_time: formatTime(slot.start_time),
-        timezone: slot.timezone || DEFAULT_TIMEZONE,
-        status: 'PENDING_PAYMENT',
-        payment_status: 'UNPAID',
-        amount_gbp: slotIndex === 0 && weekIndex === 0 ? totalAmount : 0,
-        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${slotIndex + 1}-${weekIndex + 1}`,
-        booking_frequency: frequency,
-        repeat_weeks: weeksToBook,
-        parent_booking_group_id: bookingGroupId,
-      }))
-    )
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    const { data: bookings, error: bookingError } = await supabase
-      .from('lesson_bookings')
-      .insert(bookingRows)
-      .select('id')
+      if (sessionError || !session?.access_token) {
+        setSaving(false)
+        router.push('/login')
+        return
+      }
 
-    if (bookingError) {
-      setMessage(bookingError.message)
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          studentId,
+          subjectId: resolvedSubjectId,
+          programId: programId || null,
+          planId,
+          frequency,
+          selectedSlotIds: seedSlots.map((slot) => slot.id),
+        }),
+      })
+
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        setMessage(
+          result?.error || 'Unable to reserve this timetable. Please choose another time.'
+        )
+        setShowReadyPrompt(false)
+        setSaving(false)
+        return
+      }
+
+      if (!result?.bookingId) {
+        setMessage('Timetable reserved, but the payment reference was not returned.')
+        setSaving(false)
+        return
+      }
+
+      router.push(`/payment?bookingId=${result.bookingId}`)
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to reserve this timetable. Please try again.'
+      )
       setSaving(false)
-      return
     }
-
-    await supabase
-      .from('tutor_availability_slots')
-      .update({ is_available: false, is_booked: true })
-      .in('id', seedSlots.map((slot) => slot.id))
-
-    const firstBookingId = bookings?.[0]?.id
-    setSaving(false)
-
-    if (!firstBookingId) {
-      setMessage('Timetable created but payment reference was not returned.')
-      return
-    }
-
-    router.push(`/payment?bookingId=${firstBookingId}`)
   }
 
   if (loading) return <ScheduleLoading message={message} />
 
   return (
     <main className="page">
-      <section className="hero">
-        <ProgressStepper />
+      <BookingJourney
+        currentStep={4}
+        childName={student?.full_name}
+        subjectName={subjectName}
+        planName={planName}
+      />
 
+      <section className="hero">
         <div className="heroCopy">
           <p className="eyebrow">Private 1-to-1 weekly timetable</p>
           <h1>Build Your Child&apos;s Weekly Learning Timetable</h1>
@@ -476,10 +526,11 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
         </div>
 
         <div className="policyBox">
-          <strong>How scheduling works</strong>
+          <strong>Times shown in your timezone: {parentTimezone}</strong>
           <span>
-            The slot you choose is the first lesson date. That day of the week and time becomes your child&apos;s regular weekly class time.
-            First lessons must be booked at least 72 hours in advance so your tutor can prepare properly.
+            Tutor availability has been converted automatically. Your tutor sees
+            the same lesson in their own timezone. First lessons require at least
+            72 hours notice.
           </span>
         </div>
 
@@ -509,7 +560,6 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
           </div>
 
           {message ? <div className="notice">{message}</div> : null}
-          {debugMessage ? <div className="debugNote">{debugMessage}</div> : null}
 
           <div className="frequencyBox">
             <button type="button" onClick={() => changeFrequency('WEEKLY_SAME_TIME')} className={frequency === 'WEEKLY_SAME_TIME' ? 'freq active' : 'freq'}>
@@ -541,7 +591,11 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
                   key={group.tutorId}
                   group={group}
                   selectedForTutor={selectedSlots.some((slot) => slot.tutor_id === group.tutorId)}
-                  onChooseTimetable={() => setActiveTimesTutorId(group.tutorId)}
+                  viewerTimezone={parentTimezone}
+                  onChooseTimetable={() => {
+                    setShowReadyPrompt(false)
+                    setActiveTimesTutorId(group.tutorId)
+                  }}
                   onViewProfile={() => setProfileTutor(group.tutor)}
                 />
               ))}
@@ -559,6 +613,7 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
   saving={saving}
   canContinue={selectedSlots.length >= requiredSlotCount}
   currency={currency}
+  viewerTimezone={parentTimezone}
   onContinue={continueToPayment}
   onBack={goBackToPricing}
 />
@@ -571,8 +626,13 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
           weeksToBook={weeksToBook}
           selectedSlots={selectedSlots}
           requiredSlotCount={requiredSlotCount}
+          viewerTimezone={parentTimezone}
           onToggleSlot={toggleSlot}
           onClose={() => setActiveTimesTutorId(null)}
+          onReview={() => {
+            setActiveTimesTutorId(null)
+            setShowReadyPrompt(true)
+          }}
           onViewProfile={() => {
             setProfileTutor(activeTimesGroup.tutor)
             setActiveTimesTutorId(null)
@@ -581,6 +641,63 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
       )}
 
       {profileTutor && <TutorProfileModal tutor={profileTutor} onClose={() => setProfileTutor(null)} />}
+
+      {showReadyPrompt && selectedSlots.length >= requiredSlotCount ? (
+        <div className="readyOverlay" role="dialog" aria-modal="true" aria-labelledby="ready-title">
+          <section className="readyModal">
+            <div className="readyCheck" aria-hidden="true">✓</div>
+            <p className="eyebrow">Schedule selected</p>
+            <h2 id="ready-title">Your timetable is ready.</h2>
+            <p className="readyCopy">
+              The next action is payment. Review the weekly time below, then continue securely.
+            </p>
+
+            <div className="readyDetails">
+              {bookingSummary.map((item) => (
+                <div key={item.id}>
+                  <span>{item.label}</span>
+                  <strong>Every {item.weekday} · {item.timeRange}</strong>
+                  <small>Starts {item.startDateLabel} · {parentTimezone}</small>
+                </div>
+              ))}
+            </div>
+
+            <div className="readyTotal">
+              <span>{planName} · {totalLessonsRequired} lessons</span>
+              <strong>£{totalAmount} GBP</strong>
+            </div>
+
+            <button
+              type="button"
+              className="readyPayBtn"
+              onClick={continueToPayment}
+              disabled={saving}
+            >
+              {saving ? 'Preparing Secure Payment...' : `Continue to Payment — £${totalAmount}`}
+            </button>
+            <button
+              type="button"
+              className="readyReviewBtn"
+              onClick={() => setShowReadyPrompt(false)}
+              disabled={saving}
+            >
+              Review or Change Time
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {selectedSlots.length >= requiredSlotCount ? (
+        <div className="mobileContinueBar">
+          <div>
+            <span>Timetable ready</span>
+            <strong>£{totalAmount} GBP</strong>
+          </div>
+          <button type="button" onClick={continueToPayment} disabled={saving}>
+            {saving ? 'Preparing...' : 'Continue to Payment'}
+          </button>
+        </div>
+      ) : null}
 
       <style>{scheduleStyles}</style>
     </main>

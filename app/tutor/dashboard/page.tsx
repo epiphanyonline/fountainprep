@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import {
+  bookingInstant,
+  dateKeyInTimezone,
+  formatBookingDate,
+  formatBookingTime,
+  resolveViewerTimezone,
+} from '../../lib/timezone'
 
 type TutorProfile = {
   id: string
@@ -19,6 +26,9 @@ type TutorProfile = {
   average_rating: number
   rating_count: number
   is_listed: boolean
+  orientation_completed: boolean
+  orientation_completed_at: string | null
+  orientation_score: number | null
 }
 
 type LessonBooking = {
@@ -122,7 +132,7 @@ export default function TutorDashboardPage() {
       const { data: tutorProfile, error: tutorError } = await supabase
         .from('tutor_profiles')
         .select(
-          'id, full_name, phone, country, timezone, bio, years_of_experience, qualification_summary, approval_status, verification_status, average_rating, rating_count, is_listed'
+          'id, full_name, phone, country, timezone, bio, years_of_experience, qualification_summary, approval_status, verification_status, average_rating, rating_count, is_listed, orientation_completed, orientation_completed_at, orientation_score'
         )
         .eq('user_id', user.id)
         .maybeSingle()
@@ -140,7 +150,7 @@ export default function TutorDashboardPage() {
 
       setProfile(tutorProfile as TutorProfile)
 
-      const today = new Date().toISOString().split('T')[0]
+      const today = dateKeyInTimezone(new Date(), tutorProfile.timezone)
 
       const { data: bookingRows, error: bookingError } = await supabase
         .from('lesson_bookings')
@@ -203,12 +213,23 @@ export default function TutorDashboardPage() {
   }, [lessons])
 
   const todayLessons = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return confirmedLessons.filter((lesson) => lesson.lesson_date === today)
-  }, [confirmedLessons])
+    const tutorTimezone = resolveViewerTimezone(profile?.timezone)
+    const today = dateKeyInTimezone(new Date(), tutorTimezone)
+
+    return confirmedLessons.filter((lesson) => {
+      if (!lesson.lesson_date || !lesson.lesson_time) return false
+      return (
+        dateKeyInTimezone(
+          bookingInstant(lesson.lesson_date, lesson.lesson_time, lesson.timezone),
+          tutorTimezone
+        ) === today
+      )
+    })
+  }, [confirmedLessons, profile?.timezone])
 
   const nextLesson = confirmedLessons[0]
   const firstName = profile?.full_name?.split(' ')[0] || 'Tutor'
+  const viewerTimezone = resolveViewerTimezone(profile?.timezone)
 
   if (loading) {
     return (
@@ -266,6 +287,54 @@ export default function TutorDashboardPage() {
         </div>
       </section>
 
+
+      {profile?.approval_status === 'approved' ? (
+        <section
+          className={
+            profile.orientation_completed
+              ? 'orientationBanner orientationBannerComplete'
+              : 'orientationBanner'
+          }
+        >
+          <div>
+            <p className="orientationEyebrow">
+              {profile.orientation_completed
+                ? 'Orientation completed'
+                : 'Required before teaching'}
+            </p>
+
+            <h2>
+              {profile.orientation_completed
+                ? 'You are ready to teach on Fountain Prep.'
+                : 'Complete your Fountain Prep tutor orientation.'}
+            </h2>
+
+            <p>
+              {profile.orientation_completed
+                ? `Completed successfully${
+                    profile.orientation_score !== null
+                      ? ` with a score of ${profile.orientation_score}%`
+                      : ''
+                  }.`
+                : 'Learn how to manage your dashboard, availability, lessons, communication and safeguarding responsibilities.'}
+            </p>
+          </div>
+
+          <Link
+            href="/tutor/orientation"
+            className={
+              profile.orientation_completed
+                ? 'secondaryLink orientationButton'
+                : 'primaryLink orientationButton'
+            }
+          >
+            {profile.orientation_completed
+              ? 'Review Orientation'
+              : 'Begin Orientation'}
+          </Link>
+        </section>
+      ) : null}
+
       <section className="quickGrid">
         {quickActions.map((item) => (
           <Link href={item.href} className="quickCard" key={item.title}>
@@ -290,7 +359,11 @@ export default function TutorDashboardPage() {
           </div>
 
           {nextLesson ? (
-            <LessonCard lesson={nextLesson} featured />
+            <LessonCard
+              lesson={nextLesson}
+              viewerTimezone={viewerTimezone}
+              featured
+            />
           ) : (
             <EmptyState
               title="No confirmed lesson yet"
@@ -338,7 +411,11 @@ export default function TutorDashboardPage() {
           ) : (
             <div className="lessonList">
               {todayLessons.map((lesson) => (
-                <LessonCard key={lesson.id} lesson={lesson} />
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  viewerTimezone={viewerTimezone}
+                />
               ))}
             </div>
           )}
@@ -389,7 +466,11 @@ export default function TutorDashboardPage() {
         ) : (
           <div className="lessonList">
             {confirmedLessons.map((lesson) => (
-              <LessonCard key={lesson.id} lesson={lesson} />
+              <LessonCard
+                key={lesson.id}
+                lesson={lesson}
+                viewerTimezone={viewerTimezone}
+              />
             ))}
           </div>
         )}
@@ -422,8 +503,19 @@ export default function TutorDashboardPage() {
                 </p>
 
                 <p className="pendingText">
-                  {formatDate(lesson.lesson_date)} •{' '}
-                  {lesson.lesson_time || 'Time pending'}
+                  {formatBookingDate(
+                    lesson.lesson_date,
+                    lesson.lesson_time,
+                    lesson.timezone,
+                    viewerTimezone
+                  )}{' '}
+                  •{' '}
+                  {formatBookingTime(
+                    lesson.lesson_date,
+                    lesson.lesson_time,
+                    lesson.timezone,
+                    viewerTimezone
+                  )}
                 </p>
 
                 <span className="pendingBadge">Awaiting Payment</span>
@@ -440,9 +532,11 @@ export default function TutorDashboardPage() {
 
 function LessonCard({
   lesson,
+  viewerTimezone,
   featured = false,
 }: {
   lesson: LessonBooking
+  viewerTimezone: string
   featured?: boolean
 }) {
   const child = lesson.student_profiles
@@ -474,9 +568,25 @@ function LessonCard({
       </div>
 
       <div className="lessonDetails">
-        <Detail label="Date" value={formatDate(lesson.lesson_date)} />
-        <Detail label="Time" value={lesson.lesson_time || '-'} />
-        <Detail label="Timezone" value={lesson.timezone || 'Europe/London'} />
+        <Detail
+          label="Date"
+          value={formatBookingDate(
+            lesson.lesson_date,
+            lesson.lesson_time,
+            lesson.timezone,
+            viewerTimezone
+          )}
+        />
+        <Detail
+          label="Time"
+          value={formatBookingTime(
+            lesson.lesson_date,
+            lesson.lesson_time,
+            lesson.timezone,
+            viewerTimezone
+          )}
+        />
+        <Detail label="Tutor timezone" value={viewerTimezone} />
       </div>
 
       {lesson.notes ? (
@@ -552,16 +662,6 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   )
 }
 
-function formatDate(date: string | null) {
-  if (!date) return 'Date pending'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(`${date}T00:00:00`))
-}
-
 const styles = `
   .page {
     min-height: 100vh;
@@ -574,6 +674,7 @@ const styles = `
   }
 
   .hero,
+  .orientationBanner,
   .quickGrid,
   .mainGrid,
   .splitGrid,
@@ -581,6 +682,60 @@ const styles = `
     width: min(1180px, 100%);
     margin-left: auto;
     margin-right: auto;
+  }
+
+
+  .orientationBanner {
+    width: min(1180px, 100%);
+    margin: 22px auto 0;
+    padding: 28px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    color: white;
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,0.2), transparent 34%),
+      linear-gradient(135deg, #7c3aed, #5b21b6);
+    box-shadow: 0 24px 60px rgba(91,33,182,0.25);
+  }
+
+  .orientationBannerComplete {
+    color: #173b2c;
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,0.65), transparent 38%),
+      linear-gradient(135deg, #ecfdf3, #d1fae5);
+    border: 1px solid rgba(2,122,72,0.16);
+    box-shadow: 0 24px 60px rgba(2,122,72,0.1);
+  }
+
+  .orientationEyebrow {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .orientationBanner h2 {
+    margin: 8px 0 0;
+    font-size: clamp(25px, 3vw, 40px);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    font-weight: 950;
+  }
+
+  .orientationBanner p {
+    max-width: 760px;
+    margin: 10px 0 0;
+    line-height: 1.6;
+    opacity: 0.9;
+  }
+
+  .orientationButton {
+    flex: 0 0 auto;
+    min-width: 190px;
   }
 
   .hero {
@@ -1038,6 +1193,7 @@ const styles = `
       border-radius: 30px;
     }
 
+    .orientationBanner,
     .heroTop,
     .sectionHeader,
     .lessonTop,

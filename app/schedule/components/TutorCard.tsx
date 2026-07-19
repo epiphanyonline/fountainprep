@@ -1,14 +1,25 @@
 import type { TutorGroup } from './ScheduleTypes'
-import { formatDate, formatTime, shorten } from './scheduleUtils'
+import {
+  formatSlotDate,
+  formatSlotTimeRange,
+  shorten,
+} from './scheduleUtils'
 
 type Props = {
   group: TutorGroup
   selectedForTutor: boolean
+  viewerTimezone: string
   onChooseTimetable: () => void
   onViewProfile: () => void
 }
 
-export function TutorCard({ group, selectedForTutor, onChooseTimetable, onViewProfile }: Props) {
+export function TutorCard({
+  group,
+  selectedForTutor,
+  viewerTimezone,
+  onChooseTimetable,
+  onViewProfile,
+}: Props) {
   const first = group.firstSlot
   const tutorName = group.tutor.full_name || 'Fountain Prep Tutor'
 
@@ -53,22 +64,25 @@ export function TutorCard({ group, selectedForTutor, onChooseTimetable, onViewPr
         <span>✓ Private 1-to-1</span>
       </div>
 
-      {group.tutor.bio ? <p className="bioPreview">{shorten(group.tutor.bio, 190)}</p> : null}
+      {group.tutor.bio ? (
+        <p className="bioPreview">{shorten(group.tutor.bio, 190)}</p>
+      ) : null}
 
       <div className="nextAvailable">
-        <span>Earliest first lesson date</span>
+        <span>Earliest first lesson in your timezone</span>
         <strong>
-          {formatDate(first.slot_date)}, {formatTime(first.start_time)} – {formatTime(first.end_time)}
+          {formatSlotDate(first, viewerTimezone)} •{' '}
+          {formatSlotTimeRange(first, viewerTimezone)}
         </strong>
         <small>
-          Choose one start date to repeat weekly
-          {group.slots.length > 1 ? ` • ${group.slots.length} possible starts` : ''}
+          Times shown in {viewerTimezone}
+          {group.slots.length > 1 ? ` • ${group.slots.length} available starts` : ''}
         </small>
       </div>
 
       <div className="tutorActions">
         <button type="button" className="primarySmall" onClick={onChooseTimetable}>
-          Build Weekly Timetable with {shorten(tutorName.split(' ')[0] || tutorName, 16)}
+          View available times
         </button>
         <button type="button" className="outlineSmall" onClick={onViewProfile}>
           About this tutor
@@ -77,4 +91,3 @@ export function TutorCard({ group, selectedForTutor, onChooseTimetable, onViewPr
     </article>
   )
 }
-

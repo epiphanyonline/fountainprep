@@ -4,6 +4,11 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { BookingJourney } from '../components/BookingJourney'
+import {
+  formatBookingDateTime,
+  resolveViewerTimezone,
+} from '../lib/timezone'
 
 type BookingRow = {
   id: string
@@ -44,6 +49,7 @@ function PaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('bookingId')
+  const checkoutCancelled = searchParams.get('cancelled') === '1'
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -52,6 +58,8 @@ function PaymentContent() {
   const [groupBookings, setGroupBookings] = useState<BookingRow[]>([])
   const [student, setStudent] = useState<StudentRow | null>(null)
   const [subject, setSubject] = useState<SubjectRow | null>(null)
+  const [showAllLessons, setShowAllLessons] = useState(false)
+  const [parentTimezone, setParentTimezone] = useState('Europe/London')
 
   useEffect(() => {
     async function loadPayment() {
@@ -71,6 +79,14 @@ function PaymentContent() {
         router.push('/login')
         return
       }
+
+      const { data: parentProfile } = await supabase
+        .from('parent_profiles')
+        .select('timezone')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      setParentTimezone(resolveViewerTimezone(parentProfile?.timezone))
 
       const { data: bookingRow, error } = await supabase
         .from('lesson_bookings')
@@ -120,12 +136,16 @@ function PaymentContent() {
 
       setStudent(studentRow ?? null)
       setSubject(subjectRow ?? null)
-      setMessage('')
+      setMessage(
+        checkoutCancelled
+          ? 'Payment was not completed. Your timetable is still awaiting payment.'
+          : ''
+      )
       setLoading(false)
     }
 
     loadPayment()
-  }, [bookingId, router])
+  }, [bookingId, checkoutCancelled, router])
 
   const amount = useMemo(() => {
     const directAmount = Number(booking?.amount_gbp || 0)
@@ -147,6 +167,10 @@ function PaymentContent() {
   const pricePerClass =
     totalLessons > 0 && amount > 0 ? Math.round((amount / totalLessons) * 100) / 100 : 0
 
+  const visibleBookings = showAllLessons
+    ? groupBookings
+    : groupBookings.slice(0, 3)
+
   async function handleCheckout() {
     if (!booking) return
 
@@ -159,9 +183,23 @@ function PaymentContent() {
     setMessage('Preparing secure Stripe checkout...')
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setSaving(false)
+        router.push('/login')
+        return
+      }
+
       const res = await fetch('/api/stripe/checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ bookingId: booking.id }),
       })
 
@@ -207,6 +245,12 @@ function PaymentContent() {
 
   return (
     <main className="paymentPage">
+      <BookingJourney
+        currentStep={5}
+        childName={student?.full_name}
+        subjectName={subject?.name}
+      />
+
       <section className="hero">
         <p className="eyebrow">Secure Stripe Payment</p>
         <h1>Confirm your private 1-to-1 tutoring plan.</h1>
@@ -241,15 +285,36 @@ function PaymentContent() {
           <div className="lessonList">
             <h3>Lesson schedule</h3>
 
-            {groupBookings.map((item, index) => (
+            <p className="timezoneNote">Times shown in {parentTimezone}</p>
+
+            {visibleBookings.map((item, index) => (
               <div key={item.id} className="lessonItem">
                 <div>
                   <strong>Lesson {index + 1}</strong>
-                  <span>{formatDate(item.lesson_date)} · {item.lesson_time}</span>
+                  <span>
+                    {formatBookingDateTime(
+                      item.lesson_date,
+                      item.lesson_time,
+                      item.timezone,
+                      parentTimezone
+                    )}
+                  </span>
                 </div>
-                <small>{item.timezone || 'Europe/London'}</small>
+                <small>Tutor timetable: {item.timezone || 'Europe/London'}</small>
               </div>
             ))}
+
+            {groupBookings.length > 3 ? (
+              <button
+                type="button"
+                className="toggleDates"
+                onClick={() => setShowAllLessons((current) => !current)}
+              >
+                {showAllLessons
+                  ? 'Show fewer lesson dates'
+                  : `View all ${groupBookings.length} lesson dates`}
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -260,6 +325,7 @@ function PaymentContent() {
             <span>Total package</span>
             <strong>£{amount}</strong>
             <p>{totalLessons} private 1-to-1 lesson{totalLessons > 1 ? 's' : ''}</p>
+            <small>Charged securely in GBP</small>
           </div>
 
           <div className="secureBox">
@@ -277,11 +343,11 @@ function PaymentContent() {
             disabled={saving || amount <= 0}
             className="primaryBtn"
           >
-            {saving ? 'Preparing Payment...' : 'Continue to Secure Payment'}
+            {saving ? 'Preparing Payment...' : `Pay £${amount} Securely`}
           </button>
 
           <Link href="/parent/dashboard" className="secondaryBtn full">
-            Back to Dashboard
+            Pay Later from Dashboard
           </Link>
         </aside>
       </section>
@@ -312,15 +378,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   )
-}
-
-function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(`${dateString}T00:00:00`))
 }
 
 const styles = `
@@ -460,6 +517,17 @@ const styles = `
     letter-spacing: -0.03em;
   }
 
+  .timezoneNote {
+    margin: -6px 0 16px;
+    padding: 11px 14px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    font-size: 13px;
+    font-weight: 850;
+  }
+
   .lessonItem {
     display: flex;
     justify-content: space-between;
@@ -473,6 +541,18 @@ const styles = `
 
   .lessonItem + .lessonItem {
     margin-top: 10px;
+  }
+
+  .toggleDates {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(124, 58, 237, 0.16);
+    background: #fbf8ff;
+    color: #5b21b6;
+    font-weight: 900;
+    cursor: pointer;
   }
 
   .lessonItem strong,
@@ -613,6 +693,7 @@ const styles = `
 
     .checkoutCard {
       position: static;
+      order: -1;
     }
 
     .detailsCard,

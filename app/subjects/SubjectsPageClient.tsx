@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { BookingJourney } from '../components/BookingJourney'
 
 type Student = {
   id: string
@@ -344,6 +345,10 @@ export default function SubjectsPageClient() {
   return (
     <main className="page-wrap">
       <div className="container">
+        {personalised ? (
+          <BookingJourney currentStep={2} childName={student?.full_name} />
+        ) : null}
+
         <section className="subjects-hero">
           <div className="hero-glow hero-glow-one" />
           <div className="hero-glow hero-glow-two" />
@@ -917,28 +922,32 @@ function CatalogueGrid({
             </div>
 
             <div className="subject-actions">
-              <Link href={viewCurriculumHref} className="btn-curriculum">
-                See What They’ll Learn
-              </Link>
-
               {!isLoggedIn ? (
                 <>
-                  <Link href="/signup" className="btn-secondary">
-                    Create Profile
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    See What They’ll Learn
                   </Link>
                   <Link href="/signup" className="btn-primary">
-  Create Parent Profile
-</Link>
+                    Create Parent Profile
+                  </Link>
                 </>
               ) : personalised && studentId ? (
-                <Link
-                  href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
-                  className="btn-primary"
-                >
-                  Choose This Subject
-                </Link>
+                <>
+                  <Link
+                    href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
+                    className="btn-primary"
+                  >
+                    Choose {subject.name} → See Plans
+                  </Link>
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    Preview Curriculum (Optional)
+                  </Link>
+                </>
               ) : (
                 <>
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    See What They’ll Learn
+                  </Link>
                   <Link href="/parent/students" className="btn-primary">
                     Choose This Subject
                   </Link>                  
@@ -1149,25 +1158,36 @@ function ProgramGrid({
             </div>
 
             <div className="program-actions">
-              <Link href={viewCurriculumHref} className="btn-curriculum">
-                See What They’ll Learn
-              </Link>
-
               {!isLoggedIn ? (
-                <Link href="/signup" className="btn-primary">
-                  Create Parent Profile
-                </Link>
+                <>
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    See What They’ll Learn
+                  </Link>
+                  <Link href="/signup" className="btn-primary">
+                    Create Parent Profile
+                  </Link>
+                </>
               ) : personalised && studentId ? (
-                <Link
-                  href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
-                  className="btn-primary"
-                >
-                  Choose This Subject
-                </Link>
+                <>
+                  <Link
+                    href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
+                    className="btn-primary"
+                  >
+                    Choose {subjectName} → See Plans
+                  </Link>
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    Preview Curriculum (Optional)
+                  </Link>
+                </>
               ) : (
-                <Link href="/parent/students" className="btn-primary">
-                  Choose This Subject
-                </Link>
+                <>
+                  <Link href={viewCurriculumHref} className="btn-curriculum">
+                    See What They’ll Learn
+                  </Link>
+                  <Link href="/parent/students" className="btn-primary">
+                    Choose This Subject
+                  </Link>
+                </>
               )}
             </div>
           </div>
