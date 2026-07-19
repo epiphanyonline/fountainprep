@@ -82,6 +82,12 @@ const adminActions = [
     tag: 'Tutors',
   },
   {
+  title: 'Communications Centre',
+  text: 'Manage tutor webinars, orientations, parent newsletters, announcements and event invitations.',
+  href: '/admin/communications',
+  tag: 'Communications',
+},
+  {
     title: 'Curriculum Manager',
     text: 'Manage subjects, stages, strands, modules and lessons.',
     href: '/admin/curriculum',
@@ -136,6 +142,10 @@ export default function AdminDashboardPage() {
     { label: 'Payments', href: '/admin/payments' },
     { label: 'Reports', href: '/admin/reports' },
     { label: 'Tutors', href: '/admin/tutors' },
+    {
+  label: 'Communications',
+  href: '/admin/communications',
+},
     { label: 'Business Intelligence', href: '/admin/bi' },
   ]
 
@@ -368,6 +378,12 @@ export default function AdminDashboardPage() {
         <div className="heroActions">
           <Link href="/admin/messages" className="primaryLink">Open Messages</Link>
           <Link href="/admin/tutors" className="secondaryLink">Review Tutors</Link>
+          <Link
+    href="/admin/communications"
+    className="secondaryLink"
+>
+    Communications
+</Link>
           <Link href="/admin/bookings" className="secondaryLink">View Bookings</Link>
           <Link
     href="/admin/bi"

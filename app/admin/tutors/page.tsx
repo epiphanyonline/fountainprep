@@ -48,6 +48,37 @@ type TutorUpdate = {
   is_listed?: boolean
 }
 
+type TutorEventType =
+  | 'WEBINAR'
+  | 'SEMINAR'
+  | 'ORIENTATION'
+  | 'TRAINING'
+  | 'SENSITISATION'
+
+type CommunicationMode = 'EVENT' | 'GENERAL'
+
+type CommunicationTemplate =
+  | 'CUSTOM'
+  | 'ORIENTATION_REMINDER'
+  | 'WELCOME_APPROVED'
+  | 'PLATFORM_UPDATE'
+
+type TutorEventForm = {
+  mode: CommunicationMode
+  template: CommunicationTemplate
+  eventType: TutorEventType
+  subject: string
+  title: string
+  description: string
+  eventDate: string
+  startTime: string
+  endTime: string
+  timezone: string
+  meetingLink: string
+  buttonText: string
+  buttonUrl: string
+}
+
 export default function AdminTutorsPage() {
   const [tutors, setTutors] = useState<TutorRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +91,26 @@ export default function AdminTutorsPage() {
   const [interviewEndTime, setInterviewEndTime] = useState('18:30')
   const [sendingInvite, setSendingInvite] = useState(false)
   const [search, setSearch] = useState('')
+  const [showEventModal, setShowEventModal] = useState(false)
+const [sendingEventInvite, setSendingEventInvite] = useState(false)
+const [selectedTutorIds, setSelectedTutorIds] = useState<string[]>([])
+
+const [eventForm, setEventForm] = useState<TutorEventForm>({
+  mode: 'EVENT',
+  template: 'CUSTOM',
+  eventType: 'ORIENTATION',
+  subject: 'Tutor Orientation: Fountain Prep Tutor Orientation',
+  title: 'Fountain Prep Tutor Orientation',
+  description:
+    'You are invited to attend an important Fountain Prep tutor session.',
+  eventDate: new Date().toISOString().slice(0, 10),
+  startTime: '18:00',
+  endTime: '19:00',
+  timezone: 'Europe/London',
+  meetingLink: '',
+  buttonText: 'Join Session',
+  buttonUrl: '',
+})
 
   async function signedUrl(path: string | null) {
     if (!path) return null
@@ -199,6 +250,242 @@ export default function AdminTutorsPage() {
     }
 
     await loadTutors()
+  }
+
+  function applyCommunicationTemplate(template: CommunicationTemplate) {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || 'https://www.fountainprep.com'
+
+    if (template === 'ORIENTATION_REMINDER') {
+      setEventForm((current) => ({
+        ...current,
+        mode: 'GENERAL',
+        template,
+        subject: 'Complete Your Fountain Prep Tutor Orientation',
+        title: 'One More Step Before You Start Teaching',
+        description:
+          'Congratulations on becoming an approved Fountain Prep tutor.\n\nBefore receiving lesson bookings, please log in and complete your Tutor Orientation. The orientation covers platform use, safeguarding, professional standards and payout setup.',
+        buttonText: 'Complete Orientation',
+        buttonUrl: `${siteUrl}/tutor/orientation`,
+      }))
+      return
+    }
+
+    if (template === 'WELCOME_APPROVED') {
+      setEventForm((current) => ({
+        ...current,
+        mode: 'GENERAL',
+        template,
+        subject: 'Welcome to Fountain Prep',
+        title: 'Your Tutor Account Has Been Approved',
+        description:
+          'Congratulations! Your Fountain Prep tutor account has been approved.\n\nPlease sign in to your platform to review your account and complete any outstanding onboarding steps.',
+        buttonText: 'Open Tutor Dashboard',
+        buttonUrl: `${siteUrl}/tutor`,
+      }))
+      return
+    }
+
+    if (template === 'PLATFORM_UPDATE') {
+      setEventForm((current) => ({
+        ...current,
+        mode: 'GENERAL',
+        template,
+        subject: 'Important Fountain Prep Platform Update',
+        title: 'Platform Update',
+        description:
+          'There is an important update available on your Fountain Prep tutor platform. Please sign in to review the latest information.',
+        buttonText: 'Open Dashboard',
+        buttonUrl: `${siteUrl}/tutor`,
+      }))
+      return
+    }
+
+    setEventForm((current) => ({
+      ...current,
+      template: 'CUSTOM',
+    }))
+  }
+
+  async function sendTutorCommunications() {
+    if (selectedEventTutors.length === 0) {
+      setMessage('Select at least one approved tutor.')
+      return
+    }
+
+    if (!eventForm.subject.trim()) {
+      setMessage('Enter an email subject.')
+      return
+    }
+
+    if (!eventForm.title.trim()) {
+      setMessage(
+        eventForm.mode === 'EVENT'
+          ? 'Enter an event title.'
+          : 'Enter an email heading.'
+      )
+      return
+    }
+
+    if (!eventForm.description.trim()) {
+      setMessage('Enter the email message.')
+      return
+    }
+
+    if (eventForm.mode === 'EVENT') {
+      if (!eventForm.eventDate || !eventForm.startTime) {
+        setMessage('Enter the event date and start time.')
+        return
+      }
+
+      if (!eventForm.meetingLink.trim()) {
+        setMessage('Enter the meeting link.')
+        return
+      }
+    }
+
+    if (eventForm.buttonUrl.trim() && !eventForm.buttonText.trim()) {
+      setMessage('Enter button text for the button link.')
+      return
+    }
+
+    try {
+      setSendingEventInvite(true)
+      setMessage('')
+
+      if (eventForm.mode === 'GENERAL') {
+        const response = await fetch('/api/admin/tutor-general-communication', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subject: eventForm.subject.trim(),
+            heading: eventForm.title.trim(),
+            message: eventForm.description.trim(),
+            buttonText: eventForm.buttonText.trim() || null,
+            buttonUrl: eventForm.buttonUrl.trim() || null,
+            recipients: selectedEventTutors.map((tutor) => ({
+              tutorId: tutor.id,
+              tutorUserId: tutor.user_id,
+              name: tutor.full_name,
+              email: tutor.email,
+            })),
+          }),
+        })
+
+        const responseText = await response.text()
+        let result: { error?: string; message?: string } = {}
+
+        try {
+          result = responseText ? JSON.parse(responseText) : {}
+        } catch {
+          result = {}
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              `Unable to send communication. Server returned ${response.status}.`
+          )
+        }
+
+        setMessage(
+          result.message ||
+            `Communication sent to ${selectedEventTutors.length} approved tutors.`
+        )
+      } else {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        const { data: event, error: eventError } = await supabase
+          .from('tutor_events')
+          .insert({
+            event_type: eventForm.eventType,
+            title: eventForm.title.trim(),
+            description: eventForm.description.trim() || null,
+            event_date: eventForm.eventDate,
+            start_time: eventForm.startTime,
+            end_time: eventForm.endTime || null,
+            timezone: eventForm.timezone,
+            meeting_link: eventForm.meetingLink.trim(),
+            invited_by: user?.id ?? null,
+            status: 'SCHEDULED',
+          })
+          .select('id')
+          .single()
+
+        if (eventError) {
+          throw new Error(eventError.message)
+        }
+
+        const inviteRows = selectedEventTutors.map((tutor) => ({
+          event_id: event.id,
+          tutor_id: tutor.id,
+          tutor_user_id: tutor.user_id,
+          tutor_name: tutor.full_name,
+          tutor_email: tutor.email as string,
+          email_status: 'PENDING',
+          attendance_status: 'INVITED',
+        }))
+
+        const { error: inviteError } = await supabase
+          .from('tutor_event_invites')
+          .insert(inviteRows)
+
+        if (inviteError) {
+          throw new Error(inviteError.message)
+        }
+
+        const response = await fetch('/api/admin/tutor-event-invite', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            eventId: event.id,
+            subject: eventForm.subject.trim(),
+            buttonText: eventForm.buttonText.trim() || 'Join Session',
+          }),
+        })
+
+        const responseText = await response.text()
+        let result: { error?: string; message?: string } = {}
+
+        try {
+          result = responseText ? JSON.parse(responseText) : {}
+        } catch {
+          result = {}
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              `Unable to send tutor event invitations. Server returned ${response.status}.`
+          )
+        }
+
+        setMessage(
+          result.message ||
+            `${eventForm.eventType.toLowerCase()} invitation sent to ${
+              selectedEventTutors.length
+            } approved tutor${selectedEventTutors.length !== 1 ? 's' : ''}.`
+        )
+      }
+
+      setShowEventModal(false)
+      setSelectedTutorIds([])
+    } catch (error) {
+      console.error(error)
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to send tutor communication.'
+      )
+    } finally {
+      setSendingEventInvite(false)
+    }
   }
 
   async function approveTutor(tutor: TutorRow) {
@@ -419,6 +706,11 @@ export default function AdminTutorsPage() {
   await loadTutors()
 }
 
+function openTutorEventModal() {
+  setSelectedTutorIds(approvedTutors.map((tutor) => tutor.id))
+  setShowEventModal(true)
+}
+
   async function deleteTutorAndDocuments(tutor: TutorRow) {
     const confirmed = window.confirm(
       `Delete ${tutor.full_name} and all uploaded documents? This cannot be undone.`
@@ -492,6 +784,21 @@ export default function AdminTutorsPage() {
   })
 }, [tutors, search])
 
+const approvedTutors = useMemo(() => {
+  return tutors.filter(
+    (tutor) =>
+      tutor.approval_status === 'approved' &&
+      tutor.verification_status === 'verified' &&
+      Boolean(tutor.email)
+  )
+}, [tutors])
+
+const selectedEventTutors = useMemo(() => {
+  return approvedTutors.filter((tutor) =>
+    selectedTutorIds.includes(tutor.id)
+  )
+}, [approvedTutors, selectedTutorIds])
+
   return (
     <main className="page">
       <section className="hero">
@@ -516,34 +823,27 @@ export default function AdminTutorsPage() {
         {loading && <p className="message">Loading tutors...</p>}
         {message && <p className="message">{message}</p>}
 
-        <div
-  style={{
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 16,
-    flexWrap: 'wrap',
-  }}
->
+        <div className="toolbar">
   <input
     type="text"
     placeholder="Search tutor by name or email..."
     value={search}
     onChange={(e) => setSearch(e.target.value)}
-    style={{
-      width: '100%',
-      maxWidth: 420,
-      padding: '14px 18px',
-      borderRadius: 14,
-      border: '1px solid #ddd6fe',
-      fontSize: 16,
-      outline: 'none',
-    }}
+    className="searchInput"
   />
 
-  <span style={{ color: '#6b7280', fontWeight: 600 }}>
-    {filteredTutors.length} tutor{filteredTutors.length !== 1 ? 's' : ''} found
+  <button
+    type="button"
+    className="eventInviteButton"
+    onClick={openTutorEventModal}
+    disabled={approvedTutors.length === 0}
+  >
+    Invite Approved Tutors
+  </button>
+
+  <span className="resultCount">
+    {filteredTutors.length} tutor
+    {filteredTutors.length !== 1 ? 's' : ''} found
   </span>
 </div>
 
@@ -733,6 +1033,379 @@ export default function AdminTutorsPage() {
           )}
         </div>
       </section>
+
+      {showEventModal && (
+        <div className="modalOverlay">
+          <div className="modalCard eventModalCard">
+            <p className="eyebrow">Tutor communication</p>
+            <h2>Contact approved tutors</h2>
+            <p>
+              Send a scheduled event invitation or a general communication.
+              Subjects, messages and action buttons remain fully editable.
+            </p>
+
+            <div className="communicationModeSwitch">
+              <button
+                type="button"
+                className={eventForm.mode === 'EVENT' ? 'active' : ''}
+                onClick={() =>
+                  setEventForm((current) => ({
+                    ...current,
+                    mode: 'EVENT',
+                    template: 'CUSTOM',
+                    buttonText: current.buttonText || 'Join Session',
+                  }))
+                }
+              >
+                Scheduled Event
+              </button>
+              <button
+                type="button"
+                className={eventForm.mode === 'GENERAL' ? 'active' : ''}
+                onClick={() =>
+                  setEventForm((current) => ({
+                    ...current,
+                    mode: 'GENERAL',
+                    template: 'CUSTOM',
+                  }))
+                }
+              >
+                General Communication
+              </button>
+            </div>
+
+            <div className="communicationWorkspace">
+              <div>
+                <div className="eventFormGrid">
+                  <label className="eventFullWidth">
+                    <span>Template</span>
+                    <select
+                      value={eventForm.template}
+                      onChange={(event) =>
+                        applyCommunicationTemplate(
+                          event.target.value as CommunicationTemplate
+                        )
+                      }
+                    >
+                      <option value="CUSTOM">Custom</option>
+                      <option value="ORIENTATION_REMINDER">
+                        Orientation Reminder
+                      </option>
+                      <option value="WELCOME_APPROVED">
+                        Welcome Approved Tutor
+                      </option>
+                      <option value="PLATFORM_UPDATE">Platform Update</option>
+                    </select>
+                  </label>
+
+                  {eventForm.mode === 'EVENT' ? (
+                    <label>
+                      <span>Event type</span>
+                      <select
+                        value={eventForm.eventType}
+                        onChange={(event) =>
+                          setEventForm((current) => ({
+                            ...current,
+                            eventType: event.target.value as TutorEventType,
+                          }))
+                        }
+                      >
+                        <option value="WEBINAR">Webinar</option>
+                        <option value="SEMINAR">Seminar</option>
+                        <option value="ORIENTATION">Orientation Session</option>
+                        <option value="TRAINING">Training</option>
+                        <option value="SENSITISATION">Sensitisation</option>
+                      </select>
+                    </label>
+                  ) : null}
+
+                  <label className={eventForm.mode === 'GENERAL' ? 'eventFullWidth' : ''}>
+                    <span>Email subject</span>
+                    <input
+                      type="text"
+                      value={eventForm.subject}
+                      onChange={(event) =>
+                        setEventForm((current) => ({
+                          ...current,
+                          subject: event.target.value,
+                        }))
+                      }
+                      placeholder="Complete Your Fountain Prep Tutor Orientation"
+                    />
+                  </label>
+
+                  <label className="eventFullWidth">
+                    <span>
+                      {eventForm.mode === 'EVENT'
+                        ? 'Event title'
+                        : 'Email heading'}
+                    </span>
+                    <input
+                      type="text"
+                      value={eventForm.title}
+                      onChange={(event) =>
+                        setEventForm((current) => ({
+                          ...current,
+                          title: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  {eventForm.mode === 'EVENT' ? (
+                    <>
+                      <label>
+                        <span>Date</span>
+                        <input
+                          type="date"
+                          value={eventForm.eventDate}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              eventDate: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        <span>Timezone</span>
+                        <select
+                          value={eventForm.timezone}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              timezone: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="Europe/London">United Kingdom</option>
+                          <option value="Africa/Lagos">Nigeria</option>
+                          <option value="America/New_York">USA Eastern</option>
+                          <option value="America/Toronto">Canada Eastern</option>
+                        </select>
+                      </label>
+
+                      <label>
+                        <span>Start time</span>
+                        <input
+                          type="time"
+                          value={eventForm.startTime}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              startTime: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        <span>End time</span>
+                        <input
+                          type="time"
+                          value={eventForm.endTime}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              endTime: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="eventFullWidth">
+                        <span>Meeting link</span>
+                        <input
+                          type="url"
+                          value={eventForm.meetingLink}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              meetingLink: event.target.value,
+                              buttonUrl: event.target.value,
+                            }))
+                          }
+                          placeholder="https://meet.google.com/..."
+                        />
+                      </label>
+                    </>
+                  ) : null}
+
+                  <label className="eventFullWidth">
+                    <span>Email message</span>
+                    <textarea
+                      rows={7}
+                      value={eventForm.description}
+                      onChange={(event) =>
+                        setEventForm((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>Button text</span>
+                    <input
+                      type="text"
+                      value={eventForm.buttonText}
+                      onChange={(event) =>
+                        setEventForm((current) => ({
+                          ...current,
+                          buttonText: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        eventForm.mode === 'EVENT'
+                          ? 'Join Session'
+                          : 'Open Dashboard'
+                      }
+                    />
+                  </label>
+
+                  {eventForm.mode === 'GENERAL' ? (
+                    <label>
+                      <span>Button URL (optional)</span>
+                      <input
+                        type="url"
+                        value={eventForm.buttonUrl}
+                        onChange={(event) =>
+                          setEventForm((current) => ({
+                            ...current,
+                            buttonUrl: event.target.value,
+                          }))
+                        }
+                        placeholder="https://www.fountainprep.com/tutor"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              </div>
+
+              <aside className="emailPreview">
+                <span className="previewLabel">Email preview</span>
+                <div className="previewHeader">
+                  <small>FOUNTAIN PREP</small>
+                  <h3>{eventForm.title || 'Your email heading'}</h3>
+                </div>
+                <div className="previewBody">
+                  <p>Dear Tutor,</p>
+                  <div className="previewMessage">
+                    {(eventForm.description || 'Your message will appear here.')
+                      .split(/\n\s*\n/)
+                      .map((paragraph) => (
+                        <p key={paragraph}>{paragraph}</p>
+                      ))}
+                  </div>
+
+                  {eventForm.mode === 'EVENT' ? (
+                    <div className="previewEventDetails">
+                      <span>{eventForm.eventDate || 'Event date'}</span>
+                      <span>
+                        {eventForm.startTime || 'Start time'}
+                        {eventForm.endTime ? ` – ${eventForm.endTime}` : ''}
+                      </span>
+                      <span>{eventForm.timezone}</span>
+                    </div>
+                  ) : null}
+
+                  {eventForm.buttonText &&
+                  (eventForm.mode === 'EVENT'
+                    ? eventForm.meetingLink
+                    : eventForm.buttonUrl) ? (
+                    <div className="previewButton">{eventForm.buttonText}</div>
+                  ) : null}
+
+                  <p>
+                    Kind regards,
+                    <br />
+                    <strong>Fountain Prep Team</strong>
+                  </p>
+                </div>
+              </aside>
+            </div>
+
+            <div className="inviteSelectionPanel">
+              <div className="inviteSelectionHeader">
+                <div>
+                  <strong>Approved tutors</strong>
+                  <span>
+                    {selectedEventTutors.length} of {approvedTutors.length} selected
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="selectAllButton"
+                  onClick={() => {
+                    if (selectedTutorIds.length === approvedTutors.length) {
+                      setSelectedTutorIds([])
+                    } else {
+                      setSelectedTutorIds(
+                        approvedTutors.map((tutor) => tutor.id)
+                      )
+                    }
+                  }}
+                >
+                  {selectedTutorIds.length === approvedTutors.length
+                    ? 'Clear all'
+                    : 'Select all'}
+                </button>
+              </div>
+
+              <div className="eventTutorList">
+                {approvedTutors.map((tutor) => (
+                  <label key={tutor.id} className="eventTutorOption">
+                    <input
+                      type="checkbox"
+                      checked={selectedTutorIds.includes(tutor.id)}
+                      onChange={() =>
+                        setSelectedTutorIds((current) =>
+                          current.includes(tutor.id)
+                            ? current.filter((id) => id !== tutor.id)
+                            : [...current, tutor.id]
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{tutor.full_name}</strong>
+                      <small>{tutor.email}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="modalButtons">
+              <button
+                type="button"
+                className="btnSecondary"
+                disabled={sendingEventInvite}
+                onClick={() => setShowEventModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="btnPrimary"
+                disabled={
+                  sendingEventInvite || selectedEventTutors.length === 0
+                }
+                onClick={sendTutorCommunications}
+              >
+                {sendingEventInvite
+                  ? 'Sending...'
+                  : `Send to ${selectedEventTutors.length} Tutor${
+                      selectedEventTutors.length !== 1 ? 's' : ''
+                    }`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {interviewTutor && (
         <div className="modalOverlay">
@@ -1453,8 +2126,308 @@ const styles = `
     }
 
     .docCard {
-      align-items: flex-start;
-      flex-direction: column;
-    }
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+}
+    .toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid #ddd6fe;
+  background: white;
+  color: #21152d;
+  font-size: 16px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.resultCount {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.eventInviteButton {
+  min-height: 50px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 17px;
+  color: white;
+  background: linear-gradient(135deg, #0f766e, #0d9488);
+  box-shadow: 0 16px 38px rgba(13, 148, 136, 0.22);
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.eventInviteButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.eventModalCard {
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
+.eventFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.eventFormGrid label {
+  display: grid;
+  gap: 8px;
+}
+
+.eventFormGrid span {
+  color: #351e55;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.eventFormGrid input,
+.eventFormGrid select,
+.eventFormGrid textarea {
+  width: 100%;
+  padding: 15px 16px;
+  border: 1px solid #ddd2ef;
+  border-radius: 16px;
+  background: white;
+  color: #21152d;
+  font: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.eventFormGrid textarea {
+  resize: vertical;
+}
+
+.eventFullWidth {
+  grid-column: 1 / -1;
+}
+
+
+.communicationModeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 7px;
+  border-radius: 18px;
+  background: #f6f0ff;
+}
+
+.communicationModeSwitch button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #6f637e;
+  font: inherit;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.communicationModeSwitch button.active {
+  color: white;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 10px 24px rgba(124,58,237,.22);
+}
+
+.communicationWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(310px, .95fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.emailPreview {
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  background: white;
+  border: 1px solid rgba(124,58,237,.14);
+  box-shadow: 0 18px 48px rgba(71,43,117,.09);
+}
+
+.previewLabel {
+  display: block;
+  padding: 12px 18px;
+  color: #6d28d9;
+  background: #f6f0ff;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.previewHeader {
+  padding: 24px;
+  color: white;
+  background: linear-gradient(135deg,#6d28d9,#7c3aed);
+}
+
+.previewHeader small {
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+
+.previewHeader h3 {
+  margin: 10px 0 0;
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.previewBody {
+  padding: 24px;
+  color: #655873;
+  line-height: 1.65;
+}
+
+.previewBody > p:first-child {
+  margin-top: 0;
+}
+
+.previewMessage p {
+  white-space: pre-line;
+}
+
+.previewEventDetails {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: #faf7ff;
+  color: #351e55;
+  font-weight: 850;
+}
+
+.previewButton {
+  width: fit-content;
+  margin: 22px auto;
+  padding: 13px 20px;
+  border-radius: 13px;
+  color: white;
+  background: #6d28d9;
+  font-weight: 950;
+}
+
+.inviteSelectionPanel {
+  margin-top: 22px;
+  padding: 18px;
+  border-radius: 22px;
+  background: #fbf8ff;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.inviteSelectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.inviteSelectionHeader strong,
+.inviteSelectionHeader span {
+  display: block;
+}
+
+.inviteSelectionHeader span {
+  margin-top: 4px;
+  color: #6f637e;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.selectAllButton {
+  padding: 9px 13px;
+  border: 1px solid rgba(124, 58, 237, 0.16);
+  border-radius: 12px;
+  background: white;
+  color: #6d28d9;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.eventTutorList {
+  display: grid;
+  gap: 9px;
+  max-height: 230px;
+  margin-top: 16px;
+  overflow-y: auto;
+}
+
+.eventTutorOption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 15px;
+  background: white;
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  cursor: pointer;
+}
+
+.eventTutorOption input {
+  width: 18px;
+  height: 18px;
+}
+
+.eventTutorOption span,
+.eventTutorOption strong,
+.eventTutorOption small {
+  display: block;
+}
+
+.eventTutorOption small {
+  margin-top: 3px;
+  color: #6f637e;
+}
+
+@media (max-width: 700px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
+
+  .searchInput,
+  .eventInviteButton {
+    width: 100%;
+    max-width: none;
+  }
+
+  .eventFormGrid,
+  .communicationWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .emailPreview {
+    position: static;
+  }
+
+  .eventFullWidth {
+    grid-column: auto;
+  }
+
+  .inviteSelectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 `
