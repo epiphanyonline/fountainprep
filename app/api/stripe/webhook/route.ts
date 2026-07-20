@@ -732,7 +732,7 @@ async function getAdminEmails() {
   const { data: adminProfiles, error } = await supabaseAdmin
     .from("user_profiles")
     .select("id")
-    .ilike("role", "admin");
+    .eq("role", "ADMIN");
 
   if (error) throw error;
 
