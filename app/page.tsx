@@ -1,96 +1,96 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import SupportWidget from './components/SupportWidget'
+import Link from "next/link";
+import SupportWidget from "./components/SupportWidget";
 
 const trustItems = [
-  'African language specialists',
-  'Academic excellence',
-  'Progress reports after every lesson',
-  'Learn from anywhere',
-]
+  "African language specialists",
+  "Academic excellence",
+  "Progress reports after every lesson",
+  "Learn from anywhere",
+];
 
 const features = [
   {
-    icon: '👨‍🏫',
-    title: 'Private one-to-one lessons',
-    text: 'No crowded group classes. Every lesson is focused on one child, one tutor and one learning goal.',
+    icon: "👨‍🏫",
+    title: "Private one-to-one lessons",
+    text: "No crowded group classes. Every lesson is focused on one child, one tutor and one learning goal.",
   },
   {
-    icon: '📈',
-    title: 'Progress parents can see',
-    text: 'Parents receive clearer updates on what was taught, what improved and what the next lesson will focus on.',
+    icon: "📈",
+    title: "Progress parents can see",
+    text: "Parents receive clearer updates on what was taught, what improved and what the next lesson will focus on.",
   },
   {
-    icon: '🧭',
-    title: 'Structured learning',
-    text: 'Lessons follow clear learning pathways, so tutoring feels purposeful rather than random.',
+    icon: "🧭",
+    title: "Structured learning",
+    text: "Lessons follow clear learning pathways, so tutoring feels purposeful rather than random.",
   },
   {
-    icon: '🌍',
-    title: 'Learn from anywhere',
-    text: 'Children can learn online with experienced tutors wherever your family lives.',
+    icon: "🌍",
+    title: "Learn from anywhere",
+    text: "Children can learn online with experienced tutors wherever your family lives.",
   },
-]
+];
 
 const steps = [
   {
-    number: '01',
-    title: 'Choose a language or subject',
-    text: 'Start with African languages or academic tutoring based on your child’s need.',
+    number: "01",
+    title: "Create or log in to your parent account",
+    text: "Your booking stays connected to one secure parent account from start to finish.",
   },
   {
-    number: '02',
-    title: 'Tell us about your child',
-    text: 'Share your child’s age, level, goal and preferred learning time.',
+    number: "02",
+    title: "Add or choose your child",
+    text: "Tell us their age and school level so we can show suitable learning options.",
   },
   {
-    number: '03',
-    title: 'Browse suitable tutors',
-    text: 'Explore available tutors before creating an account or booking.',
+    number: "03",
+    title: "Choose a subject and plan",
+    text: "Select the support they need and choose one or two private lessons each week.",
   },
   {
-    number: '04',
-    title: 'Choose a timetable',
-    text: 'Select the first lesson date and keep the same weekly learning pattern.',
+    number: "04",
+    title: "Choose a tutor and timetable",
+    text: "Pick the first lesson date. The same day and time then repeats weekly.",
   },
   {
-    number: '05',
-    title: 'Create your free account',
-    text: 'Sign up only when you are ready to continue with booking.',
+    number: "05",
+    title: "Review and pay securely",
+    text: "Check the full booking summary before continuing to secure Stripe checkout.",
   },
   {
-    number: '06',
-    title: 'Start learning',
-    text: 'Your child begins private lessons with progress updates for parents.',
+    number: "06",
+    title: "See lessons and progress",
+    text: "The confirmed timetable and learning updates appear in your parent dashboard.",
   },
-]
+];
 
 const languagePaths = [
   {
-    title: 'Yoruba',
-    text: 'Help your child speak confidently with family and stay connected to their roots.',
+    title: "Yoruba",
+    text: "Help your child speak confidently with family and stay connected to their roots.",
   },
   {
-    title: 'Igbo',
-    text: 'Build vocabulary, pronunciation and cultural confidence through private lessons.',
+    title: "Igbo",
+    text: "Build vocabulary, pronunciation and cultural confidence through private lessons.",
   },
   {
-    title: 'Hausa',
-    text: 'Develop practical communication skills with experienced language tutors.',
+    title: "Hausa",
+    text: "Develop practical communication skills with experienced language tutors.",
   },
-]
+];
 
-const academicSubjects = ['Maths', 'English', 'Science', 'Coding', 'Music']
+const academicSubjects = ["Maths", "English", "Science", "Coding", "Music"];
 
 const promiseItems = [
-  'One-to-one teaching',
-  'Lesson attendance',
-  'Homework support',
-  'Progress report',
-  'Next lesson objectives',
-  'Parent updates',
-]
+  "One-to-one teaching",
+  "Lesson attendance",
+  "Homework support",
+  "Progress report",
+  "Next lesson objectives",
+  "Parent updates",
+];
 
 export default function HomePage() {
   return (
@@ -110,18 +110,14 @@ export default function HomePage() {
           </p>
 
           <div className="fp-actions">
-            <Link href="/start?type=language" className="fp-primary">
-              Choose a Language
+            <Link href="/start" className="fp-primary">
+              Start Booking
             </Link>
 
-            <Link href="/start?type=academic" className="fp-secondary">
-              Explore Academic Subjects
+            <Link href="/subjects" className="fp-secondary">
+              Browse Subjects First
             </Link>
           </div>
-
-          <p className="fp-browse-note">
-            
-          </p>
 
           <div className="fp-trust">
             {trustItems.map((item) => (
@@ -172,8 +168,8 @@ export default function HomePage() {
 
             <em>More African languages coming soon.</em>
 
-            <Link href="/start?type=language" className="fp-card-link">
-              Find Language Tutors →
+            <Link href="/subjects?category=Language" className="fp-card-link">
+              Explore African Languages →
             </Link>
           </article>
 
@@ -195,7 +191,10 @@ export default function HomePage() {
 
             <em>More academic subjects coming soon.</em>
 
-            <Link href="/start?type=academic" className="fp-card-link secondary">
+            <Link
+              href="/subjects?category=Academic"
+              className="fp-card-link secondary"
+            >
               Explore Subjects →
             </Link>
           </article>
@@ -237,7 +236,7 @@ export default function HomePage() {
       <section className="fp-section">
         <div className="fp-section-head centered">
           <p>Simple parent journey</p>
-          <h2>Explore first, then book when ready.</h2>
+          <h2>One clear next step, all the way to payment.</h2>
         </div>
 
         <div className="fp-step-grid">
@@ -272,13 +271,13 @@ export default function HomePage() {
                 <article key={item.title}>
                   <strong>{item.title}</strong>
                   <p>{item.text}</p>
-                  <small>Plans from £9</small>
+                  <small>Lessons from £9 per class</small>
                 </article>
               ))}
             </div>
 
-            <Link href="/start?type=language" className="fp-wide-link">
-              View language tutors →
+            <Link href="/subjects?category=Language" className="fp-wide-link">
+              Explore language lessons →
             </Link>
           </div>
 
@@ -294,7 +293,7 @@ export default function HomePage() {
             <div className="fp-subject-grid">
               {academicSubjects.map((subject) => (
                 <Link
-                  href="/start?type=academic"
+                  href={`/subjects?category=${subject === "Coding" || subject === "Music" ? "Skill" : "Academic"}&subject=${encodeURIComponent(subject)}`}
                   key={subject}
                   className="fp-subject"
                 >
@@ -304,11 +303,14 @@ export default function HomePage() {
             </div>
 
             <div className="fp-price-note">
-              <strong>Plans from £9</strong>
+              <strong>Lessons from £9 per class</strong>
               <span>Private one-to-one lessons with progress visibility.</span>
             </div>
 
-            <Link href="/start?type=academic" className="fp-wide-link secondary">
+            <Link
+              href="/subjects?category=Academic"
+              className="fp-wide-link secondary"
+            >
               Explore academic tutoring →
             </Link>
           </div>
@@ -320,9 +322,9 @@ export default function HomePage() {
           <p>The Fountain Prep Promise</p>
           <h2>Every lesson should give parents confidence.</h2>
           <span>
-            Parents want to know that tutoring is making a difference. Fountain Prep
-            combines private teaching, curriculum structure and progress visibility
-            so every lesson feels purposeful.
+            Parents want to know that tutoring is making a difference. Fountain
+            Prep combines private teaching, curriculum structure and progress
+            visibility so every lesson feels purposeful.
           </span>
 
           <div className="fp-promise-grid">
@@ -360,8 +362,9 @@ export default function HomePage() {
           <p>Need help before booking?</p>
           <h2>Use the in-app support chat.</h2>
           <span>
-            Parents, tutors and visitors can reach Fountain Prep through the support
-            button on this page. Replies are handled securely through our support inbox.
+            Parents, tutors and visitors can reach Fountain Prep through the
+            support button on this page. Replies are handled securely through
+            our support inbox.
           </span>
         </div>
 
@@ -369,8 +372,9 @@ export default function HomePage() {
           type="button"
           className="fp-support-hint"
           onClick={() => {
-            const supportButton = document.querySelector<HTMLButtonElement>('.supportButton')
-            supportButton?.click()
+            const supportButton =
+              document.querySelector<HTMLButtonElement>(".supportButton");
+            supportButton?.click();
           }}
         >
           Open Support
@@ -382,16 +386,16 @@ export default function HomePage() {
         <h2>The learning partner for families around the world.</h2>
         <span>
           Whether your goal is preserving your family’s language, strengthening
-          cultural identity or helping your child succeed academically, Fountain Prep
-          is here to support every step of the journey.
+          cultural identity or helping your child succeed academically, Fountain
+          Prep is here to support every step of the journey.
         </span>
 
         <div className="fp-actions centered-actions">
-          <Link href="/start?type=language" className="fp-primary">
-            Choose a Language
+          <Link href="/start" className="fp-primary">
+            Start Booking
           </Link>
-          <Link href="/start?type=academic" className="fp-secondary">
-            Explore Academic Subjects
+          <Link href="/subjects" className="fp-secondary">
+            Browse Subjects First
           </Link>
         </div>
       </section>
@@ -401,8 +405,16 @@ export default function HomePage() {
           min-height: 100vh;
           color: #201230;
           background:
-            radial-gradient(circle at 10% 0%, rgba(124, 58, 237, 0.12), transparent 30%),
-            radial-gradient(circle at 90% 6%, rgba(236, 72, 153, 0.08), transparent 28%),
+            radial-gradient(
+              circle at 10% 0%,
+              rgba(124, 58, 237, 0.12),
+              transparent 30%
+            ),
+            radial-gradient(
+              circle at 90% 6%,
+              rgba(236, 72, 153, 0.08),
+              transparent 28%
+            ),
             linear-gradient(180deg, #fffaff 0%, #fbf7ff 44%, #f5edff 100%);
           padding: 22px 16px 80px;
           overflow: hidden;
@@ -430,8 +442,16 @@ export default function HomePage() {
           border-radius: 38px;
           border: 1px solid rgba(124, 58, 237, 0.12);
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(249, 244, 255, 0.94)),
-            radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 34%);
+            linear-gradient(
+              135deg,
+              rgba(255, 255, 255, 0.98),
+              rgba(249, 244, 255, 0.94)
+            ),
+            radial-gradient(
+              circle at top right,
+              rgba(124, 58, 237, 0.16),
+              transparent 34%
+            );
           box-shadow: 0 28px 90px rgba(52, 30, 83, 0.12);
         }
 
@@ -568,10 +588,14 @@ export default function HomePage() {
         }
 
         .fp-hero-image-wrap::after {
-          content: '';
+          content: "";
           position: absolute;
           inset: 0;
-          background: linear-gradient(to top, rgba(25, 14, 38, 0.28), transparent 50%);
+          background: linear-gradient(
+            to top,
+            rgba(25, 14, 38, 0.28),
+            transparent 50%
+          );
           pointer-events: none;
         }
 
@@ -930,8 +954,16 @@ export default function HomePage() {
           padding: 38px;
           border-radius: 38px;
           background:
-            radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 34%),
-            linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 239, 255, 0.95));
+            radial-gradient(
+              circle at top right,
+              rgba(124, 58, 237, 0.14),
+              transparent 34%
+            ),
+            linear-gradient(
+              135deg,
+              rgba(255, 255, 255, 0.96),
+              rgba(246, 239, 255, 0.95)
+            );
         }
 
         .fp-value span {
@@ -1004,7 +1036,11 @@ export default function HomePage() {
           border-radius: 38px;
           padding: 38px;
           background:
-            radial-gradient(circle at top right, rgba(124, 58, 237, 0.13), transparent 36%),
+            radial-gradient(
+              circle at top right,
+              rgba(124, 58, 237, 0.13),
+              transparent 36%
+            ),
             linear-gradient(135deg, #ffffff, #f5efff);
         }
 
@@ -1190,5 +1226,5 @@ export default function HomePage() {
 
       <SupportWidget />
     </main>
-  )
+  );
 }

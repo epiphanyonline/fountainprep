@@ -1,218 +1,249 @@
-'use client'
+"use client";
 
-import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '../lib/supabase'
-import { BookingJourney } from '../components/BookingJourney'
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "../lib/supabase";
 
 type Student = {
-  id: string
-  full_name: string
-  child_age: number | null
-  country_system: string | null
-  country_class_label: string | null
-  learning_level_id: string | null
-}
+  id: string;
+  full_name: string;
+  child_age: number | null;
+  country_system: string | null;
+  country_class_label: string | null;
+  learning_level_id: string | null;
+};
 
 type LearningLevel = {
-  id: string
-  name: string
-  uk_equivalent: string | null
-  us_canada_equivalent: string | null
-  nigeria_teacher_match: string | null
-}
+  id: string;
+  name: string;
+  uk_equivalent: string | null;
+  us_canada_equivalent: string | null;
+  nigeria_teacher_match: string | null;
+};
 
 type SubjectInfo = {
-  id: string
-  name: string
-  category: string
-}
+  id: string;
+  name: string;
+  category: string;
+};
 
 type SubjectProgram = {
-  id: string
-  title: string
-  description: string | null
-  what_will_be_taught: string | null
-  learning_outcomes: string | null
-  duration_minutes: number
-  subject_id: string
-  learning_level_id: string
-  subjects: SubjectInfo | null
-  learning_levels: LearningLevel | null
-}
+  id: string;
+  title: string;
+  description: string | null;
+  what_will_be_taught: string | null;
+  learning_outcomes: string | null;
+  duration_minutes: number;
+  subject_id: string;
+  learning_level_id: string;
+  subjects: SubjectInfo | null;
+  learning_levels: LearningLevel | null;
+};
 
 const catalogueSubjects = [
   {
-    name: 'Maths',
-    category: 'Academic',
-    benefit: 'Builds confidence with numbers, problem-solving, and school maths.',
+    name: "Maths",
+    category: "Academic",
+    benefit:
+      "Builds confidence with numbers, problem-solving, and school maths.",
     childImprovement:
-      'Parents should expect better number confidence, stronger homework independence, improved accuracy, and less fear around maths tasks.',
+      "Parents should expect better number confidence, stronger homework independence, improved accuracy, and less fear around maths tasks.",
     taught:
-      'Counting, arithmetic, fractions, word problems, times tables, reasoning, and exam-style practice depending on age.',
+      "Counting, arithmetic, fractions, word problems, times tables, reasoning, and exam-style practice depending on age.",
   },
   {
-    name: 'English',
-    category: 'Academic',
-    benefit: 'Strengthens reading, writing, comprehension, spelling, and expression.',
+    name: "English",
+    category: "Academic",
+    benefit:
+      "Strengthens reading, writing, comprehension, spelling, and expression.",
     childImprovement:
-      'Children become more confident readers and writers, with better vocabulary, clearer sentences, and stronger comprehension.',
+      "Children become more confident readers and writers, with better vocabulary, clearer sentences, and stronger comprehension.",
     taught:
-      'Phonics, reading fluency, comprehension, grammar, spelling, creative writing, handwriting support, and structured writing practice.',
+      "Phonics, reading fluency, comprehension, grammar, spelling, creative writing, handwriting support, and structured writing practice.",
   },
   {
-    name: 'Science',
-    category: 'Academic',
-    benefit: 'Helps children understand the world through simple, clear explanations.',
+    name: "Science",
+    category: "Academic",
+    benefit:
+      "Helps children understand the world through simple, clear explanations.",
     childImprovement:
-      'Children improve curiosity, observation skills, scientific vocabulary, and confidence answering school science questions.',
+      "Children improve curiosity, observation skills, scientific vocabulary, and confidence answering school science questions.",
     taught:
-      'Living things, materials, forces, plants, animals, environment, simple experiments, and science reasoning.',
+      "Living things, materials, forces, plants, animals, environment, simple experiments, and science reasoning.",
   },
   {
-    name: 'Coding',
-    category: 'Skill',
-    benefit: 'Introduces children to logic, creativity, and digital problem-solving.',
+    name: "Coding",
+    category: "Skill",
+    benefit:
+      "Introduces children to logic, creativity, and digital problem-solving.",
     childImprovement:
-      'Children develop better logical thinking, patience, sequencing, creativity, and confidence using technology productively.',
+      "Children develop better logical thinking, patience, sequencing, creativity, and confidence using technology productively.",
     taught:
-      'Beginner coding concepts, sequencing, loops, simple games, block coding, problem-solving, and digital confidence.',
+      "Beginner coding concepts, sequencing, loops, simple games, block coding, problem-solving, and digital confidence.",
   },
   {
-    name: 'Music',
-    category: 'Skill',
-    benefit: 'Supports creativity, rhythm, listening skills, and self-expression.',
+    name: "Music",
+    category: "Skill",
+    benefit:
+      "Supports creativity, rhythm, listening skills, and self-expression.",
     childImprovement:
-      'Children gain confidence, focus, memory, rhythm awareness, and creative expression through structured music learning.',
+      "Children gain confidence, focus, memory, rhythm awareness, and creative expression through structured music learning.",
     taught:
-      'Rhythm, pitch, singing basics, listening skills, simple notation, practice routines, and age-appropriate music activities.',
+      "Rhythm, pitch, singing basics, listening skills, simple notation, practice routines, and age-appropriate music activities.",
   },
   {
-    name: 'Yoruba',
-    category: 'Language',
-    benefit: 'Helps children connect with culture, family language, and identity.',
+    name: "Yoruba",
+    category: "Language",
+    benefit:
+      "Helps children connect with culture, family language, and identity.",
     childImprovement:
-      'Children become more comfortable hearing, speaking, greeting, and understanding Yoruba in family and cultural settings.',
+      "Children become more comfortable hearing, speaking, greeting, and understanding Yoruba in family and cultural settings.",
     taught:
-      'Greetings, numbers, everyday words, simple sentences, pronunciation, songs, culture, and conversation practice.',
+      "Greetings, numbers, everyday words, simple sentences, pronunciation, songs, culture, and conversation practice.",
   },
   {
-    name: 'Igbo',
-    category: 'Language',
-    benefit: 'Builds language connection for children in diaspora families.',
+    name: "Igbo",
+    category: "Language",
+    benefit: "Builds language connection for children in diaspora families.",
     childImprovement:
-      'Children gain confidence with basic Igbo words, greetings, pronunciation, and simple family conversations.',
+      "Children gain confidence with basic Igbo words, greetings, pronunciation, and simple family conversations.",
     taught:
-      'Greetings, names, numbers, family words, common phrases, pronunciation, songs, and cultural learning.',
+      "Greetings, names, numbers, family words, common phrases, pronunciation, songs, and cultural learning.",
   },
   {
-    name: 'Hausa',
-    category: 'Language',
-    benefit: 'Introduces children to Hausa language, greetings, and cultural expression.',
+    name: "Hausa",
+    category: "Language",
+    benefit:
+      "Introduces children to Hausa language, greetings, and cultural expression.",
     childImprovement:
-      'Children become more confident recognising and using simple Hausa words, greetings, and everyday expressions.',
+      "Children become more confident recognising and using simple Hausa words, greetings, and everyday expressions.",
     taught:
-      'Greetings, numbers, basic vocabulary, pronunciation, simple sentences, songs, and cultural context.',
+      "Greetings, numbers, basic vocabulary, pronunciation, simple sentences, songs, and cultural context.",
   },
-]
+];
 
 function toSubjectSlug(value: string) {
   return value
     .toLowerCase()
     .trim()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normaliseCategoryFilter(value: string | null) {
+  const match = ["Academic", "Skill", "Language"].find(
+    (category) => category.toLowerCase() === value?.toLowerCase(),
+  );
+
+  return match || "All";
 }
 
 function curriculumLink(subjectName: string, studentId?: string | null) {
-  const slug = toSubjectSlug(subjectName)
+  const slug = toSubjectSlug(subjectName);
 
   return `/subjects/curriculum/${slug}${
-    studentId ? `?studentId=${studentId}` : ''
-  }`
+    studentId ? `?studentId=${studentId}` : ""
+  }`;
+}
+
+function startBookingLink(subjectName: string, category?: string | null) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  params.set("subject", subjectName);
+  return `/start?${params.toString()}`;
 }
 
 export default function SubjectsPageClient() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const studentId = searchParams.get('studentId')
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const studentId = searchParams.get("studentId");
+  const requestedCategory = searchParams.get("category");
+  const requestedSubject =
+    searchParams.get("subject")?.trim().toLowerCase() || "";
 
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('Loading...')
-  const [student, setStudent] = useState<Student | null>(null)
-  const [level, setLevel] = useState<LearningLevel | null>(null)
-  const [programs, setPrograms] = useState<SubjectProgram[]>([])
-  const [categoryFilter, setCategoryFilter] = useState<string>('All')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("Loading...");
+  const [student, setStudent] = useState<Student | null>(null);
+  const [level, setLevel] = useState<LearningLevel | null>(null);
+  const [programs, setPrograms] = useState<SubjectProgram[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string>(() =>
+    normaliseCategoryFilter(requestedCategory),
+  );
+  const [subjectFilter, setSubjectFilter] = useState(requestedSubject);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     async function loadData() {
-      setLoading(true)
-      setMessage('Loading...')
+      setLoading(true);
+      setMessage("Loading...");
 
-      let selectedLearningLevelId: string | null = null
+      let selectedLearningLevelId: string | null = null;
 
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
-      setIsLoggedIn(Boolean(user))
+      setIsLoggedIn(Boolean(user));
 
       if (studentId) {
         if (!user) {
-          router.push('/login')
-          return
+          const next = encodeURIComponent(`/subjects?studentId=${studentId}`);
+          router.replace(`/login?next=${next}`);
+          return;
         }
 
         const { data: parentProfile } = await supabase
-          .from('parent_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle()
+          .from("parent_profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
         if (!parentProfile) {
-          router.push('/parent/onboarding')
-          return
+          router.push("/parent/onboarding");
+          return;
         }
 
         const { data: studentRow, error: studentError } = await supabase
-          .from('student_profiles')
+          .from("student_profiles")
           .select(
-            'id, full_name, child_age, country_system, country_class_label, learning_level_id'
+            "id, full_name, child_age, country_system, country_class_label, learning_level_id",
           )
-          .eq('id', studentId)
-          .eq('parent_id', parentProfile.id)
-          .maybeSingle()
+          .eq("id", studentId)
+          .eq("parent_id", parentProfile.id)
+          .maybeSingle();
 
         if (studentError || !studentRow) {
-          setMessage('Student not found.')
-          setLoading(false)
-          return
+          setMessage("Student not found.");
+          setLoading(false);
+          return;
         }
 
         if (!studentRow.learning_level_id) {
-          setMessage('This child has not been mapped to a learning level yet.')
-          setLoading(false)
-          return
+          setMessage("This child has not been mapped to a learning level yet.");
+          setLoading(false);
+          return;
         }
 
-        selectedLearningLevelId = studentRow.learning_level_id
-        setStudent(studentRow as Student)
+        selectedLearningLevelId = studentRow.learning_level_id;
+        setStudent(studentRow as Student);
 
         const { data: levelRow } = await supabase
-          .from('learning_levels')
-          .select('id, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match')
-          .eq('id', studentRow.learning_level_id)
-          .maybeSingle()
+          .from("learning_levels")
+          .select(
+            "id, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match",
+          )
+          .eq("id", studentRow.learning_level_id)
+          .maybeSingle();
 
-        setLevel((levelRow ?? null) as LearningLevel | null)
+        setLevel((levelRow ?? null) as LearningLevel | null);
       }
 
       let query = supabase
-        .from('subject_programs')
-        .select(`
+        .from("subject_programs")
+        .select(
+          `
           id,
           title,
           description,
@@ -233,98 +264,127 @@ export default function SubjectsPageClient() {
             us_canada_equivalent,
             nigeria_teacher_match
           )
-        `)
-        .eq('is_active', true)
-        .order('title', { ascending: true })
+        `,
+        )
+        .eq("is_active", true)
+        .order("title", { ascending: true });
 
       if (selectedLearningLevelId) {
-        query = query.eq('learning_level_id', selectedLearningLevelId)
+        query = query.eq("learning_level_id", selectedLearningLevelId);
       }
 
-      const { data: programRows, error: programError } = await query
+      const { data: programRows, error: programError } = await query;
 
       if (programError) {
-        setMessage(programError.message)
-        setLoading(false)
-        return
+        setMessage(programError.message);
+        setLoading(false);
+        return;
       }
 
       const cleanPrograms = ((programRows ?? []) as any[]).map((row) => ({
         ...row,
-        subjects: Array.isArray(row.subjects) ? row.subjects[0] ?? null : row.subjects ?? null,
+        subjects: Array.isArray(row.subjects)
+          ? (row.subjects[0] ?? null)
+          : (row.subjects ?? null),
         learning_levels: Array.isArray(row.learning_levels)
-          ? row.learning_levels[0] ?? null
-          : row.learning_levels ?? null,
-      })) as SubjectProgram[]
+          ? (row.learning_levels[0] ?? null)
+          : (row.learning_levels ?? null),
+      })) as SubjectProgram[];
 
-      setPrograms(cleanPrograms)
-      setMessage('')
-      setLoading(false)
+      setPrograms(cleanPrograms);
+      setMessage("");
+      setLoading(false);
     }
 
-    loadData()
-  }, [router, studentId])
+    loadData();
+  }, [router, studentId]);
 
-  const personalised = Boolean(student)
+  useEffect(() => {
+    setCategoryFilter(normaliseCategoryFilter(requestedCategory));
+    setSubjectFilter(requestedSubject);
+  }, [requestedCategory, requestedSubject]);
+
+  const personalised = Boolean(student);
 
   const categories = useMemo(() => {
-    if (programs.length === 0) return ['All', 'Academic', 'Skill', 'Language']
+    if (programs.length === 0) return ["All", "Academic", "Skill", "Language"];
 
     const unique = Array.from(
       new Set(
         programs
           .map((p) => p.subjects?.category)
-          .filter((category): category is string => Boolean(category))
-      )
-    )
+          .filter((category): category is string => Boolean(category)),
+      ),
+    );
 
-    return ['All', ...unique]
-  }, [programs])
+    return ["All", ...unique];
+  }, [programs]);
 
   const filteredPrograms = useMemo(() => {
-    if (categoryFilter === 'All') return programs
-    return programs.filter((p) => p.subjects?.category === categoryFilter)
-  }, [programs, categoryFilter])
+    const categoryMatches =
+      categoryFilter === "All"
+        ? programs
+        : programs.filter((p) => p.subjects?.category === categoryFilter);
+
+    if (!subjectFilter) return categoryMatches;
+
+    return categoryMatches.filter(
+      (program) => program.subjects?.name.toLowerCase() === subjectFilter,
+    );
+  }, [programs, categoryFilter, subjectFilter]);
 
   const filteredCatalogue = useMemo(() => {
-    if (categoryFilter === 'All') return catalogueSubjects
-    return catalogueSubjects.filter(
-      (subject) => subject.category.toLowerCase() === categoryFilter.toLowerCase()
-    )
-  }, [categoryFilter])
+    const categoryMatches =
+      categoryFilter === "All"
+        ? catalogueSubjects
+        : catalogueSubjects.filter(
+            (subject) =>
+              subject.category.toLowerCase() === categoryFilter.toLowerCase(),
+          );
+
+    if (!subjectFilter) return categoryMatches;
+
+    return categoryMatches.filter(
+      (subject) => subject.name.toLowerCase() === subjectFilter,
+    );
+  }, [categoryFilter, subjectFilter]);
 
   function categoryLabel(category?: string | null) {
-    if (category === 'academic') return 'Core Academic'
-    if (category === 'language') return 'African Language'
-    if (category === 'skill') return 'Creative Skill'
+    if (category === "academic") return "Core Academic";
+    if (category === "language") return "African Language";
+    if (category === "skill") return "Creative Skill";
 
-    if (category === 'Academic') return 'Core Academic'
-    if (category === 'Language') return 'African Language'
-    if (category === 'Skill') return 'Creative Skill'
+    if (category === "Academic") return "Core Academic";
+    if (category === "Language") return "African Language";
+    if (category === "Skill") return "Creative Skill";
 
-    return category || 'Learning Area'
+    return category || "Learning Area";
   }
 
   function filterLabel(category: string) {
-    const normalised = category.toLowerCase()
+    const normalised = category.toLowerCase();
 
-    if (normalised === 'all') return 'All Learning Areas'
-    if (normalised === 'academic') return 'Core Academics'
-    if (normalised === 'skill') return 'Creative Skills'
-    if (normalised === 'language') return 'African Languages'
+    if (normalised === "all") return "All Learning Areas";
+    if (normalised === "academic") return "Core Academics";
+    if (normalised === "skill") return "Creative Skills";
+    if (normalised === "language") return "African Languages";
 
-    return category
+    return category;
   }
 
   function filterDescription(category: string) {
-    const normalised = category.toLowerCase()
+    const normalised = category.toLowerCase();
 
-    if (normalised === 'all') return 'Explore the full FountainPrep learning catalogue'
-    if (normalised === 'academic') return 'Maths, English, Science and school support'
-    if (normalised === 'skill') return 'Coding, Music and confidence-building skills'
-    if (normalised === 'language') return 'Yoruba, Igbo, Hausa and cultural connection'
+    if (normalised === "all")
+      return "Explore the full FountainPrep learning catalogue";
+    if (normalised === "academic")
+      return "Maths, English, Science and school support";
+    if (normalised === "skill")
+      return "Coding, Music and confidence-building skills";
+    if (normalised === "language")
+      return "Yoruba, Igbo, Hausa and cultural connection";
 
-    return 'Explore this learning pathway'
+    return "Explore this learning pathway";
   }
 
   if (loading) {
@@ -337,37 +397,35 @@ export default function SubjectsPageClient() {
           </div>
         </div>
       </main>
-    )
+    );
   }
 
-  const hasPrograms = filteredPrograms.length > 0
+  const hasPrograms = filteredPrograms.length > 0;
 
   return (
     <main className="page-wrap">
       <div className="container">
-        {personalised ? (
-          <BookingJourney currentStep={2} childName={student?.full_name} />
-        ) : null}
-
         <section className="subjects-hero">
           <div className="hero-glow hero-glow-one" />
           <div className="hero-glow hero-glow-two" />
 
           <div className="hero-main">
             <p className="hero-kicker">
-              {personalised ? 'Personalised learning pathway' : 'FountainPrep subject catalogue'}
+              {personalised
+                ? "Personalised learning pathway"
+                : "FountainPrep subject catalogue"}
             </p>
 
             <h1 className="page-title hero-title">
               {personalised
                 ? `Choose a learning area for ${student?.full_name}`
-                : 'Learning areas designed to help children grow'}
+                : "Learning areas designed to help children grow"}
             </h1>
 
             <p className="page-subtitle hero-copy">
               {personalised
                 ? `We’ll use ${student?.full_name}’s age, class level, and learning stage to guide the next step in their FountainPrep learning plan.`
-                : 'Explore structured learning areas across core academics, creative skills, and African languages. Each subject is designed to build confidence, consistency, and measurable progress.'}
+                : "Explore structured learning areas across core academics, creative skills, and African languages. Each subject is designed to build confidence, consistency, and measurable progress."}
             </p>
 
             {personalised ? (
@@ -379,12 +437,12 @@ export default function SubjectsPageClient() {
 
                 <div>
                   <span className="summary-label">Age</span>
-                  <strong>{student?.child_age ?? '-'}</strong>
+                  <strong>{student?.child_age ?? "-"}</strong>
                 </div>
 
                 <div>
                   <span className="summary-label">Class</span>
-                  <strong>{student?.country_class_label || '-'}</strong>
+                  <strong>{student?.country_class_label || "-"}</strong>
                 </div>
               </div>
             ) : null}
@@ -393,9 +451,9 @@ export default function SubjectsPageClient() {
               <div className="level-panel">
                 <p>Learning level: {level.name}</p>
                 <span>
-                  UK: {level.uk_equivalent || '-'} • US/Canada:{' '}
-                  {level.us_canada_equivalent || '-'} • Nigeria teacher match:{' '}
-                  {level.nigeria_teacher_match || '-'}
+                  UK: {level.uk_equivalent || "-"} • US/Canada:{" "}
+                  {level.us_canada_equivalent || "-"} • Nigeria teacher match:{" "}
+                  {level.nigeria_teacher_match || "-"}
                 </span>
               </div>
             ) : null}
@@ -403,10 +461,13 @@ export default function SubjectsPageClient() {
             <div className="hero-actions">
               {!isLoggedIn ? (
                 <>
-                  <Link href="/signup" className="btn-primary">
-                    Create Parent Profile
+                  <Link href="/start" className="btn-primary">
+                    Start Booking
                   </Link>
-                  <Link href="/login" className="btn-secondary">
+                  <Link
+                    href={`/login?next=${encodeURIComponent("/parent/students?mode=booking")}`}
+                    className="btn-secondary"
+                  >
                     Login to Continue
                   </Link>
                 </>
@@ -415,12 +476,18 @@ export default function SubjectsPageClient() {
                   <Link href="#subjects-list" className="btn-primary">
                     Explore Learning Areas
                   </Link>
-                  <Link href="/parent/students" className="btn-secondary">
+                  <Link
+                    href="/parent/students?mode=booking"
+                    className="btn-secondary"
+                  >
                     Switch Child
                   </Link>
                 </>
               ) : (
-                <Link href="/parent/students" className="btn-primary">
+                <Link
+                  href="/parent/students?mode=booking"
+                  className="btn-primary"
+                >
                   Build a Learning Plan
                 </Link>
               )}
@@ -434,24 +501,24 @@ export default function SubjectsPageClient() {
               <div className="journey-step">
                 <span>01</span>
                 <div>
-                  <strong>Choose your child</strong>
-                  <p>We personalise the journey around their level.</p>
+                  <strong>Choose this subject</strong>
+                  <p>Continue with the child shown on this page.</p>
                 </div>
               </div>
 
               <div className="journey-step">
                 <span>02</span>
                 <div>
-                  <strong>Review the curriculum</strong>
-                  <p>See what your child will learn before choosing a plan.</p>
+                  <strong>Choose a plan</strong>
+                  <p>Select one or two private lessons each week.</p>
                 </div>
               </div>
 
               <div className="journey-step">
                 <span>03</span>
                 <div>
-                  <strong>Continue to plans</strong>
-                  <p>Choose a learning plan and book a convenient time.</p>
+                  <strong>Choose timetable and pay</strong>
+                  <p>Pick the first lesson date, review and pay securely.</p>
                 </div>
               </div>
             </div>
@@ -462,12 +529,14 @@ export default function SubjectsPageClient() {
           <div className="pathway-head">
             <div>
               <p className="hero-kicker">Learning pathways</p>
-              <h2 className="section-heading">Choose the type of support your child needs</h2>
+              <h2 className="section-heading">
+                Choose the type of support your child needs
+              </h2>
             </div>
 
             <p className="page-subtitle pathway-copy">
-              Use the pathways below to focus the catalogue and find the most relevant
-              learning area.
+              Use the pathways below to focus the catalogue and find the most
+              relevant learning area.
             </p>
           </div>
 
@@ -476,10 +545,19 @@ export default function SubjectsPageClient() {
               <button
                 key={category}
                 type="button"
-                onClick={() => setCategoryFilter(category)}
-                className={categoryFilter === category ? 'pathway-card active' : 'pathway-card'}
+                onClick={() => {
+                  setCategoryFilter(category);
+                  setSubjectFilter("");
+                }}
+                className={
+                  categoryFilter === category
+                    ? "pathway-card active"
+                    : "pathway-card"
+                }
               >
-                <span className="pathway-icon">{getCategoryIcon(category)}</span>
+                <span className="pathway-icon">
+                  {getCategoryIcon(category)}
+                </span>
                 <strong>{filterLabel(category)}</strong>
                 <small>{filterDescription(category)}</small>
               </button>
@@ -494,12 +572,15 @@ export default function SubjectsPageClient() {
               <h2 className="section-heading">
                 {personalised
                   ? `Available learning options for ${student?.full_name}`
-                  : 'Explore FountainPrep learning areas'}
+                  : "Explore FountainPrep learning areas"}
               </h2>
             </div>
 
             {!personalised && isLoggedIn ? (
-              <Link href="/parent/students" className="btn-secondary compact-action">
+              <Link
+                href="/parent/students?mode=booking"
+                className="btn-secondary compact-action"
+              >
                 Build Plan First
               </Link>
             ) : null}
@@ -545,8 +626,16 @@ export default function SubjectsPageClient() {
           border-radius: 34px;
           border: 1px solid rgba(111, 66, 193, 0.14);
           background:
-            radial-gradient(circle at top right, rgba(138, 92, 246, 0.16), transparent 34%),
-            linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 240, 255, 0.96));
+            radial-gradient(
+              circle at top right,
+              rgba(138, 92, 246, 0.16),
+              transparent 34%
+            ),
+            linear-gradient(
+              135deg,
+              rgba(255, 255, 255, 0.98),
+              rgba(246, 240, 255, 0.96)
+            );
           box-shadow: 0 24px 70px rgba(55, 35, 95, 0.11);
         }
 
@@ -759,7 +848,11 @@ export default function SubjectsPageClient() {
 
         .pathway-card.active {
           background:
-            radial-gradient(circle at top right, rgba(255, 255, 255, 0.28), transparent 35%),
+            radial-gradient(
+              circle at top right,
+              rgba(255, 255, 255, 0.28),
+              transparent 35%
+            ),
             linear-gradient(135deg, #6f42c1, #8a5cf6);
           border-color: rgba(111, 66, 193, 0.45);
           color: #ffffff;
@@ -877,7 +970,7 @@ export default function SubjectsPageClient() {
         }
       `}</style>
     </main>
-  )
+  );
 }
 
 function CatalogueGrid({
@@ -887,17 +980,17 @@ function CatalogueGrid({
   studentId,
   categoryLabel,
 }: {
-  subjects: typeof catalogueSubjects
-  personalised: boolean
-  isLoggedIn: boolean
-  studentId: string | null
-  categoryLabel: (category?: string | null) => string
+  subjects: typeof catalogueSubjects;
+  personalised: boolean;
+  isLoggedIn: boolean;
+  studentId: string | null;
+  categoryLabel: (category?: string | null) => string;
 }) {
   return (
     <div className="subject-grid">
       {subjects.map((subject) => {
-        const subjectSlug = toSubjectSlug(subject.name)
-        const viewCurriculumHref = curriculumLink(subject.name, studentId)
+        const subjectSlug = toSubjectSlug(subject.name);
+        const viewCurriculumHref = curriculumLink(subject.name, studentId);
 
         return (
           <div key={subject.name} className="subject-card">
@@ -922,40 +1015,37 @@ function CatalogueGrid({
             </div>
 
             <div className="subject-actions">
+              <Link href={viewCurriculumHref} className="btn-curriculum">
+                See What They’ll Learn
+              </Link>
+
               {!isLoggedIn ? (
-                <>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    See What They’ll Learn
-                  </Link>
-                  <Link href="/signup" className="btn-primary">
-                    Create Parent Profile
-                  </Link>
-                </>
+                <Link
+                  href={startBookingLink(subject.name, subject.category)}
+                  className="btn-primary"
+                >
+                  Start Booking This Subject
+                </Link>
               ) : personalised && studentId ? (
-                <>
-                  <Link
-                    href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
-                    className="btn-primary"
-                  >
-                    Choose {subject.name} → See Plans
-                  </Link>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    Preview Curriculum (Optional)
-                  </Link>
-                </>
+                <Link
+                  href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
+                  className="btn-primary"
+                >
+                  Choose This Subject
+                </Link>
               ) : (
                 <>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    See What They’ll Learn
+                  <Link
+                    href="/parent/students?mode=booking"
+                    className="btn-primary"
+                  >
+                    Choose a Child to Continue
                   </Link>
-                  <Link href="/parent/students" className="btn-primary">
-                    Choose This Subject
-                  </Link>                  
                 </>
               )}
             </div>
           </div>
-        )
+        );
       })}
 
       <style jsx>{`
@@ -973,7 +1063,11 @@ function CatalogueGrid({
           padding: 24px;
           border-radius: 30px;
           background:
-            radial-gradient(circle at top right, rgba(138, 92, 246, 0.08), transparent 32%),
+            radial-gradient(
+              circle at top right,
+              rgba(138, 92, 246, 0.08),
+              transparent 32%
+            ),
             #ffffff;
           border: 1px solid rgba(111, 66, 193, 0.1);
           box-shadow: 0 18px 52px rgba(55, 35, 95, 0.08);
@@ -1024,51 +1118,51 @@ function CatalogueGrid({
         }
 
         .subject-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 22px;
-}
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 22px;
+        }
 
         :global(.btn-curriculum) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 48px;
-  padding: 13px 18px;
-  box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          min-height: 48px;
+          padding: 13px 18px;
+          box-sizing: border-box;
 
-  border: 2px solid #6f42c1;
-  border-radius: 14px;
+          border: 2px solid #6f42c1;
+          border-radius: 14px;
 
-  background: #ffffff;
-  color: #6f42c1;
+          background: #ffffff;
+          color: #6f42c1;
 
-  font-size: 15px;
-  font-weight: 800;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
+          font-size: 15px;
+          font-weight: 800;
+          text-align: center;
+          text-decoration: none;
+          cursor: pointer;
 
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+        }
 
-:global(.btn-curriculum:hover) {
-  background: #6f42c1;
-  color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
-}
+        :global(.btn-curriculum:hover) {
+          background: #6f42c1;
+          color: #ffffff;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+        }
 
-:global(.btn-curriculum:focus-visible) {
-  outline: 3px solid rgba(111, 66, 193, 0.25);
-  outline-offset: 3px;
-}
+        :global(.btn-curriculum:focus-visible) {
+          outline: 3px solid rgba(111, 66, 193, 0.25);
+          outline-offset: 3px;
+        }
 
         @media (max-width: 1000px) {
           .subject-grid {
@@ -1087,12 +1181,12 @@ function CatalogueGrid({
           }
 
           .subject-actions,
-.program-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 22px;
-}
+          .program-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 22px;
+          }
 
           .subject-actions a {
             width: 100%;
@@ -1102,7 +1196,7 @@ function CatalogueGrid({
         }
       `}</style>
     </div>
-  )
+  );
 }
 
 function ProgramGrid({
@@ -1112,17 +1206,17 @@ function ProgramGrid({
   isLoggedIn,
   categoryLabel,
 }: {
-  programs: SubjectProgram[]
-  personalised: boolean
-  studentId: string | null
-  isLoggedIn: boolean
-  categoryLabel: (category?: string | null) => string
+  programs: SubjectProgram[];
+  personalised: boolean;
+  studentId: string | null;
+  isLoggedIn: boolean;
+  categoryLabel: (category?: string | null) => string;
 }) {
   return (
     <div className="program-grid">
       {programs.map((program) => {
-        const subjectName = program.subjects?.name || program.title
-        const viewCurriculumHref = curriculumLink(subjectName, studentId)
+        const subjectName = program.subjects?.name || program.title;
+        const viewCurriculumHref = curriculumLink(subjectName, studentId);
 
         return (
           <div key={program.id} className="program-card">
@@ -1144,7 +1238,8 @@ function ProgramGrid({
               <div className="program-panel">
                 <p>Learning focus</p>
                 <span>
-                  {program.what_will_be_taught || 'Structured learning support.'}
+                  {program.what_will_be_taught ||
+                    "Structured learning support."}
                 </span>
               </div>
 
@@ -1152,46 +1247,44 @@ function ProgramGrid({
                 <p>Expected progress</p>
                 <span>
                   {program.learning_outcomes ||
-                    'Improved confidence, stronger understanding, better study habits, and clearer progress over time.'}
+                    "Improved confidence, stronger understanding, better study habits, and clearer progress over time."}
                 </span>
               </div>
             </div>
 
             <div className="program-actions">
+              <Link href={viewCurriculumHref} className="btn-curriculum">
+                See What They’ll Learn
+              </Link>
+
               {!isLoggedIn ? (
-                <>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    See What They’ll Learn
-                  </Link>
-                  <Link href="/signup" className="btn-primary">
-                    Create Parent Profile
-                  </Link>
-                </>
+                <Link
+                  href={startBookingLink(
+                    subjectName,
+                    program.subjects?.category,
+                  )}
+                  className="btn-primary"
+                >
+                  Start Booking This Subject
+                </Link>
               ) : personalised && studentId ? (
-                <>
-                  <Link
-                    href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
-                    className="btn-primary"
-                  >
-                    Choose {subjectName} → See Plans
-                  </Link>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    Preview Curriculum (Optional)
-                  </Link>
-                </>
+                <Link
+                  href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
+                  className="btn-primary"
+                >
+                  Choose This Subject
+                </Link>
               ) : (
-                <>
-                  <Link href={viewCurriculumHref} className="btn-curriculum">
-                    See What They’ll Learn
-                  </Link>
-                  <Link href="/parent/students" className="btn-primary">
-                    Choose This Subject
-                  </Link>
-                </>
+                <Link
+                  href="/parent/students?mode=booking"
+                  className="btn-primary"
+                >
+                  Choose a Child to Continue
+                </Link>
               )}
             </div>
           </div>
-        )
+        );
       })}
 
       <style jsx>{`
@@ -1209,7 +1302,11 @@ function ProgramGrid({
           padding: 24px;
           border-radius: 30px;
           background:
-            radial-gradient(circle at top right, rgba(138, 92, 246, 0.08), transparent 32%),
+            radial-gradient(
+              circle at top right,
+              rgba(138, 92, 246, 0.08),
+              transparent 32%
+            ),
             #ffffff;
           border: 1px solid rgba(111, 66, 193, 0.1);
           box-shadow: 0 18px 52px rgba(55, 35, 95, 0.08);
@@ -1266,51 +1363,51 @@ function ProgramGrid({
         }
 
         .program-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 22px;
-}
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 22px;
+        }
 
         :global(.btn-curriculum) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 48px;
-  padding: 13px 18px;
-  box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          min-height: 48px;
+          padding: 13px 18px;
+          box-sizing: border-box;
 
-  border: 2px solid #6f42c1;
-  border-radius: 14px;
+          border: 2px solid #6f42c1;
+          border-radius: 14px;
 
-  background: #ffffff;
-  color: #6f42c1;
+          background: #ffffff;
+          color: #6f42c1;
 
-  font-size: 15px;
-  font-weight: 800;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
+          font-size: 15px;
+          font-weight: 800;
+          text-align: center;
+          text-decoration: none;
+          cursor: pointer;
 
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+        }
 
-:global(.btn-curriculum:hover) {
-  background: #6f42c1;
-  color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
-}
+        :global(.btn-curriculum:hover) {
+          background: #6f42c1;
+          color: #ffffff;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+        }
 
-:global(.btn-curriculum:focus-visible) {
-  outline: 3px solid rgba(111, 66, 193, 0.25);
-  outline-offset: 3px;
-}
+        :global(.btn-curriculum:focus-visible) {
+          outline: 3px solid rgba(111, 66, 193, 0.25);
+          outline-offset: 3px;
+        }
 
         @media (max-width: 1000px) {
           .program-grid {
@@ -1340,15 +1437,15 @@ function ProgramGrid({
         }
       `}</style>
     </div>
-  )
+  );
 }
 
 function getCategoryIcon(category: string) {
-  const normalised = category.toLowerCase()
+  const normalised = category.toLowerCase();
 
-  if (normalised === 'academic') return '📚'
-  if (normalised === 'skill') return '🎨'
-  if (normalised === 'language') return '🌍'
+  if (normalised === "academic") return "📚";
+  if (normalised === "skill") return "🎨";
+  if (normalised === "language") return "🌍";
 
-  return '✨'
+  return "✨";
 }

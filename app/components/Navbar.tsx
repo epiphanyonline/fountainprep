@@ -1,193 +1,294 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import NotificationBell from './ui/NotificationBell'
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import NotificationBell from "./ui/NotificationBell";
 
 type UserProfile = {
-  id: string
-  role: string
-  full_name: string | null
-  account_type?: 'PARENT' | 'ADULT_LEARNER' | null
-}
+  id: string;
+  role: string;
+  full_name: string | null;
+  account_type?: "PARENT" | "ADULT_LEARNER" | null;
+};
 
 export default function Navbar() {
-  const router = useRouter()
-  const pathname = usePathname()
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [notificationCount, setNotificationCount] = useState(0)
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     async function loadProfile() {
-      setLoading(true)
+      setLoading(true);
 
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
       if (!user) {
-        setProfile(null)
-        setLoading(false)
-        return
+        setProfile(null);
+        setLoading(false);
+        return;
       }
 
       const { data: userProfile } = await supabase
-  .from('user_profiles')
-  .select('id, role, full_name')
-  .eq('id', user.id)
-  .maybeSingle()
+        .from("user_profiles")
+        .select("id, role, full_name")
+        .eq("id", user.id)
+        .maybeSingle();
 
-if (!userProfile) {
-  setProfile(null)
-  setLoading(false)
-  return
-}
+      if (!userProfile) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
 
-let accountType: 'PARENT' | 'ADULT_LEARNER' | null = null
+      let accountType: "PARENT" | "ADULT_LEARNER" | null = null;
 
-if (userProfile.role === 'PARENT') {
-  const { data: parentProfile } = await supabase
-    .from('parent_profiles')
-    .select('account_type')
-    .eq('user_id', user.id)
-    .maybeSingle()
+      if (userProfile.role === "PARENT") {
+        const { data: parentProfile } = await supabase
+          .from("parent_profiles")
+          .select("account_type")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-  accountType =
-    parentProfile?.account_type === 'ADULT_LEARNER'
-      ? 'ADULT_LEARNER'
-      : 'PARENT'
-}
+        accountType =
+          parentProfile?.account_type === "ADULT_LEARNER"
+            ? "ADULT_LEARNER"
+            : "PARENT";
+      }
 
-const completeProfile: UserProfile = {
-  ...userProfile,
-  account_type: accountType,
-}
+      const completeProfile: UserProfile = {
+        ...userProfile,
+        account_type: accountType,
+      };
 
-setProfile(completeProfile)
+      setProfile(completeProfile);
 
       if (userProfile) {
-  const { count } = await supabase
-    .from('notifications')
-    .select('*', {
-      count: 'exact',
-      head: true,
-    })
-    .eq('user_id', user.id)
-    .eq('is_read', false)
+        const { count } = await supabase
+          .from("notifications")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("user_id", user.id)
+          .eq("is_read", false);
 
-  setNotificationCount(count ?? 0)
-}
+        setNotificationCount(count ?? 0);
+      }
 
-      setLoading(false)
+      setLoading(false);
     }
 
-    loadProfile()
+    loadProfile();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      loadProfile()
-      router.refresh()
-    })
+      loadProfile();
+      router.refresh();
+    });
 
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [router])
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   useEffect(() => {
-    setMenuOpen(false)
-  }, [pathname])
+    setMenuOpen(false);
+  }, [pathname]);
 
   async function handleLogout() {
-    await supabase.auth.signOut()
-    setProfile(null)
-    setMenuOpen(false)
-    router.push('/login')
-    router.refresh()
+    await supabase.auth.signOut();
+    setProfile(null);
+    setMenuOpen(false);
+    router.push("/login");
+    router.refresh();
   }
 
   function dashboardHref() {
-  if (!profile) return '/login'
+    if (!profile) return "/login";
 
-  if (profile.role === 'ADMIN') {
-    return '/admin'
+    if (profile.role === "ADMIN") {
+      return "/admin";
+    }
+
+    if (profile.role === "TUTOR") {
+      return "/tutor/dashboard";
+    }
+
+    if (profile.role === "PARENT" && profile.account_type === "ADULT_LEARNER") {
+      return "/learner/dashboard";
+    }
+
+    if (profile.role === "PARENT") {
+      return "/parent/dashboard";
+    }
+
+    return "/account";
   }
-
-  if (profile.role === 'TUTOR') {
-    return '/tutor/dashboard'
-  }
-
-  if (
-    profile.role === 'PARENT' &&
-    profile.account_type === 'ADULT_LEARNER'
-  ) {
-    return '/learner/dashboard'
-  }
-
-  if (profile.role === 'PARENT') {
-    return '/parent/dashboard'
-  }
-
-  return '/account'
-}
 
   const publicLinks = [
-  { label: 'Home', href: '/' },
-  { label: 'Subjects', href: '/subjects' },
-  { label: 'Join Fountain Prep', href: '/signup' },
-]
+    { label: "Home", href: "/" },
+    { label: "Subjects", href: "/subjects" },
+    { label: "Login", href: "/login" },
+  ];
 
   const isAdultLearner =
-  profile?.role === 'PARENT' &&
-  profile.account_type === 'ADULT_LEARNER'
+    profile?.role === "PARENT" && profile.account_type === "ADULT_LEARNER";
 
-const authedLinks =
-  isAdultLearner
+  const isParentAccount =
+    profile?.role === "PARENT" && profile.account_type !== "ADULT_LEARNER";
+
+  const authedLinks = isAdultLearner
     ? [
-        { label: 'My Learning', href: '/learner/dashboard' },
-        { label: 'Account', href: '/account' },
+        { label: "My Learning", href: "/learner/dashboard" },
+        { label: "Account", href: "/account" },
       ]
     : [
-        ...(profile?.role === 'PARENT'
-          ? [{ label: 'My Children', href: '/parent/students' }]
+        ...(profile?.role === "PARENT"
+          ? [{ label: "My Children", href: "/parent/students" }]
           : []),
 
-        ...(profile?.role === 'TUTOR'
-          ? [{ label: 'Availability', href: '/tutor/availability' }]
+        ...(profile?.role === "TUTOR"
+          ? [{ label: "Availability", href: "/tutor/availability" }]
           : []),
 
-        { label: 'Dashboard', href: dashboardHref() },
-        { label: 'Account', href: '/account' },
-      ]
+        { label: "Dashboard", href: dashboardHref() },
+        { label: "Account", href: "/account" },
+      ];
 
-  const links = !loading && profile ? authedLinks : publicLinks
+  const links = loading ? [] : profile ? authedLinks : publicLinks;
+
+  const isBookingRoute =
+    pathname === "/pricing" ||
+    pathname === "/schedule" ||
+    pathname === "/payment" ||
+    pathname.startsWith("/payment/success");
+
+  if (isBookingRoute) {
+    return (
+      <header className="booking-header">
+        <div className="booking-nav container">
+          <Link href="/" className="brand-link" aria-label="Fountain Prep home">
+            <Image
+              src="/icons/icon-192.png"
+              alt="Fountain Prep"
+              width={42}
+              height={42}
+              priority
+              className="brand-logo"
+            />
+            <span className="brand-text">
+              <span className="brand-main">Fountain</span>
+              <span className="brand-accent">Prep</span>
+            </span>
+          </Link>
+
+          <span className="booking-status">Booking in progress</span>
+        </div>
+
+        <style jsx>{`
+          .booking-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.94);
+            border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+            backdrop-filter: blur(18px);
+          }
+
+          .booking-nav {
+            min-height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+          }
+
+          .brand-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+            text-decoration: none;
+          }
+
+          .brand-logo {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+          }
+
+          .brand-text {
+            display: inline-flex;
+            align-items: baseline;
+            letter-spacing: -0.055em;
+            line-height: 1;
+            white-space: nowrap;
+            font-size: 29px;
+            font-weight: 950;
+          }
+
+          .brand-main {
+            color: #1f1230;
+          }
+          .brand-accent {
+            color: #7c3aed;
+          }
+
+          .booking-status {
+            padding: 9px 13px;
+            border-radius: 999px;
+            color: #6d28d9;
+            background: #f2eaff;
+            font-size: 13px;
+            font-weight: 900;
+          }
+
+          @media (max-width: 480px) {
+            .brand-text {
+              font-size: 24px;
+            }
+            .brand-logo {
+              width: 38px;
+              height: 38px;
+            }
+            .booking-status {
+              font-size: 11px;
+            }
+          }
+        `}</style>
+      </header>
+    );
+  }
 
   return (
     <header className="site-header">
       <div className="site-nav container">
         <Link href="/" className="brand-link" aria-label="Fountain Prep home">
-  <Image
-    src="/icons/icon-192.png"
-    alt="Fountain Prep"
-    width={46}
-    height={46}
-    priority
-    className="brand-logo"
-  />
+          <Image
+            src="/icons/icon-192.png"
+            alt="Fountain Prep"
+            width={46}
+            height={46}
+            priority
+            className="brand-logo"
+          />
 
-  <span className="brand-text">
-    <span className="brand-main">Fountain</span>
-    <span className="brand-accent">Prep</span>
-  </span>
-</Link>
+          <span className="brand-text">
+            <span className="brand-main">Fountain</span>
+            <span className="brand-accent">Prep</span>
+          </span>
+        </Link>
 
         <nav className="desktop-nav" aria-label="Main navigation">
           {links.map((item) => (
@@ -196,28 +297,32 @@ const authedLinks =
               href={item.href}
               className={
                 pathname === item.href
-                  ? 'nav-btn nav-btn-light active'
-                  : 'nav-btn nav-btn-light'
+                  ? "nav-btn nav-btn-light active"
+                  : "nav-btn nav-btn-light"
               }
             >
               {item.label}
             </Link>
           ))}
 
-          {!loading && !profile ? (
-            <Link href="/login" className="nav-btn nav-btn-primary">
-              Login
-            </Link>
-          ) : null}
-
           {!loading && profile ? (
             <button
               type="button"
-              className="nav-btn nav-btn-primary"
+              className={
+                isParentAccount
+                  ? "nav-btn nav-btn-light"
+                  : "nav-btn nav-btn-primary"
+              }
               onClick={handleLogout}
             >
               Logout
             </button>
+          ) : null}
+
+          {!loading && (!profile || isParentAccount) ? (
+            <Link href="/start" className="nav-btn nav-btn-primary">
+              Start Booking
+            </Link>
           ) : null}
         </nav>
 
@@ -240,36 +345,36 @@ const authedLinks =
                 key={item.href}
                 href={item.href}
                 className={
-                  pathname === item.href
-                    ? 'mobile-link active'
-                    : 'mobile-link'
+                  pathname === item.href ? "mobile-link active" : "mobile-link"
                 }
               >
                 {item.label}
               </Link>
             ))}
-  
-            {!loading && !profile ? (
-              <Link href="/login" className="mobile-link primary">
-                Login
-              </Link>
-            ) : null}
 
             {profile && (
-  <NotificationBell
-    count={notificationCount}
-    href="/notifications"
-  />
-)}
+              <NotificationBell
+                count={notificationCount}
+                href="/notifications"
+              />
+            )}
 
             {!loading && profile ? (
               <button
                 type="button"
-                className="mobile-link primary"
+                className={
+                  isParentAccount ? "mobile-link" : "mobile-link primary"
+                }
                 onClick={handleLogout}
               >
                 Logout
               </button>
+            ) : null}
+
+            {!loading && (!profile || isParentAccount) ? (
+              <Link href="/start" className="mobile-link primary">
+                Start Booking
+              </Link>
             ) : null}
           </div>
         </div>
@@ -302,11 +407,11 @@ const authedLinks =
         }
 
         .brand-logo {
-  width: 46px;
-  height: 46px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
+          width: 46px;
+          height: 46px;
+          object-fit: contain;
+          flex-shrink: 0;
+        }
 
         .brand-text {
           display: inline-flex;
@@ -450,30 +555,30 @@ const authedLinks =
         }
 
         @media (max-width: 420px) {
-  .site-nav {
-    min-height: 64px;
-  }
+          .site-nav {
+            min-height: 64px;
+          }
 
-  .brand-logo {
-    width: 40px;
-    height: 40px;
-  }
+          .brand-logo {
+            width: 40px;
+            height: 40px;
+          }
 
-  .brand-text {
-    font-size: 25px;
-  }
+          .brand-text {
+            font-size: 25px;
+          }
 
-  .mobile-menu-btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 16px;
-  }
+          .mobile-menu-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 16px;
+          }
 
-  .mobile-panel-inner {
-    grid-template-columns: 1fr;
-  }
-}          
+          .mobile-panel-inner {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
     </header>
-  )
+  );
 }

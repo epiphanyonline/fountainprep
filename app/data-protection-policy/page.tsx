@@ -8,105 +8,292 @@ export default function DataProtectionPolicyPage() {
       <section className="legal-card">
         <p className="legal-eyebrow">Fountain Prep Policy</p>
         <h1>Data Protection Policy</h1>
-        <p className="legal-updated">Last updated: 27 May 2026</p>
+        <p className="legal-updated">Last updated: 20 July 2026</p>
 
         <section>
-          <h2>1. Introduction</h2>
+          <h2>1. Who We Are</h2>
           <p>
-            Fountain Prep is committed to protecting personal information and
-            handling data responsibly. This policy explains how we collect, use,
-            store, and protect information relating to parents, students, tutors,
-            and platform users.
+            FOUNTAIN PREP LIMITED (&quot;Fountain Prep&quot;, &quot;we&quot;,
+            &quot;us&quot; or &quot;our&quot;) provides online tutoring, tutor
+            matching, scheduling, payments, safeguarding communications and
+            learning support. For the personal information described in this
+            policy, FOUNTAIN PREP LIMITED is normally the data controller.
+          </p>
+          <p>
+            Questions or requests concerning personal information can be sent to
+            <strong> support@fountainprep.com</strong>.
           </p>
         </section>
 
         <section>
-          <h2>2. Information We Collect</h2>
+          <h2>2. Scope of This Policy</h2>
           <p>
-            We may collect parent details, student learning details, tutor
-            profile information, booking records, payment references, uploaded
-            tutor documents, communication records, and technical information
-            needed to operate the platform.
+            This policy explains how we collect, use, share, retain and protect
+            information relating to parents, guardians, learners, tutors,
+            applicants, website visitors and other platform users. It should be
+            read with our <Link href="/terms">Terms and Conditions</Link> and{' '}
+            <Link href="/cookie-policy">Cookie Policy</Link>.
           </p>
         </section>
 
         <section>
-          <h2>3. How We Use Information</h2>
+          <h2>3. Information We Collect</h2>
+          <p>Depending on how you use Fountain Prep, we may collect:</p>
           <ul>
-            <li>To create and manage user accounts.</li>
-            <li>To arrange lessons and learning support.</li>
-            <li>To verify tutors and review applications.</li>
-            <li>To process bookings, payments, refunds, and support requests.</li>
-            <li>To protect children, families, tutors, and the platform.</li>
-            <li>To improve the safety and quality of our services.</li>
+            <li>
+              Identity and contact details, including names, email addresses,
+              telephone numbers and account identifiers.
+            </li>
+            <li>
+              Parent, guardian and learner information, including age, learning
+              level, education system, subjects, preferences and support needs.
+            </li>
+            <li>
+              Tutor and applicant information, including work history,
+              qualifications, references, identity and verification documents.
+            </li>
+            <li>
+              Booking, timetable, attendance, lesson, progress and communication
+              records.
+            </li>
+            <li>
+              Payment status, transaction references, amounts and refund records.
+              Full card details are handled by our payment provider and are not
+              normally stored by Fountain Prep.
+            </li>
+            <li>
+              Support, complaint, safeguarding and incident records.
+            </li>
+            <li>
+              Device, browser, IP address, login, security, cookie and website
+              usage information.
+            </li>
+          </ul>
+          <p>
+            Where necessary and permitted by law, safeguarding or tutor-vetting
+            records may include sensitive information or information relating to
+            criminal convictions and offences. Access to this information is
+            restricted.
+          </p>
+        </section>
+
+        <section>
+          <h2>4. Where Information Comes From</h2>
+          <p>
+            We receive information directly from users, from a parent or guardian
+            acting for a learner, from tutors and referees, through lessons and
+            platform activity, and from service providers involved in payments,
+            identity checks, communications, hosting and security. We may also
+            receive information from public or official sources where lawful and
+            necessary.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. How and Why We Use Information</h2>
+          <ul>
+            <li>To create, secure and manage accounts.</li>
+            <li>To match learners with tutors and manage weekly timetables.</li>
+            <li>To deliver lessons and learning support.</li>
+            <li>To process bookings, payments, credits and refunds.</li>
+            <li>To review, verify and administer tutor applications.</li>
+            <li>To communicate about lessons, accounts and support requests.</li>
+            <li>To identify, record and respond to safeguarding concerns.</li>
+            <li>To prevent fraud, misuse, security incidents and unlawful activity.</li>
+            <li>To maintain records, resolve disputes and meet legal obligations.</li>
+            <li>To understand and improve the safety and quality of our services.</li>
           </ul>
         </section>
 
         <section>
-          <h2>4. Children’s Information</h2>
+          <h2>6. Our Lawful Bases</h2>
+          <p>We process personal information only where we have a lawful basis, such as:</p>
+          <ul>
+            <li>
+              <strong>Contract:</strong> where processing is necessary to provide
+              a requested account, booking, lesson, payment or support service.
+            </li>
+            <li>
+              <strong>Legal obligation:</strong> where we must keep or disclose
+              information to comply with the law.
+            </li>
+            <li>
+              <strong>Legitimate interests:</strong> where necessary to operate,
+              secure and improve the service, protect users, prevent fraud and
+              manage disputes, provided those interests are not overridden by a
+              person&apos;s rights.
+            </li>
+            <li>
+              <strong>Consent:</strong> where the law requires consent. Consent
+              can be withdrawn at any time, without affecting earlier lawful use.
+            </li>
+            <li>
+              <strong>Vital interests or substantial public interest:</strong>
+              where processing is necessary to protect someone from serious harm
+              or to handle appropriate safeguarding matters, as permitted by law.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>7. Children&apos;s Information</h2>
           <p>
-            Student information is used only for learning support, lesson
-            matching, safeguarding, communication, and platform administration.
-            Tutors must not use student data outside Fountain Prep’s approved
-            learning purposes.
+            Children have data-protection rights. We use learner information only
+            where needed for tutoring, matching, scheduling, communication,
+            safeguarding, administration and other purposes explained at the
+            point of collection.
+          </p>
+          <p>
+            Parent or guardian account holders should explain Fountain Prep&apos;s
+            use of information to the learner in an age-appropriate way. We aim
+            to provide clear information and place the child&apos;s best interests
+            first when designing and operating services likely to be used by
+            children. Tutors must not use learner information for personal or
+            unauthorised purposes.
           </p>
         </section>
 
         <section>
-          <h2>5. Tutor Documents</h2>
+          <h2>8. Sharing Information</h2>
+          <p>We do not sell personal information. We may share limited information with:</p>
+          <ul>
+            <li>
+              A learner&apos;s matched tutor and, where appropriate, the parent or
+              guardian responsible for the learner.
+            </li>
+            <li>
+              Providers supporting hosting, databases, payments, email,
+              communications, analytics, identity verification and security.
+            </li>
+            <li>
+              Professional advisers, insurers, auditors or prospective business
+              partners where reasonably necessary and subject to safeguards.
+            </li>
+            <li>
+              Police, local authorities, safeguarding bodies, regulators, courts
+              or other authorities where required or permitted by law.
+            </li>
+          </ul>
           <p>
-            Tutors may be asked to upload CVs, proof of identity, qualification
-            documents, and other verification evidence. These documents are used
-            for onboarding, review, safeguarding, and platform compliance.
+            Providers acting for us may use information only for agreed purposes
+            and must protect it appropriately.
           </p>
         </section>
 
         <section>
-          <h2>6. Data Sharing</h2>
+          <h2>9. International Transfers</h2>
           <p>
-            We do not sell personal information. We may share limited data with
-            trusted service providers where required for hosting, payments,
-            communication, security, lesson delivery, and legal compliance.
+            Some service providers may process information outside the United
+            Kingdom. Where this happens, we use a lawful transfer mechanism and
+            appropriate safeguards, such as adequacy regulations or approved
+            contractual protections, where required.
           </p>
         </section>
 
         <section>
-          <h2>7. Data Security</h2>
+          <h2>10. Data Security</h2>
           <p>
-            We use reasonable technical and organisational measures to protect
-            personal information. Access to sensitive information is limited to
-            authorised users who need it for platform operations.
+            We use reasonable technical and organisational measures designed to
+            protect information against unauthorised access, loss, alteration or
+            disclosure. Measures include access controls, account security,
+            restricted administrative access, secure service providers and
+            incident-management procedures. No internet service can guarantee
+            absolute security.
           </p>
         </section>
 
         <section>
-          <h2>8. Data Retention</h2>
+          <h2>11. Data Retention</h2>
           <p>
-            We keep information only for as long as needed for account
-            management, safeguarding, legal, financial, dispute resolution, and
-            platform administration purposes.
+            We keep information only for as long as reasonably needed for the
+            purposes described in this policy. Retention depends on the type of
+            record, the duration of the account or package, safeguarding needs,
+            legal and tax requirements, dispute periods and security needs.
+            Information is deleted, anonymised or securely restricted when it is
+            no longer required.
           </p>
         </section>
 
         <section>
-          <h2>9. User Rights</h2>
+          <h2>12. Your Data-Protection Rights</h2>
+          <p>Depending on the circumstances, you may have the right to:</p>
+          <ul>
+            <li>Be informed about how your information is used.</li>
+            <li>Request access to your personal information.</li>
+            <li>Ask us to correct inaccurate or incomplete information.</li>
+            <li>Ask us to erase information in certain circumstances.</li>
+            <li>Ask us to restrict or object to certain processing.</li>
+            <li>Receive certain information in a portable format.</li>
+            <li>Withdraw consent where processing relies on consent.</li>
+            <li>
+              Ask for human review where a significant decision is made solely
+              by automated means.
+            </li>
+          </ul>
           <p>
-            Users may request access, correction, deletion, or restriction of
-            their personal information, subject to legal, safeguarding, and
-            operational requirements.
+            These rights are not absolute and may be limited by safeguarding,
+            legal, confidentiality or record-keeping requirements. We may need to
+            verify identity and authority before responding. A parent or guardian
+            may sometimes exercise a right for a child, depending on the
+            child&apos;s age, understanding and circumstances.
           </p>
         </section>
 
         <section>
-          <h2>10. Contact</h2>
+          <h2>13. Automated Decisions</h2>
           <p>
-            Questions about this policy can be sent to:
+            We do not currently make decisions that produce legal or similarly
+            significant effects based solely on automated processing. If this
+            changes, we will provide the information and safeguards required by
+            law.
+          </p>
+        </section>
+
+        <section>
+          <h2>14. Cookies</h2>
+          <p>
+            We use necessary cookies and may use other permitted technologies to
+            operate, secure and understand the website. Further information is
+            available in our <Link href="/cookie-policy">Cookie Policy</Link>.
+          </p>
+        </section>
+
+        <section>
+          <h2>15. Complaints</h2>
+          <p>
+            Please contact us first at <strong>support@fountainprep.com</strong>{' '}
+            so we can try to resolve a concern. You also have the right to make a
+            complaint to the UK Information Commissioner&apos;s Office at{' '}
+            <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noreferrer">
+              ico.org.uk
+            </a>.
+          </p>
+        </section>
+
+        <section>
+          <h2>16. Changes to This Policy</h2>
+          <p>
+            We may update this policy to reflect changes in law, technology or
+            our services. The latest version and update date will be published on
+            this page. We will provide an additional notice where a material
+            change requires it.
+          </p>
+        </section>
+
+        <section>
+          <h2>17. Contact</h2>
+          <p>
+            Data-protection questions and rights requests can be sent to:
             <strong> support@fountainprep.com</strong>
           </p>
+          <p>FOUNTAIN PREP LIMITED</p>
         </section>
 
         <div className="legal-actions">
           <Link href="/">Back to Home</Link>
+          <Link href="/terms" className="secondary-link">
+            Terms and Conditions
+          </Link>
         </div>
       </section>
 
@@ -172,7 +359,15 @@ const legalStyles = `
     padding-left: 22px;
   }
 
+  a {
+    color: #6f42c1;
+    font-weight: 800;
+  }
+
   .legal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-top: 38px;
   }
 
@@ -184,6 +379,12 @@ const legalStyles = `
     color: white;
     font-weight: 900;
     text-decoration: none;
+  }
+
+  .legal-actions .secondary-link {
+    background: white;
+    border: 1px solid rgba(111,66,193,0.22);
+    color: #6f42c1;
   }
 
   @media (max-width: 640px) {

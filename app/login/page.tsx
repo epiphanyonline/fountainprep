@@ -1,132 +1,164 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { supabase } from '../lib/supabase'
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "../lib/supabase";
 
-type NoticeType = 'success' | 'error' | 'info'
+type NoticeType = "success" | "error" | "info";
+
+function safeParentNext(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+
+  const allowedPrefixes = [
+    "/parent/",
+    "/subjects",
+    "/pricing",
+    "/schedule",
+    "/payment",
+  ];
+
+  return allowedPrefixes.some((prefix) => value.startsWith(prefix))
+    ? value
+    : null;
+}
 
 export default function LoginPage() {
-  const router = useRouter()
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [resetEmail, setResetEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [resetLoading, setResetLoading] = useState(false)
-  const [notice, setNotice] = useState('')
-  const [noticeType, setNoticeType] = useState<NoticeType>('info')
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeParentNext(searchParams.get("next"));
+  const signupNext = nextPath || "/parent/students?mode=booking";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [noticeType, setNoticeType] = useState<NoticeType>("info");
 
   function showNotice(type: NoticeType, text: string) {
-    setNoticeType(type)
-    setNotice(text)
+    setNoticeType(type);
+    setNotice(text);
   }
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault()
-  setLoading(true)
-  setNotice('')
+    e.preventDefault();
+    setLoading(true);
+    setNotice("");
 
-  const { data: loginData, error: loginError } =
-    await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
+    const { data: loginData, error: loginError } =
+      await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-  if (loginError || !loginData.user) {
-    showNotice(
-      'error',
-      'Login was not successful. Please check your email and password, or use the reset option below.'
-    )
-    setLoading(false)
-    return
-  }
-
-  const user = loginData.user
-
-  showNotice('success', 'Login successful. Preparing your dashboard...')
-
-  const { data: userProfile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profileError || !userProfile) {
-    router.push('/account')
-    router.refresh()
-    return
-  }
-
-  if (userProfile.role === 'ADMIN') {
-    router.push('/admin')
-    router.refresh()
-    return
-  }
-
-  if (userProfile.role === 'TUTOR') {
-    router.push('/tutor/dashboard')
-    router.refresh()
-    return
-  }
-
-  if (userProfile.role === 'PARENT') {
-    const { data: parentProfile } = await supabase
-      .from('parent_profiles')
-      .select('account_type')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (parentProfile?.account_type === 'ADULT_LEARNER') {
-      router.push('/learner/dashboard')
-      router.refresh()
-      return
+    if (loginError || !loginData.user) {
+      showNotice(
+        "error",
+        "Login was not successful. Please check your email and password, or use the reset option below.",
+      );
+      setLoading(false);
+      return;
     }
 
-    router.push('/parent/dashboard')
-    router.refresh()
-    return
+    const user = loginData.user;
+
+    showNotice(
+      "success",
+      nextPath
+        ? "Login successful. Continuing your booking..."
+        : "Login successful. Preparing your dashboard...",
+    );
+
+    const { data: userProfile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !userProfile) {
+      router.push("/account");
+      router.refresh();
+      return;
+    }
+
+    if (userProfile.role === "ADMIN") {
+      router.push("/admin");
+      router.refresh();
+      return;
+    }
+
+    if (userProfile.role === "TUTOR") {
+      router.push("/tutor/dashboard");
+      router.refresh();
+      return;
+    }
+
+    if (userProfile.role === "PARENT") {
+      const { data: parentProfile } = await supabase
+        .from("parent_profiles")
+        .select("account_type")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (parentProfile?.account_type === "ADULT_LEARNER") {
+        router.replace("/learner/dashboard");
+        router.refresh();
+        return;
+      }
+
+      router.replace(nextPath || "/parent/dashboard");
+      router.refresh();
+      return;
+    }
+
+    router.push("/account");
+    router.refresh();
   }
 
-  router.push('/account')
-  router.refresh()
-}
-
   async function handlePasswordReset(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setResetLoading(true)
-    setNotice('')
+    e.preventDefault();
+    setResetLoading(true);
+    setNotice("");
 
-    const emailToUse = (resetEmail || email).trim()
+    const emailToUse = (resetEmail || email).trim();
 
     if (!emailToUse) {
-      showNotice('error', 'Please enter your email address first.')
-      setResetLoading(false)
-      return
+      showNotice("error", "Please enter your email address first.");
+      setResetLoading(false);
+      return;
     }
 
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
-      window.location.origin
+      window.location.origin;
 
     const { error } = await supabase.auth.resetPasswordForEmail(emailToUse, {
       redirectTo: `${siteUrl}/reset-password`,
-    })
+    });
 
     if (error) {
-      showNotice('error', error.message)
-      setResetLoading(false)
-      return
+      showNotice("error", error.message);
+      setResetLoading(false);
+      return;
     }
 
     showNotice(
-      'success',
-      `A password reset link has been sent to ${emailToUse}. Please check your inbox and spam folder.`
-    )
+      "success",
+      `A password reset link has been sent to ${emailToUse}. Please check your inbox and spam folder.`,
+    );
 
-    setResetLoading(false)
+    setResetLoading(false);
   }
 
   return (
@@ -162,21 +194,27 @@ export default function LoginPage() {
           <h2>Login</h2>
 
           <p className="subtitle">
-            Access your Fountain Prep account securely.
+            {nextPath
+              ? "Log in to continue your booking from the next step."
+              : "Access your Fountain Prep account securely."}
           </p>
 
           {notice ? (
             <div className={`notice ${noticeType}`}>
               <div className="noticeIcon">
-                {noticeType === 'success' ? '✓' : noticeType === 'error' ? '!' : 'i'}
+                {noticeType === "success"
+                  ? "✓"
+                  : noticeType === "error"
+                    ? "!"
+                    : "i"}
               </div>
               <div>
                 <strong>
-                  {noticeType === 'success'
-                    ? 'Action completed'
-                    : noticeType === 'error'
-                    ? 'Attention needed'
-                    : 'Notice'}
+                  {noticeType === "success"
+                    ? "Action completed"
+                    : noticeType === "error"
+                      ? "Attention needed"
+                      : "Notice"}
                 </strong>
                 <p>{notice}</p>
               </div>
@@ -207,7 +245,7 @@ export default function LoginPage() {
             </label>
 
             <button className="primaryBtn" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
@@ -227,15 +265,19 @@ export default function LoginPage() {
               />
 
               <button className="secondaryBtn" disabled={resetLoading}>
-                {resetLoading ? 'Sending reset link...' : 'Send Reset Link'}
+                {resetLoading ? "Sending reset link..." : "Send Reset Link"}
               </button>
             </form>
           </div>
 
           <div className="signupLinks">
             <p>
-              New parent?{' '}
-              <Link href="/signup/parent">Create parent account</Link>
+              New parent?{" "}
+              <Link
+                href={`/signup/parent?next=${encodeURIComponent(signupNext)}`}
+              >
+                Create parent account
+              </Link>
             </p>
 
             <p>
@@ -250,7 +292,11 @@ export default function LoginPage() {
           min-height: 100vh;
           padding: 48px 18px;
           background:
-            radial-gradient(circle at top left, rgba(124, 58, 237, 0.18), transparent 35%),
+            radial-gradient(
+              circle at top left,
+              rgba(124, 58, 237, 0.18),
+              transparent 35%
+            ),
             linear-gradient(135deg, #fbf8ff 0%, #f5efff 45%, #ffffff 100%);
         }
 
@@ -549,5 +595,17 @@ export default function LoginPage() {
         }
       `}</style>
     </main>
-  )
+  );
+}
+
+function LoginLoading() {
+  return (
+    <main className="loginPage">
+      <section className="loginShell">
+        <div className="card">
+          <p>Preparing secure login…</p>
+        </div>
+      </section>
+    </main>
+  );
 }
