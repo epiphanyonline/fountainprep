@@ -95,6 +95,11 @@ function StartPageContent() {
             Not ready to book?{" "}
             <Link href="/subjects">Browse subjects first</Link>
           </div>
+
+          <div className="tutorRow">
+            Want to teach with Fountain Prep?{" "}
+            <Link href="/signup/tutor">Become a Tutor</Link>
+          </div>
         </div>
       </section>
 
@@ -282,6 +287,21 @@ function StartPageContent() {
         }
 
         .browseRow a {
+          color: #6d28d9;
+          font-weight: 950;
+        }
+
+        .tutorRow {
+          margin-top: 15px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(124, 58, 237, 0.13);
+          text-align: center;
+          color: #6d647c;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .tutorRow a {
           color: #6d28d9;
           font-weight: 950;
         }

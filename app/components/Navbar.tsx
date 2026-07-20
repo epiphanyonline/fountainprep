@@ -139,6 +139,7 @@ export default function Navbar() {
   const publicLinks = [
     { label: "Home", href: "/" },
     { label: "Subjects", href: "/subjects" },
+    { label: "Become a Tutor", href: "/signup/tutor" },
     { label: "Login", href: "/login" },
   ];
 
