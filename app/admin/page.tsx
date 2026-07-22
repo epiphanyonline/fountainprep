@@ -82,6 +82,12 @@ const adminActions = [
     tag: 'Tutors',
   },
   {
+    title: 'Tutor Capacity',
+    text: 'Review listed tutor bios, approved subjects, weekly availability and how quickly booking starts are filling.',
+    href: '/admin/tutor-capacity',
+    tag: 'Availability',
+  },
+  {
   title: 'Communications Centre',
   text: 'Manage tutor webinars, orientations, parent newsletters, announcements and event invitations.',
   href: '/admin/communications',
@@ -142,6 +148,7 @@ export default function AdminDashboardPage() {
     { label: 'Payments', href: '/admin/payments' },
     { label: 'Reports', href: '/admin/reports' },
     { label: 'Tutors', href: '/admin/tutors' },
+    { label: 'Tutor Capacity', href: '/admin/tutor-capacity' },
     {
   label: 'Communications',
   href: '/admin/communications',
@@ -378,6 +385,7 @@ export default function AdminDashboardPage() {
         <div className="heroActions">
           <Link href="/admin/messages" className="primaryLink">Open Messages</Link>
           <Link href="/admin/tutors" className="secondaryLink">Review Tutors</Link>
+          <Link href="/admin/tutor-capacity" className="secondaryLink">Tutor Capacity</Link>
           <Link
     href="/admin/communications"
     className="secondaryLink"
