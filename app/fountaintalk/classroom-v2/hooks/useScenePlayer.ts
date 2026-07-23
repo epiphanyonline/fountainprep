@@ -24,12 +24,14 @@ export function useScenePlayer({
   const [paused, setPaused] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(
-  null
-);
+
+  const timerRef = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
 
   const scene = scenes[sceneIndex] ?? scenes[0];
-  const isLastScene = sceneIndex >= scenes.length - 1;
+  const isLastScene =
+    sceneIndex >= scenes.length - 1;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -45,6 +47,7 @@ export function useScenePlayer({
     ) {
       window.speechSynthesis.cancel();
     }
+
     setSpeaking(false);
   }, []);
 
@@ -53,16 +56,28 @@ export function useScenePlayer({
     stopNarration();
 
     setSceneIndex((current) =>
-      Math.min(current + 1, Math.max(scenes.length - 1, 0))
+      Math.min(
+        current + 1,
+        Math.max(scenes.length - 1, 0)
+      )
     );
-  }, [clearTimer, scenes.length, stopNarration]);
+  }, [
+    clearTimer,
+    scenes.length,
+    stopNarration,
+  ]);
 
   const previous = useCallback(() => {
     clearTimer();
     stopNarration();
 
-    setSceneIndex((current) => Math.max(current - 1, 0));
-  }, [clearTimer, stopNarration]);
+    setSceneIndex((current) =>
+      Math.max(current - 1, 0)
+    );
+  }, [
+    clearTimer,
+    stopNarration,
+  ]);
 
   const speakScene = useCallback(
     (currentScene: ClassroomScene) => {
@@ -74,45 +89,60 @@ export function useScenePlayer({
           currentScene.interactionMode === "lecture" &&
           currentScene.durationMs > 0
         ) {
-          timerRef.current = globalThis.setTimeout(
-            next,
-            currentScene.durationMs
-          );
+          timerRef.current =
+            globalThis.setTimeout(
+              next,
+              currentScene.durationMs
+            );
         }
+
         return;
       }
 
       window.speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(
-        currentScene.narration
-      );
-      const voices = window.speechSynthesis.getVoices();
+      const utterance =
+        new SpeechSynthesisUtterance(
+          currentScene.narration
+        );
+
+      const voices =
+        window.speechSynthesis.getVoices();
 
       utterance.voice =
         voices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en-gb")
+          voice.lang
+            .toLowerCase()
+            .startsWith("en-gb")
         ) ??
         voices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en")
+          voice.lang
+            .toLowerCase()
+            .startsWith("en")
         ) ??
         null;
 
-      utterance.lang = utterance.voice?.lang ?? "en-GB";
+      utterance.lang =
+        utterance.voice?.lang ?? "en-GB";
       utterance.rate = 0.9;
       utterance.pitch = 1;
 
-      utterance.onstart = () => setSpeaking(true);
+      utterance.onstart = () => {
+        setSpeaking(true);
+      };
+
       utterance.onend = () => {
         setSpeaking(false);
 
         if (
-          currentScene.interactionMode === "lecture" &&
+          currentScene.interactionMode ===
+            "lecture" &&
           !paused &&
           !handRaised &&
           !isLastScene
         ) {
-          timerRef.current = globalThis.setTimeout(next, 900);
+          timerRef.current =
+            globalThis.setTimeout(next, 900);
         }
       };
 
@@ -122,11 +152,23 @@ export function useScenePlayer({
 
       window.speechSynthesis.speak(utterance);
     },
-    [handRaised, isLastScene, next, paused]
+    [
+      handRaised,
+      isLastScene,
+      next,
+      paused,
+    ]
   );
 
   useEffect(() => {
-    if (!started || paused || handRaised || !scene) return;
+    if (
+      !started ||
+      paused ||
+      handRaised ||
+      !scene
+    ) {
+      return;
+    }
 
     clearTimer();
     speakScene(scene);
@@ -163,27 +205,38 @@ export function useScenePlayer({
 
       return nextPaused;
     });
-  }, [clearTimer, stopNarration]);
+  }, [
+    clearTimer,
+    stopNarration,
+  ]);
 
   const raiseHand = useCallback(() => {
     clearTimer();
     stopNarration();
     setHandRaised(true);
     setPaused(true);
-  }, [clearTimer, stopNarration]);
+  }, [
+    clearTimer,
+    stopNarration,
+  ]);
 
-  const resumeAfterQuestion = useCallback(() => {
-    setHandRaised(false);
-    setPaused(false);
-  }, []);
+  const resumeAfterQuestion =
+    useCallback(() => {
+      setHandRaised(false);
+      setPaused(false);
+    }, []);
 
   const progress = useMemo(
     () =>
       Math.round(
-        ((sceneIndex + 1) / Math.max(scenes.length, 1)) *
+        ((sceneIndex + 1) /
+          Math.max(scenes.length, 1)) *
           100
       ),
-    [sceneIndex, scenes.length]
+    [
+      sceneIndex,
+      scenes.length,
+    ]
   );
 
   return {

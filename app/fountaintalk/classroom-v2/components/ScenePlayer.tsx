@@ -60,6 +60,18 @@ function replaceLearnerName(
     .replaceAll("Learner,", `${learnerName},`);
 }
 
+function replaceAcademyReferences(
+  text: string,
+  academyTitle: string,
+  academyShortTitle: string
+): string {
+  return text
+    .replaceAll("Welcome to Wealth Academy", `Welcome to ${academyTitle}`)
+    .replaceAll("Wealth Academy", academyTitle)
+    .replaceAll("Wealth class", `${academyShortTitle} class`)
+    .replaceAll("wealth class", `${academyShortTitle} class`);
+}
+
 export default function ScenePlayer({
   academy,
   lesson,
@@ -123,22 +135,34 @@ export default function ScenePlayer({
     () =>
       lessonToScenes(lesson).map((scene) => ({
         ...scene,
-        narration: replaceLearnerName(
-          scene.narration,
-          learnerName
+        narration: replaceAcademyReferences(
+          replaceLearnerName(
+            scene.narration,
+            learnerName
+          ),
+          academy.title,
+          academy.shortTitle
         ),
-        displayText: replaceLearnerName(
-          scene.displayText,
-          learnerName
+        displayText: replaceAcademyReferences(
+          replaceLearnerName(
+            scene.displayText,
+            learnerName
+          ),
+          academy.title,
+          academy.shortTitle
         ),
         question: scene.question
-          ? replaceLearnerName(
-              scene.question,
-              learnerName
+          ? replaceAcademyReferences(
+              replaceLearnerName(
+                scene.question,
+                learnerName
+              ),
+              academy.title,
+              academy.shortTitle
             )
           : undefined,
       })),
-    [learnerName, lesson]
+    [academy.shortTitle, academy.title, learnerName, lesson]
   );
 
   const player = useScenePlayer({ scenes });
@@ -357,6 +381,83 @@ export default function ScenePlayer({
 
     recognitionRef.current = recognition;
     recognition.start();
+  };
+
+  const beginVoiceQuestion = () => {
+    setVoiceError("");
+
+    const Recognition =
+      window.SpeechRecognition ??
+      window.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      setVoiceError(
+        "Voice input is unavailable in this browser. Please type your question."
+      );
+      return;
+    }
+
+    recognitionRef.current?.abort?.();
+
+    const recognition = new Recognition();
+    recognition.lang = "en-GB";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 3;
+
+    let transcript = "";
+
+    recognition.onstart = () => {
+      setListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      let combined = "";
+
+      for (
+        let index = 0;
+        index < event.results.length;
+        index += 1
+      ) {
+        combined +=
+          event.results[index]?.[0]?.transcript ??
+          "";
+      }
+
+      transcript = combined.trim();
+      setQuestion(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      setListening(false);
+
+      if (event.error !== "aborted") {
+        setVoiceError(
+          "Ayo could not hear that clearly. Try speaking again or type your question."
+        );
+      }
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+
+      if (!transcript.trim()) {
+        setVoiceError(
+          "No question was captured. Try again or type your question."
+        );
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const handleRaiseHand = () => {
+    setQuestion("");
+    setVoiceError("");
+    player.raiseHand();
+    beginVoiceQuestion();
   };
 
   return (
@@ -602,7 +703,7 @@ export default function ScenePlayer({
           <button
             type="button"
             className="v2-raise-hand"
-            onClick={player.raiseHand}
+            onClick={handleRaiseHand}
           >
             ✋ Raise hand
           </button>
@@ -627,10 +728,23 @@ export default function ScenePlayer({
             <span>Lecture paused</span>
             <h2>Ask Ayo</h2>
             <p>
-              Type your question for now. The scene
-              remains paused until you continue.
+              Speak naturally or type your question. The current
+              scene remains paused until you continue.
             </p>
           </div>
+
+          <button
+            type="button"
+            className={listening ? "question-mic is-listening" : "question-mic"}
+            onClick={beginVoiceQuestion}
+            disabled={listening}
+          >
+            {listening ? "🎙 Listening…" : "🎙 Speak your question"}
+          </button>
+
+          {voiceError && (
+            <p className="v2-voice-error">{voiceError}</p>
+          )}
 
           <textarea
             value={question}
@@ -638,7 +752,7 @@ export default function ScenePlayer({
               setQuestion(event.target.value)
             }
             rows={4}
-            placeholder="What would you like Ayo to explain?"
+            placeholder="Speak or type what you would like Ayo to explain…"
           />
 
           <button
@@ -1517,6 +1631,225 @@ const styles = `
     .v2-answer-mode > span {
       padding: 0;
       text-align: center;
+    }
+  }
+
+
+  /* Mobile classroom repair */
+  @media (max-width: 900px) {
+    .v2-classroom {
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .v2-topbar {
+      position: relative;
+      z-index: 12;
+      grid-template-columns: 1fr;
+      min-height: auto;
+      padding: 10px 14px;
+    }
+
+    .v2-topbar > div:first-child,
+    .v2-status {
+      display: none;
+    }
+
+    .v2-progress span {
+      font-size: 11px;
+    }
+
+    .v2-stage {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 12px 18px;
+      overflow: visible;
+    }
+
+    .v2-stage::before {
+      position: fixed;
+      z-index: -3;
+    }
+
+    .v2-slide,
+    .has-story-art .v2-slide {
+      position: relative;
+      inset: auto;
+      order: 1;
+      width: 100%;
+      min-height: 0;
+      max-height: none;
+      margin: 0;
+      padding: 24px 20px;
+      overflow: visible;
+      border-radius: 22px;
+    }
+
+    .v2-slide-copy {
+      margin-top: 24px;
+    }
+
+    .v2-slide-copy h1 {
+      font-size: clamp(42px, 12vw, 64px);
+      line-height: .98;
+    }
+
+    .v2-slide-copy p {
+      font-size: 19px;
+      line-height: 1.5;
+    }
+
+    .v2-story-banner,
+    .has-story-art .v2-story-banner {
+      position: relative;
+      inset: auto;
+      order: 2;
+      width: 100%;
+      height: min(62vw, 360px);
+      min-height: 250px;
+      margin-top: 12px;
+      z-index: 1;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #080c13;
+    }
+
+    .v2-story-banner::after {
+      background:
+        linear-gradient(0deg, rgba(3,7,13,.45), transparent 50%);
+    }
+
+    .v2-story-banner-caption {
+      display: block;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      font-size: 12px;
+    }
+
+    .v2-ayo-stage,
+    .has-story-art .v2-ayo-stage {
+      position: relative;
+      inset: auto;
+      order: 3;
+      width: min(76vw, 390px);
+      height: 390px;
+      margin: -72px auto 0;
+      right: auto;
+      bottom: auto;
+      z-index: 4;
+      overflow: visible;
+      filter: drop-shadow(0 18px 28px rgba(0,0,0,.35));
+    }
+
+    .has-story-art .v2-ayo-stage {
+      width: min(58vw, 300px);
+      height: 315px;
+      margin-top: -95px;
+      margin-right: 4px;
+      align-self: flex-end;
+    }
+
+    .v2-ayo-badge,
+    .has-story-art .v2-ayo-badge {
+      left: 8px;
+      right: auto;
+      top: auto;
+      bottom: 16px;
+      max-width: 145px;
+      padding: 8px 10px;
+    }
+
+    .v2-caption {
+      position: relative;
+      inset: auto;
+      order: 4;
+      width: 100%;
+      min-height: 0;
+      margin-top: -8px;
+      padding: 16px;
+      grid-template-columns: auto 1fr;
+      border-radius: 18px;
+    }
+
+    .v2-caption p {
+      max-height: none;
+      overflow: visible;
+      font-size: 16px;
+    }
+
+    .v2-controls {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      grid-template-columns: 1fr auto;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .v2-controls > button:first-child,
+    .v2-controls > button:last-child {
+      display: none;
+    }
+
+    .v2-controls > div {
+      grid-column: 1 / -1;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .v2-controls button {
+      min-height: 48px;
+      font-size: 14px;
+    }
+
+    .v2-process {
+      width: 100%;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      padding-bottom: 8px;
+    }
+
+    .v2-process > div {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+
+    .v2-card-grid,
+    .v2-comparison {
+      grid-template-columns: 1fr;
+    }
+
+    .v2-orbit {
+      height: 340px;
+      transform: scale(.88);
+      transform-origin: top center;
+      margin-bottom: -34px;
+    }
+
+    .v2-question-panel {
+      inset: auto 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+      width: auto;
+      max-height: 82vh;
+      overflow-y: auto;
+      border-radius: 22px;
+    }
+
+    .v2-question-panel .question-mic {
+      width: 100%;
+      min-height: 50px;
+      margin-top: 12px;
+      color: white;
+      background: var(--v2-dark);
+      border: 0;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .v2-question-panel .question-mic.is-listening {
+      background: #166534;
+      animation: pulse-listening 1s ease-in-out infinite alternate;
     }
   }
 

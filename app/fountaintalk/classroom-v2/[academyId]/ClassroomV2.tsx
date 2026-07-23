@@ -23,7 +23,27 @@ export default function ClassroomV2({
   const academy = getAcademy(academyId);
   const course = getStarterCourse(academyId);
   const unit = course.units[0];
-  const lesson = unit.lessons[0];
+  const lesson = unit?.lessons[0];
+
+  if (!unit || !lesson) {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+          background: "#060911",
+          color: "white",
+        }}
+      >
+        <div>
+          <h1>{academy.title}</h1>
+          <p>This academy does not yet have a published opening lesson.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <ScenePlayer
