@@ -1,4 +1,4 @@
-import { supabase } from "@/app/lib/supabase";
+import { BaseRepository } from "./base.repository";
 
 type CurriculumRow = {
   id: string;
@@ -18,71 +18,65 @@ export type Academy = {
   updatedAt: string;
 };
 
-function mapCurriculumToAcademy(row: CurriculumRow): Academy {
-  return {
-    id: row.id,
-    name: row.name,
-    country: row.country,
-    isActive: row.is_active,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
+class AcademyRepository extends BaseRepository<CurriculumRow, Academy> {
+  protected readonly tableName = "curricula";
 
-class AcademyRepository {
+  protected mapRow(row: CurriculumRow): Academy {
+    return {
+      id: row.id,
+      name: row.name,
+      country: row.country,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
   async getAll(): Promise<Academy[]> {
-    const { data, error } = await supabase
-      .from("curricula")
+    const { data, error } = await this.client
+      .from(this.tableName)
       .select("id, name, country, is_active, created_at, updated_at")
       .order("name", { ascending: true });
 
-    if (error) {
-      throw new Error(`Unable to retrieve academies: ${error.message}`);
-    }
+    this.throwIfError(error, "Retrieve academies");
 
-    return (data as CurriculumRow[]).map(mapCurriculumToAcademy);
+    return this.mapRows(data as CurriculumRow[] | null);
   }
 
   async getActive(): Promise<Academy[]> {
-    const { data, error } = await supabase
-      .from("curricula")
+    const { data, error } = await this.client
+      .from(this.tableName)
       .select("id, name, country, is_active, created_at, updated_at")
       .eq("is_active", true)
       .order("name", { ascending: true });
 
-    if (error) {
-      throw new Error(`Unable to retrieve active academies: ${error.message}`);
-    }
+    this.throwIfError(error, "Retrieve active academies");
 
-    return (data as CurriculumRow[]).map(mapCurriculumToAcademy);
+    return this.mapRows(data as CurriculumRow[] | null);
   }
 
   async getById(id: string): Promise<Academy | null> {
-    const { data, error } = await supabase
-      .from("curricula")
+    const { data, error } = await this.client
+      .from(this.tableName)
       .select("id, name, country, is_active, created_at, updated_at")
       .eq("id", id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Unable to retrieve academy: ${error.message}`);
-    }
+    this.throwIfError(error, "Retrieve academy");
 
-    return data ? mapCurriculumToAcademy(data as CurriculumRow) : null;
+    return data ? this.mapRow(data as CurriculumRow) : null;
   }
 
   async getByName(name: string): Promise<Academy | null> {
-    const { data, error } = await supabase
-      .from("curricula")
+    const { data, error } = await this.client
+      .from(this.tableName)
       .select("id, name, country, is_active, created_at, updated_at")
       .ilike("name", name)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Unable to retrieve academy: ${error.message}`);
-    }
+    this.throwIfError(error, "Retrieve academy by name");
 
-    return data ? mapCurriculumToAcademy(data as CurriculumRow) : null;
+    return data ? this.mapRow(data as CurriculumRow) : null;
   }
 }
 
