@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -38,6 +39,8 @@ type UseTutorOptions = {
 type TutorApiResponse = Partial<TutorReply> & {
   error?: string;
 };
+
+const MAX_PRONUNCIATION_ATTEMPTS = 3;
 
 export function useTutor({
   learner,
@@ -135,6 +138,17 @@ const { course, unit: curriculum } =
 
   const [isRequestPending, setIsRequestPending] =
     useState(false);
+
+  const [pronunciationAttempts, setPronunciationAttempts] =
+    useState(0);
+
+  const [canProceedAfterAttempts, setCanProceedAfterAttempts] =
+    useState(false);
+
+  useEffect(() => {
+    setPronunciationAttempts(0);
+    setCanProceedAfterAttempts(false);
+  }, [activeLesson.step.id]);
 
   const stopAllAudio = useCallback(() => {
     if (typeof window === "undefined") {
@@ -371,6 +385,117 @@ const { course, unit: curriculum } =
       }
     },
     [speakText, stopAllAudio]
+  );
+
+  const speakCorrectionSequence = useCallback(
+    async ({
+      speechText,
+      phrase,
+      audioUrl,
+      allowContinue,
+    }: {
+      speechText: string;
+      phrase: string;
+      audioUrl: string;
+      allowContinue: boolean;
+    }) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      stopAllAudio();
+      setErrorMessage("");
+      setTutorStatus("speaking");
+
+      const clean = speechText
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "")
+        .replace(/#{1,6}\s?/g, "")
+        .replace(/`/g, "")
+        .trim();
+
+      const lowerClean = clean.toLocaleLowerCase();
+      const lowerPhrase = phrase.toLocaleLowerCase();
+      const phraseIndex = lowerClean.indexOf(lowerPhrase);
+
+      let beforeText = "Listen carefully.";
+      let afterText = allowContinue
+        ? "Good effort. You can continue now and practise this phrase again later."
+        : "Now try it once more.";
+
+      if (phraseIndex >= 0) {
+        beforeText = clean.slice(0, phraseIndex).trim() || beforeText;
+        afterText =
+          clean.slice(phraseIndex + phrase.length).trim() || afterText;
+      } else if (clean) {
+        beforeText = clean;
+      }
+
+      const speakSegment = (text: string) =>
+        new Promise<void>((resolve) => {
+          if (!("speechSynthesis" in window) || !text.trim()) {
+            resolve();
+            return;
+          }
+
+          const synthesis = window.speechSynthesis;
+          const utterance = new SpeechSynthesisUtterance(text.trim());
+          const voices = synthesis.getVoices();
+          const preferredVoice =
+            voices.find((voice) =>
+              voice.lang.toLowerCase().startsWith("en-gb")
+            ) ??
+            voices.find((voice) =>
+              voice.lang.toLowerCase().startsWith("en")
+            ) ??
+            voices[0];
+
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+            utterance.lang = preferredVoice.lang;
+          } else {
+            utterance.lang = "en-GB";
+          }
+
+          utterance.rate =
+            learner.ageGroup === "3-5"
+              ? 0.72
+              : learner.ageGroup === "6-9"
+                ? 0.8
+                : 0.88;
+          utterance.pitch = learner.ageGroup === "3-5" ? 1.08 : 1;
+          utterance.volume = 1;
+          utterance.onend = () => resolve();
+          utterance.onerror = () => resolve();
+          currentSpeechRef.current = utterance;
+          synthesis.speak(utterance);
+        });
+
+      const playPhrase = () =>
+        new Promise<void>((resolve) => {
+          const audio = new Audio(audioUrl);
+          currentAudioRef.current = audio;
+          audio.onended = () => {
+            currentAudioRef.current = null;
+            resolve();
+          };
+          audio.onerror = () => {
+            currentAudioRef.current = null;
+            resolve();
+          };
+          void audio.play().catch(() => resolve());
+        });
+
+      await speakSegment(beforeText);
+      await playPhrase();
+      await speakSegment(afterText);
+
+      currentSpeechRef.current = null;
+      currentAudioRef.current = null;
+      setTutorStatus("ready");
+      setAudioWorking(true);
+    },
+    [learner.ageGroup, stopAllAudio]
   );
 
   const playStepAudio = useCallback(
@@ -659,49 +784,89 @@ const { course, unit: curriculum } =
           );
         }
 
-        const action =
+        const returnedAction =
           data.action ??
           "continue_step";
 
-        setTutorMessage(
-          data.displayText
-        );
+        const isPronunciationStep =
+          conversationMode === "curriculum" &&
+          Boolean(activeLesson.step.expectedPhrase);
+
+        let effectiveAction = returnedAction;
+        let nextAttemptCount = pronunciationAttempts;
+        let allowContinue = canProceedAfterAttempts;
+
+        if (
+          isPronunciationStep &&
+          returnedAction === "repeat_step"
+        ) {
+          nextAttemptCount = Math.min(
+            pronunciationAttempts + 1,
+            MAX_PRONUNCIATION_ATTEMPTS
+          );
+
+          allowContinue =
+            nextAttemptCount >= MAX_PRONUNCIATION_ATTEMPTS;
+
+          setPronunciationAttempts(nextAttemptCount);
+          setCanProceedAfterAttempts(allowContinue);
+
+          if (allowContinue) {
+            effectiveAction = "continue_step";
+          }
+        } else if (
+          returnedAction === "complete_step" ||
+          returnedAction === "complete_lesson"
+        ) {
+          setPronunciationAttempts(0);
+          setCanProceedAfterAttempts(false);
+        }
+
+        const displayText = allowContinue
+          ? "Good effort. Listen once more, then continue. You can practise this phrase again later."
+          : data.displayText;
+
+        setTutorMessage(displayText);
 
         setCorrectedPhrase(
           data.correctedPhrase ?? null
         );
 
         setEncouragement(
-          data.encouragement ?? null
+          allowContinue
+            ? "Three good attempts completed. You may continue and return to practise later."
+            : data.encouragement ?? null
         );
 
-        applyTutorAction(action);
+        applyTutorAction(effectiveAction);
 
-        /*
-         * Fixed curriculum phrases use native audio.
-         * Free-form AI replies use browser speech until
-         * production multilingual voice is connected.
-         */
-        if (
-          conversationMode ===
-            "curriculum" &&
-          activeLesson.step.nativeAudioUrl &&
-          (
-            action === "repeat_step" ||
-            action === "continue_step"
-          )
-        ) {
-          void playNativeAudio(
-            activeLesson.step.nativeAudioUrl,
-            data.speechText,
-            "ready"
-          );
-        } else {
-          speakText(
-            data.speechText,
-            "ready"
-          );
-        }
+        const nativeAudioUrl =
+  activeLesson.step.nativeAudioUrl;
+
+const phraseToPlay =
+  data.correctedPhrase ??
+  activeLesson.step.expectedPhrase ??
+  "";
+
+const isPronunciationCorrection =
+  conversationMode === "curriculum" &&
+  Boolean(nativeAudioUrl) &&
+  Boolean(phraseToPlay) &&
+  (
+    effectiveAction === "repeat_step" ||
+    Boolean(data.correctedPhrase)
+  );
+
+if (isPronunciationCorrection) {
+  await speakCorrectionSequence({
+    speechText: data.speechText,
+    phrase: phraseToPlay,
+    audioUrl: nativeAudioUrl!,
+    allowContinue,
+  });
+} else {
+  speakText(data.speechText, "ready");
+}
       } catch (error) {
         console.error(
           "FountainTalk tutor request error:",
@@ -727,7 +892,9 @@ const { course, unit: curriculum } =
       conversationMode,
       isRequestPending,
       learner,
-      playNativeAudio,
+      pronunciationAttempts,
+      canProceedAfterAttempts,
+      speakCorrectionSequence,
       speakText,
     ]
   );
@@ -919,6 +1086,8 @@ const { course, unit: curriculum } =
       setLearnerTranscript("");
       setCorrectedPhrase(null);
       setEncouragement(null);
+      setPronunciationAttempts(0);
+      setCanProceedAfterAttempts(false);
       setTutorStatus("ready");
     }, [course]);
 
@@ -991,6 +1160,8 @@ const { course, unit: curriculum } =
     setLearnerTranscript("");
     setCorrectedPhrase(null);
     setEncouragement(null);
+    setPronunciationAttempts(0);
+    setCanProceedAfterAttempts(false);
 
     if (nextActive.step.nativeAudioUrl) {
       void playNativeAudio(
@@ -1019,15 +1190,33 @@ const { course, unit: curriculum } =
   ]);
 
   const repeatTutorMessage =
-  useCallback(() => {
-    playStepAudio(
+    useCallback(() => {
+      const nativeAudioUrl =
+        activeLesson.step.nativeAudioUrl;
+
+      const expectedPhrase =
+        activeLesson.step.expectedPhrase ??
+        correctedPhrase ??
+        tutorMessage;
+
+      if (nativeAudioUrl) {
+        void playNativeAudio(
+          nativeAudioUrl,
+          expectedPhrase,
+          "ready"
+        );
+        return;
+      }
+
+      speakText(expectedPhrase, "ready");
+    }, [
+      activeLesson.step.expectedPhrase,
+      activeLesson.step.nativeAudioUrl,
+      correctedPhrase,
+      playNativeAudio,
+      speakText,
       tutorMessage,
-      "ready"
-    );
-  }, [
-    playStepAudio,
-    tutorMessage,
-  ]);
+    ]);
 
   const playSlowNativeAudio =
     useCallback(() => {
@@ -1122,6 +1311,9 @@ const { course, unit: curriculum } =
     encouragement,
     conversationMode,
     isRequestPending,
+    pronunciationAttempts,
+    maxPronunciationAttempts: MAX_PRONUNCIATION_ATTEMPTS,
+    canProceedAfterAttempts,
 
     testAudio,
     requestMicrophone,
