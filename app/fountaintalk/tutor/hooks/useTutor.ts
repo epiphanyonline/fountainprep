@@ -20,6 +20,13 @@ import type {
 
 import { getLanguageCurriculum } from "@/app/data/fountaintalk";
 
+import {
+  learningService,
+  type LanguageLearningPath,
+} from "@/features/learning";
+
+import { adaptLearningPathToFountainTalkCourse } from "@/features/learning/adapters/fountaintalk.adapter";
+
 import { getFirstCurriculumSelection } from "../services/curriculumEngine";
 
 import {
@@ -62,11 +69,90 @@ export function useTutor({
   const languageCurriculum =
   getLanguageCurriculum(learner.language);
 
-const { course, unit: curriculum } =
-  getFirstCurriculumSelection(
+const [databaseLearningPath, setDatabaseLearningPath] =
+  useState<LanguageLearningPath | null>(null);
+
+const [isLearningPathLoading, setIsLearningPathLoading] =
+  useState(true);
+
+const [learningPathError, setLearningPathError] =
+  useState<string | null>(null);
+
+const fallbackSelection = useMemo(
+  () =>
+    getFirstCurriculumSelection(
+      languageCurriculum,
+      learner.level,
+    ),
+  [languageCurriculum, learner.level],
+);
+
+const course = useMemo(() => {
+  if (!databaseLearningPath) {
+    return fallbackSelection.course;
+  }
+
+  return adaptLearningPathToFountainTalkCourse(
+    databaseLearningPath,
     languageCurriculum,
-    learner.level
   );
+}, [
+  databaseLearningPath,
+  fallbackSelection.course,
+  languageCurriculum,
+]);
+
+const curriculum =
+  course.units[0] ?? fallbackSelection.unit;
+
+  useEffect(() => {
+  let isCancelled = false;
+
+  async function loadLearningPath() {
+    try {
+      setIsLearningPathLoading(true);
+      setLearningPathError(null);
+
+      const proficiencyCode =
+        learner.level === "foundation"
+          ? "A0"
+          : learner.level.toUpperCase();
+
+      const path =
+        await learningService.getLanguageLearningPath(
+          learner.language,
+          proficiencyCode,
+        );
+
+      if (!isCancelled) {
+        setDatabaseLearningPath(path);
+      }
+    } catch (error) {
+      console.error(
+        "Unable to load FountainTalk learning path:",
+        error,
+      );
+
+      if (!isCancelled) {
+        setLearningPathError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load the learning path.",
+        );
+      }
+    } finally {
+      if (!isCancelled) {
+        setIsLearningPathLoading(false);
+      }
+    }
+  }
+
+  void loadLearningPath();
+
+  return () => {
+    isCancelled = true;
+  };
+}, [learner.language, learner.level]);
 
   const [progress, setProgress] =
   useState<LearnerProgress>(() =>
@@ -75,6 +161,15 @@ const { course, unit: curriculum } =
   course
 )
   );
+
+  useEffect(() => {
+  setProgress(
+    createInitialProgress(
+      learner.id,
+      course,
+    ),
+  );
+}, [course.id, learner.id]);
 
   const activeLesson = useMemo(
     () =>
@@ -1298,6 +1393,10 @@ if (isPronunciationCorrection) {
     curriculum,
     progress,
     activeLesson,
+
+    databaseLearningPath,
+isLearningPathLoading,
+learningPathError,
 
     microphoneGranted,
     audioWorking,
