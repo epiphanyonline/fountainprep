@@ -44,10 +44,27 @@ function mapCollectionToUnit(
   unitNumber: number,
 ): CurriculumUnit {
   const lessons = collection.episodes
-    .map((episode) => findExistingLesson(registry, episode))
-    .filter(
-      (lesson): lesson is CurriculumLesson => lesson !== null,
-    );
+  .map((episode) => {
+    const existingLesson =
+      findExistingLesson(registry, episode);
+
+    if (!existingLesson) {
+      return null;
+    }
+
+    return {
+      ...existingLesson,
+      id: episode.id,
+      title: episode.title,
+      objective:
+        episode.objective ??
+        existingLesson.objective,
+    };
+  })
+  .filter(
+    (lesson): lesson is CurriculumLesson =>
+      lesson !== null,
+  );
 
   return {
     id: collection.id,

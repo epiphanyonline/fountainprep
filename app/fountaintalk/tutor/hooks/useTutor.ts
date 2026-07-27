@@ -170,15 +170,15 @@ const curriculum =
     ),
   );
 }, [course.id, learner.id]);
-
+  
   const activeLesson = useMemo(
-    () =>
-      getActiveLessonState(
-    course,
-    progress
-),
-    [course, progress]
-  );
+  () =>
+    getActiveLessonState(
+      course,
+      progress,
+    ),
+  [course, progress],
+);
 
   const initialTutorMessage = useMemo(
     () =>
