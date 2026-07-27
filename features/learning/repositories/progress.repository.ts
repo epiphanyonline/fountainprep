@@ -29,11 +29,23 @@ export type EpisodeProgress = {
   createdAt: string | null;
 };
 
+export type SaveEpisodeProgressInput = {
+  studentId: string;
+  episodeId: string;
+  status: LearningProgressStatus;
+  tutorId?: string | null;
+  notes?: string | null;
+  homework?: string | null;
+};
+
 class ProgressRepository extends BaseRepository<
   StudentCurriculumProgressRow,
   EpisodeProgress
 > {
   protected readonly tableName = "student_curriculum_progress";
+
+  private readonly selectColumns =
+    "id, student_id, lesson_id, status, completed_at, tutor_id, notes, homework, created_at";
 
   protected mapRow(
     row: StudentCurriculumProgressRow,
@@ -138,8 +150,42 @@ class ProgressRepository extends BaseRepository<
     );
   }
 
-  private readonly selectColumns =
-    "id, student_id, lesson_id, status, completed_at, tutor_id, notes, homework, created_at";
+  async saveEpisodeProgress(
+    input: SaveEpisodeProgressInput,
+  ): Promise<EpisodeProgress> {
+    const completedAt =
+      input.status === "completed"
+        ? new Date().toISOString()
+        : null;
+
+    const { data, error } = await this.client
+      .from(this.tableName)
+      .upsert(
+        {
+          student_id: input.studentId,
+          lesson_id: input.episodeId,
+          status: input.status,
+          completed_at: completedAt,
+          tutor_id: input.tutorId ?? null,
+          notes: input.notes ?? null,
+          homework: input.homework ?? null,
+        },
+        {
+          onConflict: "student_id,lesson_id",
+        },
+      )
+      .select(this.selectColumns)
+      .single();
+
+    this.throwIfError(
+      error,
+      "Save student episode progress",
+    );
+
+    return this.mapRow(
+      data as StudentCurriculumProgressRow,
+    );
+  }
 
   private mapStatus(
     status: string | null,

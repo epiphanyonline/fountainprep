@@ -27,6 +27,7 @@ export {
   progressRepository,
   type EpisodeProgress,
   type LearningProgressStatus,
+  type SaveEpisodeProgressInput,
 } from "./repositories/progress.repository";
 
 export {
