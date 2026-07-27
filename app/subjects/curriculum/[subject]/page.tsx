@@ -161,14 +161,36 @@ function SubjectCurriculumContent() {
         </div>
 
         <div style={styles.actions}>
-          <Link href={`/subjects${studentId ? `?studentId=${studentId}` : ''}`} style={styles.secondary}>
-            Back to Subjects
-          </Link>
-          <Link href={`/pricing${studentId ? `?studentId=${studentId}&subject=${subject.id}` : `?subject=${subject.id}`}`} style={styles.button}>
-            Choose Learning Plan
-          </Link>
-        </div>
-      </section>
+  <Link
+    href={`/subjects${studentId ? `?studentId=${studentId}` : ""}`}
+    style={styles.secondary}
+  >
+    Back to Subjects
+  </Link>
+
+  {subject.name.toLowerCase() === "yoruba" && studentId ? (
+    <Link
+      href={`/fountaintalk/tutor?studentId=${encodeURIComponent(
+        studentId,
+      )}&language=yoruba`}
+      style={styles.button}
+    >
+      Start Yoruba AI Lesson
+    </Link>
+  ) : (
+    <Link
+      href={`/pricing${
+        studentId
+          ? `?studentId=${studentId}&subject=${subject.id}`
+          : `?subject=${subject.id}`
+      }`}
+      style={styles.button}
+    >
+      Choose Learning Plan
+    </Link>
+  )}
+</div>
+ </section>
 
       <section style={styles.grid}>
         {strands.map((strand) => {
