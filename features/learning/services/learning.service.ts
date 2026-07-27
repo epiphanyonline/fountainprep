@@ -1,4 +1,9 @@
 import {
+  subjectRepository,
+  type LearningSubject,
+} from "../repositories/subject.repository";
+
+import {
   journeyRepository,
   type Journey,
 } from "../repositories/journey.repository";
@@ -28,12 +33,21 @@ export type JourneyLearningPath = {
   totalEpisodes: number;
 };
 
+export type LanguageLearningPath = JourneyLearningPath & {
+  subject: LearningSubject;
+};
+
 export type StudentJourneyLearningPath = JourneyLearningPath & {
   progress: EpisodeProgress[];
   completedEpisodes: number;
   completionPercentage: number;
   nextEpisode: Episode | null;
 };
+
+export type StudentLanguageLearningPath =
+  StudentJourneyLearningPath & {
+    subject: LearningSubject;
+  };
 
 class LearningService {
   async getJourneyLearningPath(
@@ -48,20 +62,19 @@ class LearningService {
     const collections =
       await episodeCollectionRepository.listByJourneyId(journeyId);
 
-    const collectionsWithEpisodes =
-      await Promise.all(
-        collections.map(async (collection) => {
-          const episodes =
-            await episodeRepository.listByEpisodeCollectionId(
-              collection.id,
-            );
+    const collectionsWithEpisodes = await Promise.all(
+      collections.map(async (collection) => {
+        const episodes =
+          await episodeRepository.listByEpisodeCollectionId(
+            collection.id,
+          );
 
-          return {
-            ...collection,
-            episodes,
-          };
-        }),
-      );
+        return {
+          ...collection,
+          episodes,
+        };
+      }),
+    );
 
     const totalEpisodes = collectionsWithEpisodes.reduce(
       (total, collection) => total + collection.episodes.length,
@@ -72,6 +85,40 @@ class LearningService {
       journey,
       collections: collectionsWithEpisodes,
       totalEpisodes,
+    };
+  }
+
+  async getLanguageLearningPath(
+    languageName: string,
+    proficiencyCode: string,
+  ): Promise<LanguageLearningPath | null> {
+    const subject =
+      await subjectRepository.findByName(languageName);
+
+    if (!subject || !subject.isActive) {
+      return null;
+    }
+
+    const journey =
+      await journeyRepository.findLanguageJourney(
+        subject.id,
+        proficiencyCode.toUpperCase(),
+      );
+
+    if (!journey) {
+      return null;
+    }
+
+    const learningPath =
+      await this.getJourneyLearningPath(journey.id);
+
+    if (!learningPath) {
+      return null;
+    }
+
+    return {
+      subject,
+      ...learningPath,
     };
   }
 
@@ -105,7 +152,10 @@ class LearningService {
       journeyProgress
         .filter((progress) => progress.status === "completed")
         .map((progress) => progress.episodeId)
-        .filter((episodeId): episodeId is string => episodeId !== null),
+        .filter(
+          (episodeId): episodeId is string =>
+            episodeId !== null,
+        ),
     );
 
     const orderedEpisodes = learningPath.collections.flatMap(
@@ -132,6 +182,37 @@ class LearningService {
       completedEpisodes,
       completionPercentage,
       nextEpisode,
+    };
+  }
+
+  async getStudentLanguageLearningPath(
+    studentId: string,
+    languageName: string,
+    proficiencyCode: string,
+  ): Promise<StudentLanguageLearningPath | null> {
+    const languagePath =
+      await this.getLanguageLearningPath(
+        languageName,
+        proficiencyCode,
+      );
+
+    if (!languagePath) {
+      return null;
+    }
+
+    const studentPath =
+      await this.getStudentJourneyLearningPath(
+        studentId,
+        languagePath.journey.id,
+      );
+
+    if (!studentPath) {
+      return null;
+    }
+
+    return {
+      subject: languagePath.subject,
+      ...studentPath,
     };
   }
 }

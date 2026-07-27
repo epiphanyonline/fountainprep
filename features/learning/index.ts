@@ -4,6 +4,11 @@ export {
 } from "./repositories/academy.repository";
 
 export {
+  subjectRepository,
+  type LearningSubject,
+} from "./repositories/subject.repository";
+
+export {
   journeyRepository,
   type Journey,
 } from "./repositories/journey.repository";
@@ -29,4 +34,6 @@ export {
   type EpisodeCollectionWithEpisodes,
   type JourneyLearningPath,
   type StudentJourneyLearningPath,
+  type LanguageLearningPath,
+type StudentLanguageLearningPath,
 } from "./services/learning.service";
