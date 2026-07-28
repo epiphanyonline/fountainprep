@@ -177,66 +177,32 @@ class ProgressRepository extends BaseRepository<
     );
   }
 
-  async clearOtherInProgressEpisodes(
-    studentId: string,
-    episodeId: string,
-  ): Promise<void> {
-    const { error } = await this.client
-      .from(this.tableName)
-      .update({
-        status: "not_started",
-        current_step_index: 0,
-        completed_at: null,
-      })
-      .eq("student_id", studentId)
-      .eq("status", "in_progress")
-      .neq("lesson_id", episodeId);
+   async saveEpisodeProgress(
+  input: SaveEpisodeProgressInput,
+): Promise<EpisodeProgress> {
+  const { data, error } = await this.client.rpc(
+    "save_student_episode_progress",
+    {
+      p_student_id: input.studentId,
+      p_lesson_id: input.episodeId,
+      p_status: input.status,
+      p_current_step_index:
+        input.currentStepIndex ?? 0,
+      p_tutor_id: input.tutorId ?? null,
+      p_notes: input.notes ?? null,
+      p_homework: input.homework ?? null,
+    },
+  );
 
-    this.throwIfError(
-      error,
-      "Clear other in-progress student episodes",
-    );
-  }
+  this.throwIfError(
+    error,
+    "Save student episode progress",
+  );
 
-  async saveEpisodeProgress(
-    input: SaveEpisodeProgressInput,
-  ): Promise<EpisodeProgress> {
-    const completedAt =
-      input.status === "completed"
-        ? new Date().toISOString()
-        : null;
-
-    const { data, error } = await this.client
-      .from(this.tableName)
-      .upsert(
-        {
-          student_id: input.studentId,
-          lesson_id: input.episodeId,
-          status: input.status,
-          current_step_index:
-            input.currentStepIndex ?? 0,
-          completed_at: completedAt,
-          tutor_id: input.tutorId ?? null,
-          notes: input.notes ?? null,
-          homework: input.homework ?? null,
-        },
-        {
-          onConflict:
-            "student_id,lesson_id",
-        },
-      )
-      .select(this.selectColumns)
-      .single();
-
-    this.throwIfError(
-      error,
-      "Save student episode progress",
-    );
-
-    return this.mapRow(
-      data as StudentCurriculumProgressRow,
-    );
-  }
+  return this.mapRow(
+    data as StudentCurriculumProgressRow,
+  );
+}
 
   private mapStatus(
     status: string | null,
