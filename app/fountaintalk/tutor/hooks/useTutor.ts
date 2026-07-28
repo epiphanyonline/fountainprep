@@ -22,6 +22,7 @@ import { getLanguageCurriculum } from "@/app/data/fountaintalk";
 
 import {
   learningService,
+  progressRepository,
   type LanguageLearningPath,
 } from "@/features/learning";
 
@@ -1187,13 +1188,36 @@ if (isPronunciationCorrection) {
     }, [course]);
 
   const continueToNextStep =
-  useCallback(() => {
+  useCallback(async () => {
     const isFinalLesson =
       activeLesson.lessonIndex ===
       activeLesson.unit.lessons.length - 1;
-
+      
     const isFinalStep =
       activeLesson.isLastStep;
+
+      if (isFinalStep) {
+  try {
+    await progressRepository.saveEpisodeProgress({
+      studentId: learner.id,
+      episodeId: activeLesson.lesson.id,
+      status: "completed",
+    });
+  } catch (error) {
+    console.error(
+      "Unable to save FountainTalk lesson progress:",
+      error,
+    );
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "Your lesson was completed, but progress could not be saved.",
+    );
+
+    return;
+  }
+}
 
     if (isFinalLesson && isFinalStep) {
       const completedProgress =
@@ -1274,9 +1298,11 @@ if (isPronunciationCorrection) {
       "ready"
     );
   }, [
-    activeLesson.isLastStep,
+    activeLesson.lesson.id,
+learner.id,
+activeLesson.isLastStep,
     activeLesson.lessonIndex,
-    curriculum,
+    course,
     learner.name,
     playNativeAudio,
     progress,
