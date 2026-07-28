@@ -210,6 +210,13 @@ useEffect(() => {
             episodeId !== null,
         );
 
+        const activeEpisodeProgress =
+  studentPath.progress.find(
+    (item) =>
+      item.status === "in_progress" &&
+      item.episodeId,
+  );
+
       const completedDates = studentPath.progress
   .filter(
     (item) =>
@@ -276,6 +283,8 @@ for (
 
 setProgress({
   ...restoredProgress,
+  currentStepIndex:
+    activeEpisodeProgress?.currentStepIndex ?? 0,
   completedLessonIds,
   streak,
 });
@@ -1395,6 +1404,31 @@ if (isPronunciationCorrection) {
       return;
     }
 
+    if (!isFinalStep) {
+  try {
+    await progressRepository.saveEpisodeProgress({
+      studentId: learner.id,
+      episodeId: activeLesson.lesson.id,
+      status: "in_progress",
+      currentStepIndex:
+        activeLesson.stepIndex + 1,
+    });
+  } catch (error) {
+    console.error(
+      "Unable to save FountainTalk step progress:",
+      error,
+    );
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "Your lesson step could not be saved.",
+    );
+
+    return;
+  }
+}
+
     const nextProgress =
       completeCurrentStep(
     course,
@@ -1442,6 +1476,7 @@ if (isPronunciationCorrection) {
     activeLesson.lesson.id,
 learner.id,
 activeLesson.isLastStep,
+activeLesson.stepIndex,
     activeLesson.lessonIndex,
     course,
     learner.name,
