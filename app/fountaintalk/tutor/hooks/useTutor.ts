@@ -79,6 +79,9 @@ const [isLearningPathLoading, setIsLearningPathLoading] =
 const [learningPathError, setLearningPathError] =
   useState<string | null>(null);
 
+const [studentLearningPathLoaded, setStudentLearningPathLoaded] =
+  useState(false);
+
 const fallbackSelection = useMemo(
   () =>
     getFirstCurriculumSelection(
@@ -171,6 +174,102 @@ const curriculum =
     ),
   );
 }, [course.id, learner.id]);
+
+useEffect(() => {
+  let isCancelled = false;
+
+  async function loadStudentProgress() {
+    if (!databaseLearningPath) {
+      return;
+    }
+
+    try {
+      setStudentLearningPathLoaded(false);
+
+      const proficiencyCode =
+        learner.level === "foundation"
+          ? "A0"
+          : learner.level.toUpperCase();
+
+      const studentPath =
+        await learningService.getStudentLanguageLearningPath(
+          learner.id,
+          learner.language,
+          proficiencyCode,
+        );
+
+      if (!studentPath || isCancelled) {
+        return;
+      }
+
+      const completedLessonIds = studentPath.progress
+        .filter((item) => item.status === "completed")
+        .map((item) => item.episodeId)
+        .filter(
+          (episodeId): episodeId is string =>
+            episodeId !== null,
+        );
+
+      const firstIncompleteLessonIndex =
+  course.units[0]?.lessons.findIndex(
+    (lesson) =>
+      !completedLessonIds.includes(lesson.id),
+  ) ?? 0;
+
+const nextLessonIndex =
+  firstIncompleteLessonIndex === -1
+    ? Math.max(
+        (course.units[0]?.lessons.length ?? 1) - 1,
+        0,
+      )
+    : firstIncompleteLessonIndex;  
+
+let restoredProgress =
+  createInitialProgress(
+    learner.id,
+    course,
+  );
+
+for (
+  let lessonIndex = 0;
+  lessonIndex < nextLessonIndex;
+  lessonIndex += 1
+) {
+  restoredProgress =
+    completeCurrentLesson(
+      course,
+      restoredProgress,
+    );
+}
+
+setProgress({
+  ...restoredProgress,
+  completedLessonIds,
+});
+    } catch (error) {
+      console.error(
+        "Unable to restore FountainTalk progress:",
+        error,
+      );
+    } finally {
+      if (!isCancelled) {
+        setStudentLearningPathLoaded(true);
+      }
+    }
+  }
+
+  void loadStudentProgress();
+
+  return () => {
+    isCancelled = true;
+  };
+}, [
+  course,
+  databaseLearningPath,
+  learner.id,
+  learner.language,
+  learner.level,
+]);
   
   const activeLesson = useMemo(
   () =>
@@ -209,6 +308,15 @@ const curriculum =
 
   const [tutorMessage, setTutorMessage] =
     useState(initialTutorMessage);
+
+    useEffect(() => {
+  if (!lessonStarted) {
+    setTutorMessage(initialTutorMessage);
+  }
+}, [
+  initialTutorMessage,
+  lessonStarted,
+]);
 
   const [
     learnerTranscript,
@@ -1423,6 +1531,7 @@ activeLesson.isLastStep,
     databaseLearningPath,
 isLearningPathLoading,
 learningPathError,
+studentLearningPathLoaded,
 
     microphoneGranted,
     audioWorking,
