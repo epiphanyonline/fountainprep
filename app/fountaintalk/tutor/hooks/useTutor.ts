@@ -1406,6 +1406,11 @@ if (isPronunciationCorrection) {
 
     if (!isFinalStep) {
   try {
+    await progressRepository.clearOtherInProgressEpisodes(
+      learner.id,
+      activeLesson.lesson.id,
+    );
+
     await progressRepository.saveEpisodeProgress({
       studentId: learner.id,
       episodeId: activeLesson.lesson.id,

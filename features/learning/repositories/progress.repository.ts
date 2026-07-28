@@ -177,6 +177,27 @@ class ProgressRepository extends BaseRepository<
     );
   }
 
+  async clearOtherInProgressEpisodes(
+    studentId: string,
+    episodeId: string,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from(this.tableName)
+      .update({
+        status: "not_started",
+        current_step_index: 0,
+        completed_at: null,
+      })
+      .eq("student_id", studentId)
+      .eq("status", "in_progress")
+      .neq("lesson_id", episodeId);
+
+    this.throwIfError(
+      error,
+      "Clear other in-progress student episodes",
+    );
+  }
+
   async saveEpisodeProgress(
     input: SaveEpisodeProgressInput,
   ): Promise<EpisodeProgress> {
