@@ -210,6 +210,38 @@ useEffect(() => {
             episodeId !== null,
         );
 
+      const completedDates = studentPath.progress
+  .filter(
+    (item) =>
+      item.status === "completed" &&
+      item.completedAt,
+  )
+  .map((item) =>
+    new Date(item.completedAt as string)
+      .toISOString()
+      .slice(0, 10),
+  );
+
+const uniqueStudyDates = Array.from(
+  new Set(completedDates),
+).sort((a, b) => b.localeCompare(a));
+
+let streak = 0;
+const cursor = new Date();
+
+for (const studyDate of uniqueStudyDates) {
+  const expectedDate = cursor
+    .toISOString()
+    .slice(0, 10);
+
+  if (studyDate !== expectedDate) {
+    break;
+  }
+
+  streak += 1;
+  cursor.setUTCDate(cursor.getUTCDate() - 1);
+}  
+
       const firstIncompleteLessonIndex =
   course.units[0]?.lessons.findIndex(
     (lesson) =>
@@ -245,6 +277,7 @@ for (
 setProgress({
   ...restoredProgress,
   completedLessonIds,
+  streak,
 });
     } catch (error) {
       console.error(
