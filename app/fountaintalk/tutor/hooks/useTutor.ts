@@ -120,14 +120,20 @@ const course = useMemo(() => {
           : learner.level.toUpperCase();
 
       const path =
-        await learningService.getLanguageLearningPath(
-          learner.language,
-          proficiencyCode,
-        );
+  await learningService.getLanguageLearningPath(
+    learner.language,
+    proficiencyCode,
+  );
 
-      if (!isCancelled) {
-        setDatabaseLearningPath(path);
-      }
+if (!path) {
+  throw new Error(
+    "No curriculum is available for the selected language and level.",
+  );
+}
+
+if (!isCancelled) {
+  setDatabaseLearningPath(path);
+}
     } catch (error) {
       console.error(
         "Unable to load FountainTalk learning path:",
@@ -443,6 +449,9 @@ setProgress({
 
   const [isRequestPending, setIsRequestPending] =
     useState(false);
+
+    const [isProgressSaving, setIsProgressSaving] =
+  useState(false);
 
   const [pronunciationAttempts, setPronunciationAttempts] =
     useState(0);
@@ -1398,18 +1407,25 @@ if (isPronunciationCorrection) {
 
   const continueToNextStep =
   useCallback(async () => {
-    const isFinalLessonInUnit =
-      activeLesson.isLastLesson;
+    if (isProgressSaving) {
+      return;
+    }
 
-    const isFinalUnit =
-      activeLesson.isLastUnit;
+    setIsProgressSaving(true);
 
-    const isFinalCourseLesson =
-      isFinalLessonInUnit &&
-      isFinalUnit;
+    try {
+      const isFinalLessonInUnit =
+        activeLesson.isLastLesson;
 
-    const isFinalStep =
-      activeLesson.isLastStep;
+      const isFinalUnit =
+        activeLesson.isLastUnit;
+
+      const isFinalCourseLesson =
+        isFinalLessonInUnit &&
+        isFinalUnit;
+
+      const isFinalStep =
+        activeLesson.isLastStep;
 
       if (isFinalStep) {
   try {
@@ -1571,10 +1587,13 @@ if (isPronunciationCorrection) {
       return;
     }
 
-    speakText(
-      nextMessage,
-      "ready"
-    );
+          speakText(
+        nextMessage,
+        "ready"
+      );
+    } finally {
+      setIsProgressSaving(false);
+    }
     }, [
     activeLesson.lesson.id,
     activeLesson.lesson.title,
@@ -1588,6 +1607,7 @@ if (isPronunciationCorrection) {
     learner.language,
     learner.name,
     course,
+    isProgressSaving,
     playNativeAudio,
     progress,
     router,
@@ -1721,7 +1741,8 @@ studentLearningPathLoaded,
     encouragement,
     conversationMode,
     isRequestPending,
-    pronunciationAttempts,
+isProgressSaving,
+pronunciationAttempts,
     maxPronunciationAttempts: MAX_PRONUNCIATION_ATTEMPTS,
     canProceedAfterAttempts,
 

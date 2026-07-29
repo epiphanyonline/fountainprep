@@ -273,8 +273,12 @@ function FountainTalkTutor({
   });
 
   const {
-    activeLesson,
-    progress,
+  activeLesson,
+  progress,
+
+  isLearningPathLoading,
+  learningPathError,
+  studentLearningPathLoaded,
 
     microphoneGranted,
     audioWorking,
@@ -287,6 +291,7 @@ function FountainTalkTutor({
     encouragement,
     conversationMode,
     isRequestPending,
+    isProgressSaving,
 
     testAudio,
     requestMicrophone,
@@ -301,6 +306,70 @@ function FountainTalkTutor({
     returnToCurriculum,
   } = tutor;
 
+  if (learningPathError) {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 px-4 py-8">
+      <div className="mx-auto max-w-3xl rounded-3xl border border-red-200 bg-white p-8 shadow-sm">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-purple-600">
+          FountainTalk
+        </p>
+
+        <h1 className="mt-3 text-3xl font-black text-slate-900">
+          Unable to load the curriculum
+        </h1>
+
+        <p
+          role="alert"
+          className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-semibold text-red-700"
+        >
+          {learningPathError}
+        </p>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-full bg-purple-600 px-5 py-3 font-bold text-white transition hover:bg-purple-700"
+          >
+            Try again
+          </button>
+
+          <Link
+            href="/subjects"
+            className="rounded-full border border-purple-200 bg-white px-5 py-3 font-bold text-purple-700 transition hover:bg-purple-50"
+          >
+            Back to Subjects
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+  
+  if (
+  isLearningPathLoading ||
+  !studentLearningPathLoaded
+) {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 px-4 py-8">
+      <div className="mx-auto max-w-3xl rounded-3xl border border-purple-100 bg-white p-8 text-center shadow-sm">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-purple-600">
+          FountainTalk
+        </p>
+
+        <h1 className="mt-3 text-3xl font-black text-slate-900">
+          Preparing your lesson...
+        </h1>
+
+        <p className="mt-3 text-slate-600">
+          Loading the curriculum and restoring your saved progress.
+        </p>
+      </div>
+    </main>
+  );
+}
+
   const {
     unit,
     lesson,
@@ -314,9 +383,10 @@ function FountainTalkTutor({
   } = activeLesson;
 
   const isBusy =
-    tutorStatus === "speaking" ||
-    tutorStatus === "thinking" ||
-    isRequestPending;
+  tutorStatus === "speaking" ||
+  tutorStatus === "thinking" ||
+  isRequestPending ||
+  isProgressSaving;
 
   const languageLabel =
     learner.language.charAt(0).toUpperCase() +
@@ -619,9 +689,11 @@ function FountainTalkTutor({
                     disabled={isBusy}
                     className="rounded-2xl bg-slate-900 px-5 py-4 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isLastStep
-                      ? "Complete lesson"
-                      : "Continue to next step →"}
+                    {isProgressSaving
+  ? "Saving progress..."
+  : isLastStep
+    ? "Complete lesson"
+    : "Continue to next step →"}
                   </button>
                 </div>
               )}

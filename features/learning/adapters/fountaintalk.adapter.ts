@@ -138,14 +138,21 @@ export function adaptLearningPathToFountainTalkCourse(
   path: JourneyLearningPath,
   registry: FountainTalkContentRegistry,
 ): CurriculumCourse {
-  const units = path.collections.map(
-    (collection, index) =>
-      mapCollectionToUnit(
-        collection,
-        registry,
-        index + 1,
-      ),
-  );
+  const units = path.collections
+  .map((collection, index) =>
+    mapCollectionToUnit(
+      collection,
+      registry,
+      index + 1,
+    ),
+  )
+  .filter(
+    (unit) => unit.lessons.length > 0,
+  )
+  .map((unit, index) => ({
+    ...unit,
+    unitNumber: index + 1,
+  }));
 
   return {
     id: path.journey.id,
