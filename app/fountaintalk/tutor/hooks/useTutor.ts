@@ -1399,15 +1399,15 @@ if (isPronunciationCorrection) {
   const continueToNextStep =
   useCallback(async () => {
     const isFinalLessonInUnit =
-  activeLesson.isLastLesson;
+      activeLesson.isLastLesson;
 
-const isFinalUnit =
-  activeLesson.isLastUnit;
+    const isFinalUnit =
+      activeLesson.isLastUnit;
 
-const isFinalCourseLesson =
-  isFinalLessonInUnit &&
-  isFinalUnit;
-      
+    const isFinalCourseLesson =
+      isFinalLessonInUnit &&
+      isFinalUnit;
+
     const isFinalStep =
       activeLesson.isLastStep;
 
@@ -1446,6 +1446,30 @@ const isFinalCourseLesson =
       setLearnerTranscript("");
       setCorrectedPhrase(null);
 
+      try {
+  await progressRepository.saveLessonAchievement({
+    studentId: learner.id,
+    episodeId: activeLesson.lesson.id,
+    title: `${activeLesson.lesson.title} completed`,
+    description: `Completed ${activeLesson.lesson.title} in ${activeLesson.unit.title}.`,
+    pointsAwarded:
+      activeLesson.lesson.completionPoints,
+  });
+} catch (error) {
+  console.error(
+    "Unable to save FountainTalk achievement:",
+    error,
+  );
+
+  setErrorMessage(
+    error instanceof Error
+      ? error.message
+      : "Your lesson was completed, but the achievement could not be saved.",
+  );
+
+  return;
+}
+
       const completionMessage =
         `Amazing work, ${learner.name}! You have completed ${activeLesson.unit.title}.`;
 
@@ -1461,10 +1485,24 @@ const isFinalCourseLesson =
       );
 
       window.setTimeout(() => {
-        router.push(
-          "/tutor/lesson-report"
-        );
-      }, 2500);
+  const reportParams =
+    new URLSearchParams({
+      studentId: learner.id,
+      language: learner.language,
+      unitTitle:
+        activeLesson.unit.title,
+      lessonTitle:
+        activeLesson.lesson.title,
+      points: String(
+        activeLesson.lesson
+          .completionPoints,
+      ),
+    });
+
+  router.push(
+    `/fountaintalk/lesson-report?${reportParams.toString()}`,
+  );
+}, 2500);
 
       return;
     }
@@ -1537,15 +1575,19 @@ const isFinalCourseLesson =
       nextMessage,
       "ready"
     );
-  }, [
+    }, [
     activeLesson.lesson.id,
-learner.id,
-activeLesson.isLastStep,
-activeLesson.stepIndex,
+    activeLesson.lesson.title,
+    activeLesson.lesson.completionPoints,
+    activeLesson.unit.title,
+    activeLesson.isLastStep,
+    activeLesson.stepIndex,
     activeLesson.isLastLesson,
-activeLesson.isLastUnit,
-    course,
+    activeLesson.isLastUnit,
+    learner.id,
+    learner.language,
     learner.name,
+    course,
     playNativeAudio,
     progress,
     router,

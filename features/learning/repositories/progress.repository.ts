@@ -41,6 +41,25 @@ export type SaveEpisodeProgressInput = {
   homework?: string | null;
 };
 
+export type StudentAchievement = {
+  id: string;
+  studentId: string;
+  episodeId: string;
+  achievementType: string;
+  title: string;
+  description: string | null;
+  pointsAwarded: number;
+  earnedAt: string;
+};
+
+export type SaveLessonAchievementInput = {
+  studentId: string;
+  episodeId: string;
+  title: string;
+  description?: string | null;
+  pointsAwarded: number;
+};
+
 class ProgressRepository extends BaseRepository<
   StudentCurriculumProgressRow,
   EpisodeProgress
@@ -202,6 +221,113 @@ class ProgressRepository extends BaseRepository<
   return this.mapRow(
     data as StudentCurriculumProgressRow,
   );
+}
+
+async saveLessonAchievement(
+  input: SaveLessonAchievementInput,
+): Promise<StudentAchievement> {
+  const achievementType =
+    "lesson_completion";
+
+  const selectColumns = `
+    id,
+    student_id,
+    episode_id,
+    achievement_type,
+    title,
+    description,
+    points_awarded,
+    earned_at
+  `;
+
+  const { data, error } = await this.client
+    .from("student_achievements")
+    .insert({
+      student_id: input.studentId,
+      episode_id: input.episodeId,
+      achievement_type: achievementType,
+      title: input.title,
+      description:
+        input.description ?? null,
+      points_awarded:
+        input.pointsAwarded,
+    })
+    .select(selectColumns)
+    .single();
+
+  if (error?.code === "23505") {
+    const {
+      data: existingAchievement,
+      error: existingError,
+    } = await this.client
+      .from("student_achievements")
+      .select(selectColumns)
+      .eq(
+        "student_id",
+        input.studentId,
+      )
+      .eq(
+        "episode_id",
+        input.episodeId,
+      )
+      .eq(
+        "achievement_type",
+        achievementType,
+      )
+      .maybeSingle();
+
+    this.throwIfError(
+      existingError,
+      "Retrieve existing lesson achievement",
+    );
+
+    if (!existingAchievement) {
+      throw new Error(
+        "The lesson achievement already exists but could not be retrieved.",
+      );
+    }
+
+    return {
+      id: existingAchievement.id,
+      studentId:
+        existingAchievement.student_id,
+      episodeId:
+        existingAchievement.episode_id,
+      achievementType:
+        existingAchievement.achievement_type,
+      title: existingAchievement.title,
+      description:
+        existingAchievement.description,
+      pointsAwarded:
+        existingAchievement.points_awarded,
+      earnedAt:
+        existingAchievement.earned_at,
+    };
+  }
+
+  this.throwIfError(
+    error,
+    "Save lesson achievement",
+  );
+
+  if (!data) {
+    throw new Error(
+      "The lesson achievement was saved but no record was returned.",
+    );
+  }
+
+  return {
+    id: data.id,
+    studentId: data.student_id,
+    episodeId: data.episode_id,
+    achievementType:
+      data.achievement_type,
+    title: data.title,
+    description: data.description,
+    pointsAwarded:
+      data.points_awarded,
+    earnedAt: data.earned_at,
+  };
 }
 
   private mapStatus(
