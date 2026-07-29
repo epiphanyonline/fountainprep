@@ -106,9 +106,6 @@ const course = useMemo(() => {
   languageCurriculum,
 ]);
 
-const curriculum =
-  course.units[0] ?? fallbackSelection.unit;
-
   useEffect(() => {
   let isCancelled = false;
 
@@ -165,6 +162,21 @@ const curriculum =
   course
 )
   );
+
+  const curriculum = useMemo(
+  () =>
+    course.units.find(
+      (unit) =>
+        unit.id === progress.currentUnitId,
+    ) ??
+    course.units[0] ??
+    fallbackSelection.unit,
+  [
+    course.units,
+    fallbackSelection.unit,
+    progress.currentUnitId,
+  ],
+);
 
   useEffect(() => {
   setProgress(
@@ -249,19 +261,47 @@ for (const studyDate of uniqueStudyDates) {
   cursor.setUTCDate(cursor.getUTCDate() - 1);
 }  
 
-      const firstIncompleteLessonIndex =
-  course.units[0]?.lessons.findIndex(
-    (lesson) =>
-      !completedLessonIds.includes(lesson.id),
-  ) ?? 0;
+      let nextUnitIndex = 0;
+let nextLessonIndex = 0;
+let foundIncompleteLesson = false;
 
-const nextLessonIndex =
-  firstIncompleteLessonIndex === -1
-    ? Math.max(
-        (course.units[0]?.lessons.length ?? 1) - 1,
-        0,
-      )
-    : firstIncompleteLessonIndex;  
+for (
+  let unitIndex = 0;
+  unitIndex < course.units.length;
+  unitIndex += 1
+) {
+  const unit = course.units[unitIndex];
+
+  const lessonIndex =
+    unit.lessons.findIndex(
+      (lesson) =>
+        !completedLessonIds.includes(
+          lesson.id,
+        ),
+    );
+
+  if (lessonIndex >= 0) {
+    nextUnitIndex = unitIndex;
+    nextLessonIndex = lessonIndex;
+    foundIncompleteLesson = true;
+    break;
+  }
+}
+
+if (!foundIncompleteLesson) {
+  nextUnitIndex = Math.max(
+    course.units.length - 1,
+    0,
+  );
+
+  const finalUnit =
+    course.units[nextUnitIndex];
+
+  nextLessonIndex = Math.max(
+    (finalUnit?.lessons.length ?? 1) - 1,
+    0,
+  );
+}  
 
 let restoredProgress =
   createInitialProgress(
@@ -270,15 +310,34 @@ let restoredProgress =
   );
 
 for (
-  let lessonIndex = 0;
-  lessonIndex < nextLessonIndex;
-  lessonIndex += 1
+  let unitIndex = 0;
+  unitIndex < course.units.length;
+  unitIndex += 1
 ) {
-  restoredProgress =
-    completeCurrentLesson(
-      course,
-      restoredProgress,
-    );
+  const unit = course.units[unitIndex];
+
+  const lessonsToComplete =
+    unitIndex < nextUnitIndex
+      ? unit.lessons.length
+      : unitIndex === nextUnitIndex
+        ? nextLessonIndex
+        : 0;
+
+  for (
+    let lessonIndex = 0;
+    lessonIndex < lessonsToComplete;
+    lessonIndex += 1
+  ) {
+    restoredProgress =
+      completeCurrentLesson(
+        course,
+        restoredProgress,
+      );
+  }
+
+  if (unitIndex >= nextUnitIndex) {
+    break;
+  }
 }
 
 setProgress({
@@ -1339,9 +1398,15 @@ if (isPronunciationCorrection) {
 
   const continueToNextStep =
   useCallback(async () => {
-    const isFinalLesson =
-      activeLesson.lessonIndex ===
-      activeLesson.unit.lessons.length - 1;
+    const isFinalLessonInUnit =
+  activeLesson.isLastLesson;
+
+const isFinalUnit =
+  activeLesson.isLastUnit;
+
+const isFinalCourseLesson =
+  isFinalLessonInUnit &&
+  isFinalUnit;
       
     const isFinalStep =
       activeLesson.isLastStep;
@@ -1369,7 +1434,7 @@ if (isPronunciationCorrection) {
   }
 }
 
-    if (isFinalLesson && isFinalStep) {
+    if (isFinalCourseLesson && isFinalStep) {
       const completedProgress =
         completeCurrentLesson(
     course,
@@ -1477,7 +1542,8 @@ if (isPronunciationCorrection) {
 learner.id,
 activeLesson.isLastStep,
 activeLesson.stepIndex,
-    activeLesson.lessonIndex,
+    activeLesson.isLastLesson,
+activeLesson.isLastUnit,
     course,
     learner.name,
     playNativeAudio,
