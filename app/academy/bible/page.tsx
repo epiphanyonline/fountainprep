@@ -1,6 +1,15 @@
-import { ProductShell, AyoNote } from "../../_components/ProductShell";
-import { JourneyCard } from "../../_components/JourneyCard";
-import { bibleJourneys } from "../../_content/product-content";
+import {
+  ProductShell,
+  AyoNote,
+} from "@/app/fountaintalk/classroom-v3/product/components/ProductShell";
+
+import {
+  JourneyCard,
+} from "@/app/fountaintalk/classroom-v3/product/components/JourneyCard";
+
+import {
+  bibleJourneys,
+} from "@/app/fountaintalk/classroom-v3/product/content/product-content";
 
 export default function BibleAcademyPage() {
   return (

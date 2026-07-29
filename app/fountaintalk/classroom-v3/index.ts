@@ -10,7 +10,7 @@ export { default as LivingClassroom } from "./components/LivingClassroom";
 export { default as LivingStage } from "./components/LivingStage";
 export { default as JourneyRoadmap } from "./journey/JourneyRoadmap";
 export { davidExperience } from "./examples/davidExperience";
-export { adaptV2Scene } from "./adapters/fromV2Scene";
+export { fromV2Scene } from "./adapters/fromV2Scene";
 export * from "./learner-os/types";
 export * from "./learner-os/profile";
 export * from "./learner-os/storage";

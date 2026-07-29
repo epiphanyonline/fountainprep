@@ -1,4 +1,7 @@
-import { ProductShell, AyoNote } from "../_components/ProductShell";
+import {
+  ProductShell,
+  AyoNote,
+} from "@/app/fountaintalk/classroom-v3/product/components/ProductShell";
 
 export default function ProfilePage() {
   return (
