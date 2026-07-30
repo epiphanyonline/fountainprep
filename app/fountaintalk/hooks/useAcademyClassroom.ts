@@ -23,18 +23,26 @@ import type {
   TutorStatus,
 } from "../types/academy";
 
+import type {
+  SelectedAcademyLearner,
+} from "./useSelectedLearner";
+
 type ListeningPurpose = "opening" | "step-answer";
 
-const LEARNER_ID = "demo-learner";
+type UseAcademyClassroomInput = {
+  academyId: NonLanguageAcademyId;
+  learner: SelectedAcademyLearner | null;
+};
+
 const DEFAULT_LEARNER_NAME = "Learner";
-const AGE_GROUP = "6-9";
 
 function createInitialProgress(
-  academyId: NonLanguageAcademyId
+  academyId: NonLanguageAcademyId,
+  learnerId: string,
 ): AcademyProgress {
   return {
     academyId,
-    learnerId: LEARNER_ID,
+    learnerId,
     currentUnitIndex: 0,
     currentLessonIndex: 0,
     currentStepIndex: 0,
@@ -161,15 +169,20 @@ function poseForStepKind(
   }
 }
 
-export function useAcademyClassroom(
-  academyId: NonLanguageAcademyId
-) {
+export function useAcademyClassroom({
+  academyId,
+  learner,
+}: UseAcademyClassroomInput) {
+  const learnerId = learner?.id ?? "demo-learner";
+  const learnerAgeGroup = learner?.ageGroup ?? "adult";
   const academy = getAcademy(academyId);
   const course = getStarterCourse(academyId);
+  const isAgeEligible =
+  course.ageGroups.includes(learnerAgeGroup);
 
   const [progress, setProgress] = useState<AcademyProgress>(() =>
-    createInitialProgress(academyId)
-  );
+  createInitialProgress(academyId, learnerId)
+);
   const [session, setSession] = useState<ClassroomSession>(() =>
     createInitialSession()
   );
@@ -192,6 +205,32 @@ export function useAcademyClassroom(
   const [microphoneMode, setMicrophoneMode] =
     useState<MicrophoneMode>("muted");
   const [ayoPose, setAyoPose] = useState<AyoPose>("neutral");
+
+  useEffect(() => {
+  if (!learner) {
+    return;
+  }
+
+  setProgress((current) => {
+    if (current.learnerId === learner.id) {
+      return current;
+    }
+
+    return createInitialProgress(
+      academyId,
+      learner.id,
+    );
+  });
+
+  setSession((current) => ({
+    ...current,
+    learnerName:
+      current.learnerName || learner.name,
+  }));
+}, [
+  academyId,
+  learner,
+]);
 
   const speechRef =
     useRef<SpeechSynthesisUtterance | null>(null);
@@ -231,14 +270,16 @@ export function useAcademyClassroom(
     `Before I explain the lesson, what do you already know about ${lesson.title.toLowerCase()}?`;
 
   const currentLearnerName =
-    session.learnerName || DEFAULT_LEARNER_NAME;
+  session.learnerName ||
+  learner?.name ||
+  DEFAULT_LEARNER_NAME;
 
   const progressStorageKey =
-    `learn-with-ayo:progress:${academyId}:${LEARNER_ID}`;
+    `learn-with-ayo:progress:${academyId}:${learnerId}`;
   const learnerStorageKey =
-    `learn-with-ayo:learner:${LEARNER_ID}`;
+    `learn-with-ayo:learner:${learnerId}`;
   const sessionStorageKey =
-    `learn-with-ayo:classroom-session:${academyId}:${LEARNER_ID}`;
+    `learn-with-ayo:classroom-session:${academyId}:${learnerId}`;
 
   const previousCompletedLesson = useMemo(() => {
     const lessons = course.units.flatMap(
@@ -491,7 +532,12 @@ export function useAcademyClassroom(
         null;
 
       utterance.lang = utterance.voice?.lang ?? "en-GB";
-      utterance.rate = AGE_GROUP === "6-9" ? 0.84 : 0.9;
+      utterance.rate =
+  learnerAgeGroup === "3-5"
+    ? 0.78
+    : learnerAgeGroup === "6-9"
+      ? 0.84
+      : 0.9;
       utterance.pitch = 1;
       utterance.volume = 1;
 
@@ -661,7 +707,7 @@ export function useAcademyClassroom(
             academyId,
             learner: {
               name: currentLearnerName,
-              ageGroup: AGE_GROUP,
+              ageGroup: learnerAgeGroup,
               priorKnowledge: session.priorKnowledge,
               desiredOutcome: session.desiredOutcome,
             },
@@ -968,7 +1014,7 @@ export function useAcademyClassroom(
     silenceRetryRef.current = 0;
 
     const message = [
-      "Welcome to Wealth Academy.",
+      `Welcome to ${academy.title}.`,
       "I am Ayo, and I will lead this class.",
       `Today we are studying ${lesson.title}.`,
       classPromise,
@@ -994,6 +1040,7 @@ export function useAcademyClassroom(
       }));
     });
   }, [
+    academy.title,
     classPromise,
     lesson.title,
     speak,
@@ -1355,7 +1402,7 @@ export function useAcademyClassroom(
         window.speechSynthesis.cancel();
       }
     };
-  }, [clearAutoAdvance]);
+  }, [clearAutoAdvance, learnerAgeGroup]);
 
   const canGoBack =
     progress.currentStepIndex > 0 ||
@@ -1366,8 +1413,9 @@ export function useAcademyClassroom(
     feedback?.isCorrect === true;
 
   return {
-    academy,
-    course,
+  academy,
+  course,
+  isAgeEligible,
     unit,
     lesson,
     step,

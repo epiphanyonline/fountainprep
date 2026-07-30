@@ -20,8 +20,23 @@ import {
 
 import {
   bibleCourses,
-  
 } from "./bible";
+
+import {
+  aiCourses,
+} from "./ai";
+
+import {
+  ieltsCourses,
+} from "./ielts";
+
+import {
+  dataAnalysisCourses,
+} from "./data-analysis";
+
+import {
+  articulationCourses,
+} from "./articulation";
 
 import type {
   AcademyCourse,
@@ -39,6 +54,10 @@ export const academyCurricula: Record<
   wealth: wealthCourses,
   ethics: ethicsCourses,
   bible: bibleCourses,
+  ai: aiCourses,
+  ielts: ieltsCourses,
+  "data-analysis": dataAnalysisCourses,
+  articulation: articulationCourses,
 };
 
 export function getAcademyCourses(

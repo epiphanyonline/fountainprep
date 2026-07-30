@@ -12,6 +12,10 @@ import { useAcademyClassroom } from "../../hooks/useAcademyClassroom";
 
 import SceneVisual from "../../components/SceneVisual";
 
+import {
+  useSelectedLearner,
+} from "../../hooks/useSelectedLearner";
+
 import type {
   AyoPose,
   NonLanguageAcademyId,
@@ -20,6 +24,7 @@ import type {
 
 type AcademyClassroomProps = {
   academyId: NonLanguageAcademyId;
+  studentId: string | null;
 };
 
 const statusLabels = {
@@ -67,15 +72,26 @@ const poseImages: Record<AyoPose, string> = {
 
 export default function AcademyClassroom({
   academyId,
+  studentId,
 }: AcademyClassroomProps) {
   const [raiseHandOpen, setRaiseHandOpen] = useState(false);
   const [imageFallback, setImageFallback] = useState(false);
 
-  const classroom = useAcademyClassroom(academyId);
+  const {
+  learner,
+  loading: learnerLoading,
+  error: learnerError,
+} = useSelectedLearner(studentId);
+
+  const classroom = useAcademyClassroom({
+  academyId,
+  learner,
+});
 
   const {
     academy,
     course,
+    isAgeEligible,
     unit,
     lesson,
     step,
@@ -202,6 +218,61 @@ export default function AcademyClassroom({
     step.question,
     step.title,
   ]);
+
+  if (learnerLoading) {
+  return (
+    <main className="classroom-loading">
+      <div className="loading-mark">
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <strong>Loading learner profile</strong>
+
+      <p>
+        Checking the learner’s academy pathway and age suitability...
+      </p>
+    </main>
+  );
+}
+
+if (learnerError || !learner) {
+  return (
+    <main className="classroom-loading">
+      <strong>Unable to open this academy</strong>
+
+      <p role="alert">
+        {learnerError ??
+          "The selected learner could not be loaded."}
+      </p>
+
+      <Link href="/subjects" className="topbar-link">
+        Return to Subjects
+      </Link>
+    </main>
+  );
+}
+
+if (!isAgeEligible) {
+  return (
+    <main className="classroom-loading">
+      <strong>
+        This course is not designed for this learner’s age group
+      </strong>
+
+      <p>
+        {course.title} currently supports ages{" "}
+        {course.ageGroups.join(", ")}. We will offer an appropriate
+        pathway where the academy supports multiple age levels.
+      </p>
+
+      <Link href="/subjects" className="topbar-link">
+        Choose another academy
+      </Link>
+    </main>
+  );
+}
 
   if (!hydrated) {
     return (

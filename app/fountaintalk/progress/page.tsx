@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Suspense,
+  useEffect,
+  useState,
+} from "react";
 
 import { academyRegistry } from "../data/academyRegistry";
 import { getStarterCourse } from "../data/starterCurricula";
@@ -17,6 +22,28 @@ type ProgressCard = {
 };
 
 export default function ProgressPage() {
+  return (
+    <Suspense fallback={<ProgressPageLoading />}>
+      <ProgressPageContent />
+    </Suspense>
+  );
+}
+
+function ProgressPageLoading() {
+  return (
+    <main className="progress-page">
+      <div className="progress-shell">
+        <p>Loading progress...</p>
+      </div>
+    </main>
+  );
+}
+
+function ProgressPageContent() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams.get("studentId");
+  const learnerId = studentId ?? "demo-learner";
+
   const [cards, setCards] = useState<ProgressCard[]>([]);
 
   useEffect(() => {
@@ -37,7 +64,7 @@ export default function ProgressPage() {
             ),
           0
         );
-        const key = `learn-with-ayo:progress:${academy.id}:demo-learner`;
+        const key = `learn-with-ayo:progress:${academy.id}:${learnerId}`;
         let progress: AcademyProgress | null = null;
 
         try {
@@ -51,7 +78,7 @@ export default function ProgressPage() {
       });
 
     setCards(loaded);
-  }, []);
+  }, [learnerId]);
 
   const totalPoints = cards.reduce(
     (total, card) => total + (card.progress?.points ?? 0),
@@ -68,7 +95,15 @@ export default function ProgressPage() {
     <main className="progress-page">
       <div className="progress-shell">
         <header className="progress-topbar">
-          <Link href="/fountaintalk">← Academies</Link>
+          <Link
+  href={
+    studentId
+      ? `/fountaintalk?studentId=${encodeURIComponent(studentId)}`
+      : "/fountaintalk"
+  }
+>
+  ← Academies
+</Link>
           <div>
             <strong>Learn with AYO</strong>
             <span>Powered by Fountain Prep</span>
@@ -141,9 +176,13 @@ export default function ProgressPage() {
                   </div>
 
                   <Link
-                    href={academy.href}
-                    style={{ background: academy.accentDark }}
-                  >
+  href={
+    studentId
+      ? `${academy.href}?studentId=${encodeURIComponent(studentId)}`
+      : academy.href
+  }
+  style={{ background: academy.accentDark }}
+>
                     {card.progress ? "Continue course" : "Start course"}
                     <span>→</span>
                   </Link>

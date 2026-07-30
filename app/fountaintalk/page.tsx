@@ -1,11 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Suspense,
+  type CSSProperties,
+} from "react";
 
 import { academyRegistry } from "./data/academyRegistry";
 
 export default function LearnWithAyoHome() {
+  return (
+    <Suspense fallback={<LearnWithAyoLoading />}>
+      <LearnWithAyoHomeContent />
+    </Suspense>
+  );
+}
+
+function LearnWithAyoLoading() {
+  return (
+    <main className="learn-home">
+      <div className="learn-shell">
+        <p>Loading academies...</p>
+      </div>
+    </main>
+  );
+}
+
+function LearnWithAyoHomeContent() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams.get("studentId");
+
   return (
     <main className="learn-home">
       <div className="learn-shell">
@@ -16,7 +41,15 @@ export default function LearnWithAyoHome() {
 
           <nav aria-label="Learn navigation">
             <a href="#academies">Academies</a>
-            <Link href="/fountaintalk/progress">My progress</Link>
+            <Link
+  href={
+    studentId
+      ? `/fountaintalk/progress?studentId=${encodeURIComponent(studentId)}`
+      : "/fountaintalk/progress"
+  }
+>
+  My progress
+</Link>
           </nav>
         </header>
 
@@ -46,7 +79,13 @@ export default function LearnWithAyoHome() {
                 Choose an academy
                 <span>→</span>
               </a>
-              <Link href="/fountaintalk/progress" className="hero-secondary">
+              <Link
+  href={
+    studentId
+      ? `/fountaintalk/classroom/mathematics?studentId=${encodeURIComponent(studentId)}`
+      : "/fountaintalk/classroom/mathematics"
+  }
+>
                 Continue learning
               </Link>
             </div>
@@ -113,7 +152,11 @@ export default function LearnWithAyoHome() {
 
               return (
                 <Link
-                  href={academy.href}
+                  href={
+  studentId
+    ? `${academy.href}?studentId=${encodeURIComponent(studentId)}`
+    : academy.href
+}
                   key={academy.id}
                   className={`academy-card ${index === 0 ? "academy-wide" : ""}`}
                   style={style}
@@ -145,7 +188,13 @@ export default function LearnWithAyoHome() {
               The same platform can support a first discovery, a school skill,
               a practical life lesson or a new adult ambition.
             </p>
-            <Link href="/fountaintalk/classroom/mathematics">
+            <Link
+  href={
+    studentId
+      ? `/fountaintalk/classroom/mathematics?studentId=${encodeURIComponent(studentId)}`
+      : "/fountaintalk/classroom/mathematics"
+  }
+>
               Start a foundation lesson <span>→</span>
             </Link>
           </div>

@@ -25,6 +25,10 @@ export const starterCurricula: Record<
   wealth: academyCurricula.wealth[0],
   ethics: academyCurricula.ethics[0],
   bible: academyCurricula.bible[0],
+  ai: academyCurricula.ai[0],
+  ielts: academyCurricula.ielts[0],
+  "data-analysis": academyCurricula["data-analysis"][0],
+  articulation: academyCurricula.articulation[0],
 };
 
 export function getStarterCourse(

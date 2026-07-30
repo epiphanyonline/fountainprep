@@ -5,6 +5,10 @@ export const NON_LANGUAGE_ACADEMY_IDS = [
   "wealth",
   "ethics",
   "bible",
+  "ai",
+  "ielts",
+  "data-analysis",
+  "articulation",
 ] as const;
 
 export type NonLanguageAcademyId =
