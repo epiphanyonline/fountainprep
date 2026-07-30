@@ -346,10 +346,31 @@ for (
   }
 }
 
+const restoredStepIndex =
+  activeEpisodeProgress?.currentStepIndex ?? 0;
+
+const activeUnit =
+  course.units[nextUnitIndex];
+
+const activeLesson =
+  activeUnit?.lessons[nextLessonIndex];
+
+const completedActiveStepIds =
+  activeLesson?.steps
+    .slice(0, restoredStepIndex)
+    .map((step) => step.id) ?? [];
+
+const restoredCompletedStepIds = Array.from(
+  new Set([
+    ...restoredProgress.completedStepIds,
+    ...completedActiveStepIds,
+  ]),
+);
+
 setProgress({
   ...restoredProgress,
-  currentStepIndex:
-    activeEpisodeProgress?.currentStepIndex ?? 0,
+  currentStepIndex: restoredStepIndex,
+  completedStepIds: restoredCompletedStepIds,
   completedLessonIds,
   streak,
 });
