@@ -152,6 +152,90 @@ case "checkout.session.async_payment_failed": {
   break;
 }
 
+case "customer.subscription.updated": {
+  const subscription =
+    event.data.object as Stripe.Subscription;
+
+  if (
+    subscription.metadata?.payment_type !==
+    "academy_subscription"
+  ) {
+    break;
+  }
+
+  await syncAcademySubscription(subscription);
+  break;
+}
+
+case "customer.subscription.deleted": {
+  const subscription =
+    event.data.object as Stripe.Subscription;
+
+  if (
+    subscription.metadata?.payment_type !==
+    "academy_subscription"
+  ) {
+    break;
+  }
+
+  await syncAcademySubscription(subscription);
+  break;
+}
+
+case "invoice.payment_failed": {
+  const invoice =
+    event.data.object as Stripe.Invoice;
+
+  const stripeSubscriptionId =
+    typeof invoice.parent?.subscription_details
+      ?.subscription === "string"
+      ? invoice.parent.subscription_details
+          .subscription
+      : invoice.parent?.subscription_details
+          ?.subscription?.id;
+
+  if (!stripeSubscriptionId) {
+    break;
+  }
+
+  await markAcademySubscriptionPastDue(
+    stripeSubscriptionId,
+  );
+  break;
+}
+
+case "invoice.paid": {
+  const invoice =
+    event.data.object as Stripe.Invoice;
+
+  const stripeSubscriptionId =
+    typeof invoice.parent?.subscription_details
+      ?.subscription === "string"
+      ? invoice.parent.subscription_details
+          .subscription
+      : invoice.parent?.subscription_details
+          ?.subscription?.id;
+
+  if (!stripeSubscriptionId) {
+    break;
+  }
+
+  const subscription =
+    await stripe.subscriptions.retrieve(
+      stripeSubscriptionId,
+    );
+
+  if (
+    subscription.metadata?.payment_type !==
+    "academy_subscription"
+  ) {
+    break;
+  }
+
+  await syncAcademySubscription(subscription);
+  break;
+}
+
       default:
         break;
     }
@@ -160,6 +244,127 @@ case "checkout.session.async_payment_failed": {
   } catch (error: unknown) {
     console.error("Stripe webhook processing error:", error);
     return new NextResponse("Webhook handler failed", { status: 500 });
+  }
+}
+
+async function markAcademySubscriptionPastDue(
+  stripeSubscriptionId: string,
+) {
+  const {
+    error,
+  } = await supabaseAdmin
+    .from("academy_subscriptions")
+    .update({
+      status: "past_due",
+      updated_at: new Date().toISOString(),
+    })
+    .eq(
+      "stripe_subscription_id",
+      stripeSubscriptionId,
+    )
+    .in("status", [
+      "trialing",
+      "active",
+      "past_due",
+      "paused",
+      "incomplete",
+    ]);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function syncAcademySubscription(
+  subscription: Stripe.Subscription,
+) {
+  const userId = subscription.metadata?.user_id
+  const planId = subscription.metadata?.plan_id
+
+  if (!userId || !planId) {
+    throw new Error(
+      `Stripe subscription ${subscription.id} is missing academy metadata.`,
+    )
+  }
+
+  const stripeCustomerId =
+    typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer.id
+
+  const subscriptionItem =
+    subscription.items.data[0]
+
+  const currentPeriodStart =
+    subscriptionItem?.current_period_start
+      ? new Date(
+          subscriptionItem.current_period_start *
+            1000,
+        ).toISOString()
+      : null
+
+  const currentPeriodEnd =
+    subscriptionItem?.current_period_end
+      ? new Date(
+          subscriptionItem.current_period_end *
+            1000,
+        ).toISOString()
+      : null
+
+  const cancelledAt =
+    subscription.canceled_at
+      ? new Date(
+          subscription.canceled_at * 1000,
+        ).toISOString()
+      : null
+
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from('academy_subscriptions')
+    .update({
+      plan_id: planId,
+      status: mapStripeSubscriptionStatus(
+        subscription.status,
+      ),
+      stripe_customer_id: stripeCustomerId,
+      current_period_start:
+        currentPeriodStart,
+      current_period_end: currentPeriodEnd,
+      trial_started_at:
+        subscription.trial_start
+          ? new Date(
+              subscription.trial_start * 1000,
+            ).toISOString()
+          : null,
+      trial_ends_at:
+        subscription.trial_end
+          ? new Date(
+              subscription.trial_end * 1000,
+            ).toISOString()
+          : null,
+      cancel_at_period_end:
+        subscription.cancel_at_period_end,
+      cancelled_at: cancelledAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq(
+      'stripe_subscription_id',
+      subscription.id,
+    )
+    .eq('user_id', userId)
+    .select('id')
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error(
+      `Academy subscription record was not found for Stripe subscription ${subscription.id}.`,
+    )
   }
 }
 
