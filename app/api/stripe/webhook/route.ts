@@ -345,7 +345,8 @@ async function syncAcademySubscription(
             ).toISOString()
           : null,
       cancel_at_period_end:
-        subscription.cancel_at_period_end,
+  subscription.cancel_at_period_end ||
+  Boolean(subscription.cancel_at),
       cancelled_at: cancelledAt,
       updated_at: new Date().toISOString(),
     })
