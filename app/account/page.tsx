@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
+import {
+  getAcademySubscriptionAccess,
+  type AcademySubscriptionAccess,
+} from '../fountaintalk/services/subscriptionAccess'
 
 type UserProfile = {
   id: string
@@ -27,6 +31,12 @@ export default function AccountPage() {
 const [billingError, setBillingError] =
   useState<string | null>(null)
 
+  const [subscriptionAccess, setSubscriptionAccess] =
+  useState<AcademySubscriptionAccess | null>(null)
+
+const [loadingSubscription, setLoadingSubscription] =
+  useState(true)
+
   useEffect(() => {
     async function loadAccount() {
       const {
@@ -34,6 +44,7 @@ const [billingError, setBillingError] =
       } = await supabase.auth.getUser()
 
       if (!user) {
+        setLoadingSubscription(false)
         router.push('/login')
         return
       }
@@ -45,6 +56,7 @@ const [billingError, setBillingError] =
   .single()
 
 if (error || !userProfile) {
+  setLoadingSubscription(false)
   setMessage('Profile not found.')
   setLoading(false)
   return
@@ -69,8 +81,25 @@ setProfile({
   ...userProfile,
   account_type: accountType,
 })
-      setMessage('')
-      setLoading(false)
+
+try {
+  const access =
+    await getAcademySubscriptionAccess(null)
+
+  setSubscriptionAccess(access)
+} catch (error) {
+  console.error(
+    'Unable to load academy subscription summary:',
+    error,
+  )
+
+  setSubscriptionAccess(null)
+} finally {
+  setLoadingSubscription(false)
+}
+
+setMessage('')
+setLoading(false)
     }
 
     loadAccount()
@@ -285,6 +314,91 @@ function roleLabel() {
               </div>
             </div>
           </div>
+          {profile.role === 'PARENT' ? (
+  <section
+    style={{
+      marginTop: 28,
+      padding: 24,
+      border: '1px solid #e5e7eb',
+      borderRadius: 20,
+      background: '#faf7ff',
+    }}
+  >
+    <p
+      style={{
+        margin: 0,
+        color: '#6f42c1',
+        fontWeight: 800,
+      }}
+    >
+      Academy Subscription
+    </p>
+
+    {loadingSubscription ? (
+      <p style={{ marginTop: 12 }}>
+        Loading subscription...
+      </p>
+    ) : subscriptionAccess ? (
+      <>
+        <h2
+          style={{
+            margin: '10px 0 0',
+            fontSize: 26,
+          }}
+        >
+          {subscriptionAccess.plan.name}
+        </h2>
+
+        <p style={{ marginTop: 10 }}>
+          Status:{' '}
+          <strong>
+            {subscriptionAccess.status}
+          </strong>
+        </p>
+
+        {subscriptionAccess.currentPeriodEnd ? (
+          <p style={{ marginTop: 8 }}>
+            {subscriptionAccess.cancelAtPeriodEnd
+              ? 'Access ends'
+              : 'Next renewal'}
+            :{' '}
+            <strong>
+              {new Intl.DateTimeFormat('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              }).format(
+                new Date(
+                  subscriptionAccess.currentPeriodEnd,
+                ),
+              )}
+            </strong>
+          </p>
+        ) : null}
+
+        {subscriptionAccess.cancelAtPeriodEnd ? (
+          <p
+            style={{
+              marginTop: 14,
+              padding: 14,
+              borderRadius: 14,
+              background: '#fff7ed',
+              color: '#9a3412',
+              fontWeight: 700,
+            }}
+          >
+            This subscription is scheduled to end at the
+            close of the current billing period.
+          </p>
+        ) : null}
+      </>
+    ) : (
+      <p style={{ marginTop: 12 }}>
+        Subscription information is currently unavailable.
+      </p>
+    )}
+  </section>
+) : null}
 
           <div
   style={{
