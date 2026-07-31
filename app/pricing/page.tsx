@@ -4,6 +4,10 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { BookingJourney } from '../components/BookingJourney'
+import {
+  getAcademyPlans,
+  type AcademySubscriptionPlan,
+} from '../fountaintalk/services/subscriptionAccess'
 
 type Student = {
   id: string
@@ -99,6 +103,8 @@ function PricingContent() {
   const studentId = searchParams.get('studentId')
   const subjectId = searchParams.get('subjectId')
   const programId = searchParams.get('programId')
+  const product = searchParams.get('product')
+const isAcademyPricing = product === 'academies'
 
   const [student, setStudent] = useState<Student | null>(null)
   const [currency, setCurrency] = useState<CurrencyDisplay>(
@@ -107,6 +113,15 @@ function PricingContent() {
   const [loadingStudent, setLoadingStudent] = useState(true)
   const [resolvedSubjectName, setResolvedSubjectName] = useState('')
   const [selectingPlan, setSelectingPlan] = useState('')
+  const [academyPlans, setAcademyPlans] = useState<
+  AcademySubscriptionPlan[]
+>([])
+
+const [loadingAcademyPlans, setLoadingAcademyPlans] =
+  useState(false)
+
+const [academyPlanError, setAcademyPlanError] =
+  useState<string | null>(null)
 
   const hasBookingContext = Boolean(studentId && subjectId)
 
@@ -116,6 +131,64 @@ function PricingContent() {
   }, [subjectId, resolvedSubjectName])
 
   useEffect(() => {
+  let cancelled = false
+
+  async function loadAcademyPlans() {
+    if (!isAcademyPricing) {
+      return
+    }
+
+    try {
+      setLoadingAcademyPlans(true)
+      setAcademyPlanError(null)
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        const returnUrl = new URLSearchParams()
+
+        returnUrl.set('redirectTo', window.location.pathname + window.location.search)
+
+        router.push(`/login?${returnUrl.toString()}`)
+        return
+      }
+
+      const plans = await getAcademyPlans()
+
+      if (!cancelled) {
+        setAcademyPlans(plans)
+      }
+    } catch (error) {
+      console.error(
+        'Unable to load academy subscription plans:',
+        error,
+      )
+
+      if (!cancelled) {
+        setAcademyPlans([])
+        setAcademyPlanError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load academy plans.',
+        )
+      }
+    } finally {
+      if (!cancelled) {
+        setLoadingAcademyPlans(false)
+      }
+    }
+  }
+
+  void loadAcademyPlans()
+
+  return () => {
+    cancelled = true
+  }
+}, [isAcademyPricing, router])
+
+useEffect(() => {
     async function loadSubjectName() {
       if (!subjectId || subjectLabels[subjectId.toLowerCase()]) return
 
@@ -192,6 +265,82 @@ setLoadingStudent(false)
   return `${currency.symbol}${converted}`
 }
 
+async function handleChooseAcademyPlan(
+  planId: string,
+) {
+  if (planId === 'free') {
+    router.push(
+      studentId
+        ? `/fountaintalk?studentId=${encodeURIComponent(studentId)}`
+        : '/fountaintalk',
+    )
+    return
+  }
+
+  try {
+    setSelectingPlan(planId)
+    setAcademyPlanError(null)
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session?.access_token) {
+      const redirectTo =
+        window.location.pathname +
+        window.location.search
+
+      router.push(
+        `/login?redirectTo=${encodeURIComponent(redirectTo)}`,
+      )
+      return
+    }
+
+    const response = await fetch(
+      '/api/stripe/academy-subscription-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization:
+            `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          planId,
+          studentId,
+        }),
+      },
+    )
+
+    const result = (await response.json()) as {
+      url?: string
+      error?: string
+    }
+
+    if (!response.ok || !result.url) {
+      throw new Error(
+        result.error ??
+          'Unable to start subscription checkout.',
+      )
+    }
+
+    window.location.assign(result.url)
+  } catch (error) {
+    console.error(
+      'Unable to start academy subscription checkout:',
+      error,
+    )
+
+    setAcademyPlanError(
+      error instanceof Error
+        ? error.message
+        : 'Unable to start subscription checkout.',
+    )
+
+    setSelectingPlan('')
+  }
+}
+
   function handleChoosePlan(planId: string) {
     if (!studentId || !subjectId) {
       router.push('/parent/students')
@@ -211,16 +360,156 @@ setLoadingStudent(false)
   }
 
   function handleChangeSubject() {
-    if (!studentId) {
-      router.push('/parent/students')
-      return
-    }
-
-    router.push(`/subjects?studentId=${studentId}`)
+  if (!studentId) {
+    router.push('/parent/students')
+    return
   }
 
+  router.push(`/subjects?studentId=${studentId}`)
+}
+
+if (isAcademyPricing) {
   return (
     <main className="pricingPage">
+      <section className="hero">
+        <p className="eyebrow">
+          Fountain Prep Academies
+        </p>
+
+        <h1>
+          One subscription. Every academy.
+        </h1>
+
+        <p className="heroSubtitle">
+          Start free, then unlock complete courses,
+          assessments, certificates, and advanced
+          professional pathways.
+        </p>
+
+        <div className="heroBadges">
+          <span>✓ Free introductory learning</span>
+          <span>✓ Cancel anytime</span>
+          <span>✓ Secure payment through Stripe</span>
+        </div>
+      </section>
+
+      <section className="plansSection">
+        {loadingAcademyPlans ? (
+          <div className="warningBox">
+            <div>
+              <h3>Loading academy plans...</h3>
+              <p>
+                Preparing the available subscription options.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {academyPlanError ? (
+          <div className="warningBox">
+            <div>
+              <h3>Unable to load academy plans</h3>
+              <p role="alert">{academyPlanError}</p>
+            </div>
+          </div>
+        ) : null}
+
+        {!loadingAcademyPlans && !academyPlanError ? (
+          <div className="plansGrid">
+            {academyPlans.map((plan) => {
+              const isFree = plan.id === 'free'
+
+              const price = isFree
+                ? 'Free'
+                : `£${(plan.priceGbpPence / 100).toFixed(2)}`
+
+              return (
+                <article
+                  key={plan.id}
+                  className={`planCard ${
+                    plan.id === 'premium_individual'
+                      ? 'featuredPlan'
+                      : ''
+                  }`}
+                >
+                  <div className="planTag">
+                    {isFree
+                      ? 'Start here'
+                      : plan.id === 'premium_individual'
+                        ? 'Most popular'
+                        : 'Full access'}
+                  </div>
+
+                  <h2>{plan.name}</h2>
+
+                  <div className="priceBlock">
+                    <p className="price">{price}</p>
+
+                    <p className="priceSub">
+                      {isFree
+                        ? 'No payment required'
+                        : 'per month'}
+                    </p>
+                  </div>
+
+                  <p className="planDesc">
+                    {plan.description}
+                  </p>
+
+                  <div className="planDetails">
+                    <p>
+                      <strong>Learners:</strong>{' '}
+                      {plan.includedLearnerCount ?? 'Flexible'}
+                    </p>
+
+                    <p>
+                      <strong>Access:</strong>{' '}
+                      {plan.accessTier}
+                    </p>
+
+                    <p>
+                      <strong>Certificates:</strong>{' '}
+                      {plan.certificateAccess
+                        ? 'Included'
+                        : 'Not included'}
+                    </p>
+
+                    {plan.marketplaceDiscountPercent > 0 ? (
+                      <p>
+                        <strong>Live tutor discount:</strong>{' '}
+                        {plan.marketplaceDiscountPercent}%
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="chooseButton"
+                    disabled={Boolean(selectingPlan)}
+                    onClick={() =>
+                      void handleChooseAcademyPlan(plan.id)
+                    }
+                  >
+                    {selectingPlan === plan.id
+                      ? 'Opening secure checkout...'
+                      : isFree
+                        ? 'Start learning free'
+                        : `Choose ${plan.name}`}
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        ) : null}
+      </section>
+
+      <style jsx>{pricingStyles}</style>
+    </main>
+  )
+}
+
+return (
+  <main className="pricingPage">
       {hasBookingContext ? (
         <BookingJourney
           currentStep={3}
