@@ -23,6 +23,11 @@ import type {
   TutorStatus,
 } from "../types/academy";
 
+import {
+  canAccessAcademyTier,
+  type AcademySubscriptionAccess,
+} from "../services/subscriptionAccess";
+
 import type {
   SelectedAcademyLearner,
 } from "./useSelectedLearner";
@@ -32,6 +37,7 @@ type ListeningPurpose = "opening" | "step-answer";
 type UseAcademyClassroomInput = {
   academyId: NonLanguageAcademyId;
   learner: SelectedAcademyLearner | null;
+  subscriptionAccess: AcademySubscriptionAccess | null;
 };
 
 const DEFAULT_LEARNER_NAME = "Learner";
@@ -172,6 +178,7 @@ function poseForStepKind(
 export function useAcademyClassroom({
   academyId,
   learner,
+  subscriptionAccess,
 }: UseAcademyClassroomInput) {
   const learnerId = learner?.id ?? "demo-learner";
   const learnerAgeGroup = learner?.ageGroup ?? "adult";
@@ -179,6 +186,19 @@ export function useAcademyClassroom({
   const course = getStarterCourse(academyId);
   const isAgeEligible =
   course.ageGroups.includes(learnerAgeGroup);
+  const requiredAccessTier =
+  course.accessTier ?? "free";
+
+const availableAccessTier =
+  subscriptionAccess?.learnerCovered
+    ? subscriptionAccess.plan.accessTier
+    : "free";
+
+const isCourseAccessible =
+  canAccessAcademyTier(
+    availableAccessTier,
+    requiredAccessTier,
+  );
 
   const [progress, setProgress] = useState<AcademyProgress>(() =>
   createInitialProgress(academyId, learnerId)
@@ -1416,6 +1436,9 @@ export function useAcademyClassroom({
   academy,
   course,
   isAgeEligible,
+  isCourseAccessible,
+  requiredAccessTier,
+  availableAccessTier,
     unit,
     lesson,
     step,

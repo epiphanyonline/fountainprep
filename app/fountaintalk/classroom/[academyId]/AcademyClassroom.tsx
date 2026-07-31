@@ -16,6 +16,10 @@ import {
   useSelectedLearner,
 } from "../../hooks/useSelectedLearner";
 
+import {
+  useAcademySubscription,
+} from "../../hooks/useAcademySubscription";
+
 import type {
   AyoPose,
   NonLanguageAcademyId,
@@ -83,15 +87,25 @@ export default function AcademyClassroom({
   error: learnerError,
 } = useSelectedLearner(studentId);
 
+const {
+  access: subscriptionAccess,
+  loading: subscriptionLoading,
+  error: subscriptionError,
+} = useAcademySubscription(studentId);
+
   const classroom = useAcademyClassroom({
   academyId,
   learner,
+  subscriptionAccess,
 });
 
   const {
     academy,
     course,
     isAgeEligible,
+    isCourseAccessible,
+requiredAccessTier,
+availableAccessTier,
     unit,
     lesson,
     step,
@@ -254,6 +268,41 @@ if (learnerError || !learner) {
   );
 }
 
+if (subscriptionLoading) {
+  return (
+    <main className="classroom-loading">
+      <div className="loading-mark">
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <strong>Checking academy access</strong>
+
+      <p>
+        Confirming the learner’s subscription and free lesson access...
+      </p>
+    </main>
+  );
+}
+
+if (subscriptionError || !subscriptionAccess) {
+  return (
+    <main className="classroom-loading">
+      <strong>Unable to confirm academy access</strong>
+
+      <p role="alert">
+        {subscriptionError ??
+          "Subscription access could not be loaded."}
+      </p>
+
+      <Link href="/pricing" className="topbar-link">
+        View academy plans
+      </Link>
+    </main>
+  );
+}
+
 if (!isAgeEligible) {
   return (
     <main className="classroom-loading">
@@ -269,6 +318,30 @@ if (!isAgeEligible) {
 
       <Link href="/subjects" className="topbar-link">
         Choose another academy
+      </Link>
+    </main>
+  );
+}
+
+if (!isCourseAccessible) {
+  return (
+    <main className="classroom-loading">
+      <strong>This course requires an upgrade</strong>
+
+      <p>
+        {course.title} requires the {requiredAccessTier} tier.
+        This learner currently has {availableAccessTier} access.
+      </p>
+
+      <Link
+        href={
+          studentId
+            ? `/pricing?studentId=${encodeURIComponent(studentId)}&product=academies`
+            : "/pricing?product=academies"
+        }
+        className="topbar-link"
+      >
+        View subscription plans
       </Link>
     </main>
   );
