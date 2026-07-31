@@ -98,28 +98,59 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session =
+  event.data.object as Stripe.Checkout.Session;
 
-        // Some delayed payment methods complete Checkout before funds are paid.
-        // Stripe later sends checkout.session.async_payment_succeeded.
-        if (session.payment_status === "paid") {
-          await confirmPaidBookingGroup(session);
-        }
+if (
+  session.metadata?.payment_type ===
+  "academy_subscription"
+) {
+  await confirmAcademySubscription(session);
+  break;
+}
+
+// Some delayed payment methods complete Checkout before funds are paid.
+// Stripe later sends checkout.session.async_payment_succeeded.
+if (session.payment_status === "paid") {
+  await confirmPaidBookingGroup(session);
+}
         break;
       }
 
       case "checkout.session.async_payment_succeeded": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        await confirmPaidBookingGroup(session);
-        break;
-      }
+  const session =
+    event.data.object as Stripe.Checkout.Session;
+
+  if (
+    session.metadata?.payment_type ===
+    "academy_subscription"
+  ) {
+    await confirmAcademySubscription(session);
+    break;
+  }
+
+  await confirmPaidBookingGroup(session);
+  break;
+}
 
       case "checkout.session.expired":
-      case "checkout.session.async_payment_failed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        await failUnpaidBookingGroup(session);
-        break;
-      }
+case "checkout.session.async_payment_failed": {
+  const session =
+    event.data.object as Stripe.Checkout.Session;
+
+  if (
+    session.metadata?.payment_type ===
+    "academy_subscription"
+  ) {
+    await failAcademySubscriptionCheckout(
+      session,
+    );
+    break;
+  }
+
+  await failUnpaidBookingGroup(session);
+  break;
+}
 
       default:
         break;
@@ -129,6 +160,178 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     console.error("Stripe webhook processing error:", error);
     return new NextResponse("Webhook handler failed", { status: 500 });
+  }
+}
+
+async function confirmAcademySubscription(
+  session: Stripe.Checkout.Session,
+) {
+  const userId = session.metadata?.user_id;
+  const planId = session.metadata?.plan_id;
+  const studentId =
+    session.metadata?.student_id || null;
+
+  if (!userId || !planId) {
+    throw new Error(
+      `Academy checkout session ${session.id} is missing subscription metadata.`,
+    );
+  }
+
+  const stripeSubscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id;
+
+  if (!stripeSubscriptionId) {
+    throw new Error(
+      `Academy checkout session ${session.id} is missing a Stripe subscription.`,
+    );
+  }
+
+  const subscription =
+    await stripe.subscriptions.retrieve(
+      stripeSubscriptionId,
+    );
+
+  const stripeCustomerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
+
+  const subscriptionItem =
+    subscription.items.data[0];
+
+  const currentPeriodStart =
+    subscriptionItem?.current_period_start
+      ? new Date(
+          subscriptionItem.current_period_start *
+            1000,
+        ).toISOString()
+      : null;
+
+  const currentPeriodEnd =
+    subscriptionItem?.current_period_end
+      ? new Date(
+          subscriptionItem.current_period_end *
+            1000,
+        ).toISOString()
+      : null;
+
+  const trialStartedAt =
+    subscription.trial_start
+      ? new Date(
+          subscription.trial_start * 1000,
+        ).toISOString()
+      : null;
+
+  const trialEndsAt =
+    subscription.trial_end
+      ? new Date(
+          subscription.trial_end * 1000,
+        ).toISOString()
+      : null;
+
+  const {
+    data: academySubscription,
+    error: updateError,
+  } = await supabaseAdmin
+    .from("academy_subscriptions")
+    .update({
+      plan_id: planId,
+      status: mapStripeSubscriptionStatus(
+        subscription.status,
+      ),
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id:
+        subscription.id,
+      current_period_start:
+        currentPeriodStart,
+      current_period_end: currentPeriodEnd,
+      trial_started_at: trialStartedAt,
+      trial_ends_at: trialEndsAt,
+      cancel_at_period_end:
+        subscription.cancel_at_period_end,
+      updated_at: new Date().toISOString(),
+    })
+    .eq(
+      "stripe_checkout_session_id",
+      session.id,
+    )
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  if (!academySubscription) {
+    throw new Error(
+      `Academy subscription record was not found for Checkout Session ${session.id}.`,
+    );
+  }
+
+  if (studentId) {
+    const {
+      error: learnerError,
+    } = await supabaseAdmin
+      .from(
+        "academy_subscription_learners",
+      )
+      .upsert(
+        {
+          subscription_id:
+            academySubscription.id,
+          student_id: studentId,
+        },
+        {
+          onConflict:
+            "subscription_id,student_id",
+          ignoreDuplicates: true,
+        },
+      );
+
+    if (learnerError) {
+      throw learnerError;
+    }
+  }
+}
+
+function mapStripeSubscriptionStatus(
+  status: Stripe.Subscription.Status,
+):
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "paused"
+  | "cancelled"
+  | "incomplete"
+  | "expired" {
+  switch (status) {
+    case "trialing":
+      return "trialing";
+
+    case "active":
+      return "active";
+
+    case "past_due":
+    case "unpaid":
+      return "past_due";
+
+    case "paused":
+      return "paused";
+
+    case "canceled":
+      return "cancelled";
+
+    case "incomplete":
+      return "incomplete";
+
+    case "incomplete_expired":
+      return "expired";
+
+    default:
+      return "incomplete";
   }
 }
 
@@ -211,6 +414,28 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
   await ensureLessonSessions(groupBookings);
   await ensureLessonReminders(groupBookings);
   await sendBookingConfirmationEmails(session, payment, groupBookings);
+}
+
+async function failAcademySubscriptionCheckout(
+  session: Stripe.Checkout.Session,
+) {
+  const {
+    error,
+  } = await supabaseAdmin
+    .from("academy_subscriptions")
+    .update({
+      status: "expired",
+      updated_at: new Date().toISOString(),
+    })
+    .eq(
+      "stripe_checkout_session_id",
+      session.id,
+    )
+    .eq("status", "incomplete");
+
+  if (error) {
+    throw error;
+  }
 }
 
 async function failUnpaidBookingGroup(session: Stripe.Checkout.Session) {
