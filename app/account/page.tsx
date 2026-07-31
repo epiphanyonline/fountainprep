@@ -21,6 +21,11 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [message, setMessage] = useState('Loading...')
   const [copied, setCopied] = useState(false)
+  const [managingBilling, setManagingBilling] =
+  useState(false)
+
+const [billingError, setBillingError] =
+  useState<string | null>(null)
 
   useEffect(() => {
     async function loadAccount() {
@@ -86,6 +91,60 @@ setProfile({
       setCopied(false)
     }, 1500)
   }
+
+  async function handleManageBilling() {
+  try {
+    setManagingBilling(true)
+    setBillingError(null)
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session?.access_token) {
+      router.push('/login')
+      return
+    }
+
+    const response = await fetch(
+      '/api/stripe/academy-customer-portal',
+      {
+        method: 'POST',
+        headers: {
+          Authorization:
+            `Bearer ${session.access_token}`,
+        },
+      },
+    )
+
+    const result = (await response.json()) as {
+      url?: string
+      error?: string
+    }
+
+    if (!response.ok || !result.url) {
+      throw new Error(
+        result.error ??
+          'Unable to open subscription management.',
+      )
+    }
+
+    window.location.assign(result.url)
+  } catch (error) {
+    console.error(
+      'Unable to open academy billing portal:',
+      error,
+    )
+
+    setBillingError(
+      error instanceof Error
+        ? error.message
+        : 'Unable to open subscription management.',
+    )
+
+    setManagingBilling(false)
+  }
+}
 
   function dashboardLink() {
   if (!profile) return '/'
@@ -228,23 +287,49 @@ function roleLabel() {
           </div>
 
           <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              flexWrap: 'wrap',
-              marginTop: 28,
-            }}
-          >
-            <Link href={dashboardLink()} className="btn-primary">
-              {profile.account_type === 'ADULT_LEARNER'
-  ? 'Go to My Learning'
-  : 'Go to Dashboard'}
-            </Link>
+  style={{
+    display: 'flex',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginTop: 28,
+  }}
+>
+  <Link href={dashboardLink()} className="btn-primary">
+    {profile.account_type === 'ADULT_LEARNER'
+      ? 'Go to My Learning'
+      : 'Go to Dashboard'}
+  </Link>
 
-            <button onClick={handleLogout} className="btn-secondary">
-              Logout
-            </button>
-          </div>
+  {profile.role === 'PARENT' ? (
+    <button
+      type="button"
+      onClick={() => void handleManageBilling()}
+      className="btn-secondary"
+      disabled={managingBilling}
+    >
+      {managingBilling
+        ? 'Opening Billing...'
+        : 'Manage Academy Subscription'}
+    </button>
+  ) : null}
+
+  <button onClick={handleLogout} className="btn-secondary">
+    Logout
+  </button>
+</div>
+
+{billingError ? (
+  <p
+    role="alert"
+    style={{
+      marginTop: 14,
+      color: '#b91c1c',
+      fontWeight: 700,
+    }}
+  >
+    {billingError}
+  </p>
+) : null}          
         </section>
 
         {profile.role === 'ADMIN' ? (
