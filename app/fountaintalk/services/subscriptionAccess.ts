@@ -33,6 +33,7 @@ export type AcademySubscriptionAccess = {
   learnerCovered: boolean;
   currentPeriodEnd: string | null;
   trialEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 type SubscriptionPlanRow = {
@@ -55,6 +56,7 @@ type SubscriptionRow = {
   status: AcademySubscriptionAccess["status"];
   current_period_end: string | null;
   trial_ends_at: string | null;
+  cancel_at_period_end: boolean;
 };
 
 function mapPlan(
@@ -93,24 +95,32 @@ export async function getAcademySubscriptionAccess(
 
   if (!user) {
     return {
-      plan: freePlan,
-      status: "inactive",
-      subscriptionId: null,
-      learnerCovered: studentId === null,
-      currentPeriodEnd: null,
-      trialEndsAt: null,
-    };
+  plan: freePlan,
+  status: "inactive",
+  subscriptionId: null,
+  learnerCovered: studentId === null,
+  currentPeriodEnd: null,
+  trialEndsAt: null,
+  cancelAtPeriodEnd: false,
+};
   }
 
   const {
-    data: subscription,
-    error: subscriptionError,
-  } = await supabase
-    .from("academy_subscriptions")
-    .select(
-      "id, plan_id, status, current_period_end, trial_ends_at",
-    )
-    .eq("user_id", user.id)
+  data: subscription,
+  error: subscriptionError,
+} = await supabase
+  .from("academy_subscriptions")
+  .select(
+    `
+      id,
+      plan_id,
+      status,
+      current_period_end,
+      trial_ends_at,
+      cancel_at_period_end
+    `,
+  )
+  .eq("user_id", user.id)
     .in("status", [
       "trialing",
       "active",
@@ -126,13 +136,14 @@ export async function getAcademySubscriptionAccess(
 
   if (!subscription) {
     return {
-      plan: freePlan,
-      status: "inactive",
-      subscriptionId: null,
-      learnerCovered: Boolean(studentId),
-      currentPeriodEnd: null,
-      trialEndsAt: null,
-    };
+  plan: freePlan,
+  status: "inactive",
+  subscriptionId: null,
+  learnerCovered: Boolean(studentId),
+  currentPeriodEnd: null,
+  trialEndsAt: null,
+  cancelAtPeriodEnd: false,
+};
   }
 
   const subscriptionRow =
@@ -163,14 +174,16 @@ export async function getAcademySubscriptionAccess(
   }
 
   return {
-    plan,
-    status: subscriptionRow.status,
-    subscriptionId: subscriptionRow.id,
-    learnerCovered,
-    currentPeriodEnd:
-      subscriptionRow.current_period_end,
-    trialEndsAt: subscriptionRow.trial_ends_at,
-  };
+  plan,
+  status: subscriptionRow.status,
+  subscriptionId: subscriptionRow.id,
+  learnerCovered,
+  currentPeriodEnd:
+    subscriptionRow.current_period_end,
+  trialEndsAt: subscriptionRow.trial_ends_at,
+  cancelAtPeriodEnd:
+    subscriptionRow.cancel_at_period_end,
+};
 }
 
 export async function getAcademyPlans(): Promise<
