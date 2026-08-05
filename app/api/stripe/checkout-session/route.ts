@@ -35,6 +35,8 @@ type BookingRow = {
   status: string
   payment_status: string
   amount_gbp: number | null
+  standard_amount_gbp: number | null
+  marketplace_discount_percent: number | null
   parent_booking_group_id: string | null
   booking_frequency: string | null
 }
@@ -250,7 +252,7 @@ async function getOwnedBooking(bookingId: string, userId: string) {
   const { data, error } = await supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
     )
     .eq('id', bookingId)
     .eq('parent_id', userId)
@@ -264,7 +266,7 @@ async function getOwnedBookingGroup(anchor: BookingRow, userId: string) {
   let query = supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
     )
     .eq('parent_id', userId)
 
@@ -380,16 +382,53 @@ function validateCheckoutGroup(
   }
 
   const storedAmount = bookings.reduce(
-    (sum, booking) => sum + Number(booking.amount_gbp || 0),
-    0
-  )
+  (sum, booking) => sum + Number(booking.amount_gbp || 0),
+  0
+)
 
-  if (positiveAmountRows !== 1 || Math.abs(storedAmount - expectedAmount) > 0.005) {
-    return {
-      ok: false,
-      error: 'The booking total does not match the selected plan. Please recreate it.',
-    }
+const storedStandardAmount = bookings.reduce(
+  (sum, booking) => sum + Number(booking.standard_amount_gbp || 0),
+  0
+)
+
+const discountPercent = Number(
+  bookings.find(
+    (booking) => Number(booking.marketplace_discount_percent || 0) > 0
+  )?.marketplace_discount_percent || 0
+)
+
+if (
+  !Number.isFinite(discountPercent) ||
+  discountPercent < 0 ||
+  discountPercent > 100
+) {
+  return {
+    ok: false,
+    error: 'The booking contains an invalid academy discount.',
   }
+}
 
-  return { ok: true, amount: expectedAmount }
+if (
+  positiveAmountRows !== 1 ||
+  Math.abs(storedStandardAmount - expectedAmount) > 0.005
+) {
+  return {
+    ok: false,
+    error: 'The booking standard total does not match the selected plan. Please recreate it.',
+  }
+}
+
+const expectedDiscountedAmount =
+  Math.round(
+    expectedAmount * (1 - discountPercent / 100) * 100
+  ) / 100
+
+if (Math.abs(storedAmount - expectedDiscountedAmount) > 0.005) {
+  return {
+    ok: false,
+    error: 'The booking discount total is invalid. Please recreate it.',
+  }
+}
+
+return { ok: true, amount: expectedDiscountedAmount }
 }

@@ -166,9 +166,23 @@ export async function POST(req: Request) {
     await validateLearningLevels(seedSlots, student.learning_level_id, subject.category)
 
     const plan = plans[planId]
-    const totalLessons = plan.weeks * requiredSlotCount
-    const totalAmount = totalLessons * plan.pricePerLesson
-    const tutorId = seedSlots[0].tutor_id
+const totalLessons = plan.weeks * requiredSlotCount
+
+const standardTotal =
+  totalLessons * plan.pricePerLesson
+
+const marketplaceDiscountPercent =
+  await getMarketplaceDiscountPercent(
+    user.id,
+    studentId
+  )
+
+const totalAmount = roundMoney(
+  standardTotal *
+    (1 - marketplaceDiscountPercent / 100)
+)
+
+const tutorId = seedSlots[0].tutor_id
 
     const occurrences = seedSlots.flatMap((seed, seedIndex) =>
       Array.from({ length: plan.weeks }, (_, weekIndex) => ({
@@ -245,7 +259,13 @@ export async function POST(req: Request) {
         status: 'PENDING_PAYMENT',
         payment_status: 'UNPAID',
         amount_gbp:
-          occurrence.seedIndex === 0 && occurrence.weekIndex === 0 ? totalAmount : 0,
+  occurrence.seedIndex === 0 && occurrence.weekIndex === 0 ? totalAmount : 0,
+standard_amount_gbp:
+  occurrence.seedIndex === 0 && occurrence.weekIndex === 0 ? standardTotal : 0,
+marketplace_discount_percent:
+  occurrence.seedIndex === 0 && occurrence.weekIndex === 0
+    ? marketplaceDiscountPercent
+    : 0,
         meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${occurrence.seedIndex + 1}-${occurrence.weekIndex + 1}`,
         booking_frequency: frequency,
         repeat_weeks: plan.weeks,
@@ -256,7 +276,9 @@ export async function POST(req: Request) {
     const { data: insertedBookings, error: insertError } = await supabaseAdmin
       .from('lesson_bookings')
       .insert(bookingRows)
-      .select('id, amount_gbp')
+      .select(
+  'id, amount_gbp, standard_amount_gbp, marketplace_discount_percent'
+)
 
     if (insertError) {
       if (insertError.code === '23505') {
@@ -310,11 +332,13 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      bookingId: paymentBooking.id,
-      bookingGroupId,
-      totalLessons,
-      totalAmount,
-    })
+  bookingId: paymentBooking.id,
+  bookingGroupId,
+  totalLessons,
+  standardTotal,
+  marketplaceDiscountPercent,
+  totalAmount,
+})
   } catch (error: unknown) {
     if (error instanceof RequestError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
@@ -339,6 +363,68 @@ async function authenticateRequest(req: Request) {
   const { data, error } = await supabaseAdmin.auth.getUser(accessToken)
   if (error || !data.user) return null
   return data.user
+}
+
+async function getMarketplaceDiscountPercent(
+  userId: string,
+  studentId: string
+): Promise<number> {
+  const { data: subscription, error: subscriptionError } =
+    await supabaseAdmin
+      .from('academy_subscriptions')
+      .select('id, plan_id')
+      .eq('user_id', userId)
+      .in('status', ['trialing', 'active'])
+      .maybeSingle()
+
+  if (subscriptionError) {
+    throw subscriptionError
+  }
+
+  if (!subscription) {
+    return 0
+  }
+
+  const { data: learnerAssignment, error: learnerError } =
+    await supabaseAdmin
+      .from('academy_subscription_learners')
+      .select('student_id')
+      .eq('subscription_id', subscription.id)
+      .eq('student_id', studentId)
+      .maybeSingle()
+
+  if (learnerError) {
+    throw learnerError
+  }
+
+  if (!learnerAssignment) {
+    return 0
+  }
+
+  const { data: subscriptionPlan, error: planError } =
+    await supabaseAdmin
+      .from('academy_subscription_plans')
+      .select('marketplace_discount_percent')
+      .eq('id', subscription.plan_id)
+      .maybeSingle()
+
+  if (planError) {
+    throw planError
+  }
+
+  const discount = Number(
+    subscriptionPlan?.marketplace_discount_percent ?? 0
+  )
+
+  if (!Number.isFinite(discount) || discount <= 0) {
+    return 0
+  }
+
+  return Math.min(discount, 100)
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100
 }
 
 async function validateSlotSubjects(seedSlots: SlotRow[], requestedName: string) {

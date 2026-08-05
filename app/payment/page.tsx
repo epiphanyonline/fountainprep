@@ -22,6 +22,8 @@ type BookingRow = {
   status: string
   payment_status: string
   amount_gbp: number | null
+  standard_amount_gbp: number | null
+marketplace_discount_percent: number | null
   booking_frequency: string | null
   repeat_weeks: number | null
   parent_booking_group_id: string | null
@@ -91,7 +93,7 @@ function PaymentContent() {
       const { data: bookingRow, error } = await supabase
         .from('lesson_bookings')
         .select(
-          'id, parent_id, student_id, subject_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, booking_frequency, repeat_weeks, parent_booking_group_id'
+          'id, parent_id, student_id, subject_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, booking_frequency, repeat_weeks, parent_booking_group_id'
         )
         .eq('id', bookingId)
         .eq('parent_id', user.id)
@@ -156,6 +158,28 @@ function PaymentContent() {
       0
     )
   }, [booking, groupBookings])
+
+  const standardAmount = useMemo(() => {
+  const directStandard = Number(booking?.standard_amount_gbp || 0)
+  if (directStandard > 0) return directStandard
+
+  return groupBookings.reduce(
+    (sum, item) => sum + Number(item.standard_amount_gbp || 0),
+    0
+  )
+}, [booking, groupBookings])
+
+const discountPercent = Number(
+  booking?.marketplace_discount_percent || 0
+)
+
+const discountAmount =
+  standardAmount > amount
+    ? Math.round((standardAmount - amount) * 100) / 100
+    : 0
+
+const hasSubscriptionDiscount =
+  discountPercent > 0 && discountAmount > 0
 
   const totalLessons = groupBookings.length || 1
 
@@ -322,11 +346,31 @@ function PaymentContent() {
           <p className="eyebrow">Amount Due</p>
 
           <div className="amountBox">
-            <span>Total package</span>
-            <strong>£{amount}</strong>
-            <p>{totalLessons} private 1-to-1 lesson{totalLessons > 1 ? 's' : ''}</p>
-            <small>Charged securely in GBP</small>
-          </div>
+  <span>Total package</span>
+
+  {hasSubscriptionDiscount ? (
+    <>
+      <p>
+        Standard price: <s>£{standardAmount.toFixed(2)}</s>
+      </p>
+      <p>
+        Academy subscriber discount: {discountPercent}% off
+      </p>
+      <p>
+        You save: £{discountAmount.toFixed(2)}
+      </p>
+    </>
+  ) : null}
+
+  <strong>£{amount.toFixed(2)}</strong>
+
+  <p>
+    {totalLessons} private 1-to-1 lesson
+    {totalLessons > 1 ? 's' : ''}
+  </p>
+
+  <small>Charged securely in GBP</small>
+</div>
 
           <div className="secureBox">
             <strong>Secure payment</strong>
@@ -343,7 +387,9 @@ function PaymentContent() {
             disabled={saving || amount <= 0}
             className="primaryBtn"
           >
-            {saving ? 'Preparing Payment...' : `Pay £${amount} Securely`}
+            {saving
+  ? 'Preparing Payment...'
+  : `Pay £${amount.toFixed(2)} Securely`}
           </button>
 
           <Link href="/parent/dashboard" className="secondaryBtn full">
