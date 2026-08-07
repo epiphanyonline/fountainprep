@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import Navbar from "./components/Navbar";
+import RouteChrome from "./components/RouteChrome";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
@@ -69,7 +69,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navbar />
+        <RouteChrome />
         {children}
         <Analytics />
       </body>

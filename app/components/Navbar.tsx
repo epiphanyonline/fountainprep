@@ -137,11 +137,13 @@ export default function Navbar() {
   }
 
   const publicLinks = [
-    { label: "Home", href: "/" },
-    { label: "Subjects", href: "/subjects" },
-    { label: "Become a Tutor", href: "/signup/tutor" },
-    { label: "Login", href: "/login" },
-  ];
+  { label: "Home", href: "/" },
+  { label: "AI Academies", href: "/fountaintalk" },
+  { label: "Live Tutors", href: "/subjects" },
+  { label: "Pricing", href: "/pricing?product=academies" },
+  { label: "Become a Tutor", href: "/signup/tutor" },
+  { label: "Login", href: "/login" },
+];
 
   const isAdultLearner =
     profile?.role === "PARENT" && profile.account_type === "ADULT_LEARNER";
@@ -150,22 +152,27 @@ export default function Navbar() {
     profile?.role === "PARENT" && profile.account_type !== "ADULT_LEARNER";
 
   const authedLinks = isAdultLearner
-    ? [
-        { label: "My Learning", href: "/learner/dashboard" },
-        { label: "Account", href: "/account" },
-      ]
-    : [
-        ...(profile?.role === "PARENT"
-          ? [{ label: "My Children", href: "/parent/students" }]
-          : []),
+  ? [
+      { label: "AI Academies", href: "/fountaintalk" },
+      { label: "Live Tutors", href: "/subjects" },
+      { label: "My Learning", href: "/learner/dashboard" },
+      { label: "Account", href: "/account" },
+    ]
+  : [
+      { label: "AI Academies", href: "/fountaintalk" },
+      { label: "Live Tutors", href: "/subjects" },
 
-        ...(profile?.role === "TUTOR"
-          ? [{ label: "Availability", href: "/tutor/availability" }]
-          : []),
+      ...(profile?.role === "PARENT"
+        ? [{ label: "My Children", href: "/parent/students" }]
+        : []),
 
-        { label: "Dashboard", href: dashboardHref() },
-        { label: "Account", href: "/account" },
-      ];
+      ...(profile?.role === "TUTOR"
+        ? [{ label: "Availability", href: "/tutor/availability" }]
+        : []),
+
+      { label: "Dashboard", href: dashboardHref() },
+      { label: "Account", href: "/account" },
+    ];
 
   const links = loading ? [] : profile ? authedLinks : publicLinks;
 
@@ -322,7 +329,7 @@ export default function Navbar() {
 
           {!loading && (!profile || isParentAccount) ? (
             <Link href="/start" className="nav-btn nav-btn-primary">
-              Start Booking
+              Book a Live Tutor
             </Link>
           ) : null}
         </nav>
@@ -374,7 +381,7 @@ export default function Navbar() {
 
             {!loading && (!profile || isParentAccount) ? (
               <Link href="/start" className="mobile-link primary">
-                Start Booking
+                Book a Live Tutor
               </Link>
             ) : null}
           </div>

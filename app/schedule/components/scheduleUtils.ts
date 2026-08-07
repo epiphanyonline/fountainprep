@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import type { SafeTutor, Slot, SubjectRow, TutorProfile } from './ScheduleTypes'
+import { LANGUAGE_NAMES } from "../../config/languages";
 
 export const FIRST_LESSON_NOTICE_HOURS = 72
 export const DEFAULT_TIMEZONE = 'Europe/London'
@@ -31,7 +32,7 @@ export const subjectLabels: Record<string, string> = {
   hausa: 'Hausa',
 }
 
-export const languageNames = ['yoruba', 'igbo', 'hausa']
+export const languageNames = LANGUAGE_NAMES;
 export const mathsNames = ['maths', 'mathematics']
 
 export async function resolveSubject(subjectIdParam: string): Promise<{

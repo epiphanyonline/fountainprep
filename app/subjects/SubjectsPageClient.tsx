@@ -16,6 +16,7 @@ type Student = {
 
 type LearningLevel = {
   id: string;
+  code: string;
   name: string;
   uk_equivalent: string | null;
   us_canada_equivalent: string | null;
@@ -121,6 +122,26 @@ const catalogueSubjects = [
     taught:
       "Greetings, numbers, basic vocabulary, pronunciation, simple sentences, songs, and cultural context.",
   },
+  {
+  name: "French",
+  category: "Language",
+  benefit:
+    "Builds practical communication skills in one of the world's most widely learned languages.",
+  childImprovement:
+    "Learners develop confidence understanding and using everyday French words, phrases and conversations.",
+  taught:
+    "Greetings, vocabulary, pronunciation, listening, grammar, simple sentences, conversation and cultural context.",
+},
+  {
+  name: "Mandarin",
+  category: "Language",
+  benefit:
+    "Builds confidence in one of the world's most widely spoken languages through practical communication.",
+  childImprovement:
+    "Learners develop confidence recognising Mandarin sounds, using everyday expressions, and communicating in simple situations.",
+  taught:
+    "Greetings, numbers, everyday vocabulary, tones, pronunciation, listening, simple sentences, characters, and cultural context.",
+},
 ];
 
 function toSubjectSlug(value: string) {
@@ -220,67 +241,95 @@ export default function SubjectsPageClient() {
           return;
         }
 
-        if (!studentRow.learning_level_id) {
-          setMessage("This child has not been mapped to a learning level yet.");
-          setLoading(false);
-          return;
-        }
-
-        selectedLearningLevelId = studentRow.learning_level_id;
+        selectedLearningLevelId = studentRow.learning_level_id ?? null;
         setStudent(studentRow as Student);
 
-        const { data: levelRow } = await supabase
-          .from("learning_levels")
-          .select(
-            "id, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match",
-          )
-          .eq("id", studentRow.learning_level_id)
-          .maybeSingle();
+        if (studentRow.learning_level_id) {
+  const { data: levelRow } = await supabase
+    .from("learning_levels")
+    .select(
+      "id, code, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match",
+    )
+    .eq("id", studentRow.learning_level_id)
+    .maybeSingle();
 
-        setLevel((levelRow ?? null) as LearningLevel | null);
+  setLevel((levelRow ?? null) as LearningLevel | null);
+} else {
+  setLevel(null);
+}
       }
 
-      let query = supabase
-        .from("subject_programs")
-        .select(
-          `
-          id,
-          title,
-          description,
-          what_will_be_taught,
-          learning_outcomes,
-          duration_minutes,
-          subject_id,
-          learning_level_id,
-          subjects (
-            id,
-            name,
-            category
-          ),
-          learning_levels (
-            id,
-            name,
-            uk_equivalent,
-            us_canada_equivalent,
-            nigeria_teacher_match
-          )
-        `,
-        )
-        .eq("is_active", true)
-        .order("title", { ascending: true });
+      const { data: allProgramRows, error: programError } = await supabase
+  .from("subject_programs")
+  .select(
+    `
+      id,
+      title,
+      description,
+      what_will_be_taught,
+      learning_outcomes,
+      duration_minutes,
+      subject_id,
+      learning_level_id,
+      subjects (
+        id,
+        name,
+        category
+      ),
+      learning_levels (
+  id,
+  code,
+  name,
+  uk_equivalent,
+  us_canada_equivalent,
+  nigeria_teacher_match
+)
+    `,
+  )
+  .eq("is_active", true)
+  .order("title", { ascending: true });
 
-      if (selectedLearningLevelId) {
-        query = query.eq("learning_level_id", selectedLearningLevelId);
-      }
+if (programError) {
+  setMessage(programError.message);
+  setLoading(false);
+  return;
+}
 
-      const { data: programRows, error: programError } = await query;
+const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
+  const subject = Array.isArray(row.subjects)
+    ? row.subjects[0]
+    : row.subjects;
 
-      if (programError) {
-        setMessage(programError.message);
-        setLoading(false);
-        return;
-      }
+  const learningLevel = Array.isArray(row.learning_levels)
+    ? row.learning_levels[0]
+    : row.learning_levels;
 
+  const category = String(subject?.category ?? "").toLowerCase();
+  const levelCode = String(learningLevel?.code ?? "").toUpperCase();
+
+  const isLanguageProgramme = category === "language";
+  const isExamProgramme = category === "exam_prep";
+  const isDigitalProgramme = category === "skill";
+
+  if (isLanguageProgramme) {
+    return levelCode === "ALL_AGES";
+  }
+
+  if (isExamProgramme) {
+    return levelCode === "ALL_AGES";
+  }
+
+  if (isDigitalProgramme && levelCode === "ALL_AGES") {
+    return true;
+  }
+
+  if (!selectedLearningLevelId) {
+    return false;
+  }
+
+  return row.learning_level_id === selectedLearningLevelId;
+});
+      
       const cleanPrograms = ((programRows ?? []) as any[]).map((row) => ({
         ...row,
         subjects: Array.isArray(row.subjects)
@@ -351,11 +400,11 @@ export default function SubjectsPageClient() {
 
   function categoryLabel(category?: string | null) {
     if (category === "academic") return "Core Academic";
-    if (category === "language") return "African Language";
+    if (category === "Language") return "Language Academy";
     if (category === "skill") return "Creative Skill";
 
     if (category === "Academic") return "Core Academic";
-    if (category === "Language") return "African Language";
+    if (category === "Language") return "Language Academy";
     if (category === "Skill") return "Creative Skill";
 
     return category || "Learning Area";
@@ -367,7 +416,7 @@ export default function SubjectsPageClient() {
     if (normalised === "all") return "All Learning Areas";
     if (normalised === "academic") return "Core Academics";
     if (normalised === "skill") return "Creative Skills";
-    if (normalised === "language") return "African Languages";
+    if (normalised === "language") return "Language Academy";
 
     return category;
   }
@@ -382,7 +431,7 @@ export default function SubjectsPageClient() {
     if (normalised === "skill")
       return "Coding, Music and confidence-building skills";
     if (normalised === "language")
-      return "Yoruba, Igbo, Hausa and cultural connection";
+      return "Yoruba, Igbo, Hausa, French, Mandarin and global communication";
 
     return "Explore this learning pathway";
   }
@@ -419,7 +468,7 @@ export default function SubjectsPageClient() {
             <h1 className="page-title hero-title">
               {personalised
                 ? `Choose a learning area for ${student?.full_name}`
-                : "Learning areas designed to help children grow"}
+                : "Learning pathways designed for every stage of growth"}
             </h1>
 
             <p className="page-subtitle hero-copy">
@@ -530,7 +579,7 @@ export default function SubjectsPageClient() {
             <div>
               <p className="hero-kicker">Learning pathways</p>
               <h2 className="section-heading">
-                Choose the type of support your child needs
+                Choose a learning pathway
               </h2>
             </div>
 

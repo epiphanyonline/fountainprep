@@ -44,6 +44,7 @@ const supabaseAdmin = createClient(
 type RequestBody = {
   planId?: string;
   studentId?: string | null;
+  academyId?: string | null;
 };
 
 type PlanRow = {
@@ -74,6 +75,14 @@ export async function POST(req: Request) {
     const planId = body.planId?.trim();
     const studentId =
       body.studentId?.trim() || null;
+
+      const academyId =
+  body.academyId?.trim() || null;
+
+const academyQuery =
+  academyId === "wealth"
+    ? "&academy=wealth"
+    : "";
 
     if (!planId) {
       return NextResponse.json(
@@ -155,20 +164,24 @@ export async function POST(req: Request) {
         client_reference_id: user.id,
 
         success_url:
-          `${normalisedAppUrl()}` +
-          `/fountaintalk?subscription=success` +
-          `&session_id={CHECKOUT_SESSION_ID}` +
-          (studentId
-            ? `&studentId=${encodeURIComponent(studentId)}`
-            : ""),
+  `${normalisedAppUrl()}` +
+  (academyId === "wealth"
+    ? `/fountaintalk/classroom/wealth?subscription=success`
+    : `/fountaintalk?subscription=success`) +
+  `&session_id={CHECKOUT_SESSION_ID}` +
+  academyQuery +
+  (studentId
+    ? `&studentId=${encodeURIComponent(studentId)}`
+    : ""),
 
         cancel_url:
-          `${normalisedAppUrl()}` +
-          `/pricing?product=academies` +
-          `&subscription=cancelled` +
-          (studentId
-            ? `&studentId=${encodeURIComponent(studentId)}`
-            : ""),
+  `${normalisedAppUrl()}` +
+  `/pricing?product=academies` +
+  `&subscription=cancelled` +
+  academyQuery +
+  (studentId
+    ? `&studentId=${encodeURIComponent(studentId)}`
+    : ""),
 
         line_items: [
           {
@@ -183,6 +196,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           plan_id: plan.id,
           student_id: studentId || "",
+academy_id: academyId || "",
         },
 
         subscription_data: {
@@ -192,6 +206,7 @@ export async function POST(req: Request) {
             user_id: user.id,
             plan_id: plan.id,
             student_id: studentId || "",
+academy_id: academyId || "",
           },
         },
       });

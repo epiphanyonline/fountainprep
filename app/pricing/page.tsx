@@ -104,6 +104,7 @@ function PricingContent() {
   const subjectId = searchParams.get('subjectId')
   const programId = searchParams.get('programId')
   const product = searchParams.get('product')
+  const academyId = searchParams.get('academy')
 const isAcademyPricing = product === 'academies'
 
   const [student, setStudent] = useState<Student | null>(null)
@@ -140,20 +141,7 @@ const [academyPlanError, setAcademyPlanError] =
 
     try {
       setLoadingAcademyPlans(true)
-      setAcademyPlanError(null)
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        const returnUrl = new URLSearchParams()
-
-        returnUrl.set('redirectTo', window.location.pathname + window.location.search)
-
-        router.push(`/login?${returnUrl.toString()}`)
-        return
-      }
+      setAcademyPlanError(null)      
 
       const plans = await getAcademyPlans()
 
@@ -306,9 +294,10 @@ async function handleChooseAcademyPlan(
             `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          planId,
-          studentId,
-        }),
+  planId,
+  studentId,
+  academyId,
+}),
       },
     )
 

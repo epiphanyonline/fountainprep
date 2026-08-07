@@ -2,6 +2,8 @@ import type {
   CurriculumCourse,
   CurriculumLesson,
   CurriculumUnit,
+  LearnerLevel,
+  SupportedLanguage,
 } from "@/app/types/fountaintalk";
 
 import type {
@@ -13,6 +15,28 @@ import type {
 export type FountainTalkContentRegistry = {
   courses: CurriculumCourse[];
 };
+
+type RegistryDefaults = {
+  language: SupportedLanguage;
+  level: LearnerLevel;
+};
+
+function getRegistryDefaults(
+  registry: FountainTalkContentRegistry,
+): RegistryDefaults {
+  const course = registry.courses[0];
+
+  if (!course) {
+    throw new Error(
+      "The selected language curriculum does not contain a course.",
+    );
+  }
+
+  return {
+    language: course.language,
+    level: course.level,
+  };
+}
 
 function findExistingLesson(
   registry: FountainTalkContentRegistry,
@@ -27,9 +51,7 @@ function findExistingLesson(
             episode.title.trim().toLowerCase(),
       );
 
-      if (lesson) {
-        return lesson;
-      }
+      if (lesson) return lesson;
     }
   }
 
@@ -42,10 +64,7 @@ function findFallbackLesson(
   for (const course of registry.courses) {
     for (const unit of course.units) {
       const lesson = unit.lessons[0];
-
-      if (lesson) {
-        return lesson;
-      }
+      if (lesson) return lesson;
     }
   }
 
@@ -56,80 +75,53 @@ function mapEpisodeToLesson(
   episode: Episode,
   registry: FountainTalkContentRegistry,
 ): CurriculumLesson | null {
-  const existingLesson =
-    findExistingLesson(registry, episode);
+  const existingLesson = findExistingLesson(registry, episode);
 
   if (existingLesson) {
     return {
       ...existingLesson,
       id: episode.id,
       title: episode.title,
-      objective:
-        episode.objective ??
-        existingLesson.objective,
-      steps: existingLesson.steps.map(
-        (step, index) => ({
-          ...step,
-          id: `${episode.id}-step-${index + 1}`,
-        }),
-      ),
+      objective: episode.objective ?? existingLesson.objective,
+      steps: existingLesson.steps.map((step, index) => ({
+        ...step,
+        id: `${episode.id}-step-${index + 1}`,
+      })),
     };
   }
 
-  const fallbackLesson =
-    findFallbackLesson(registry);
-
-  if (!fallbackLesson) {
-    return null;
-  }
+  const fallbackLesson = findFallbackLesson(registry);
+  if (!fallbackLesson) return null;
 
   return {
     ...fallbackLesson,
     id: episode.id,
     title: episode.title,
-    objective:
-      episode.objective ??
-      `Complete the ${episode.title} lesson.`,
-    steps: fallbackLesson.steps.map(
-      (step, index) => ({
-        ...step,
-        id: `${episode.id}-step-${index + 1}`,
-      }),
-    ),
+    objective: episode.objective ?? `Complete the ${episode.title} lesson.`,
+    steps: fallbackLesson.steps.map((step, index) => ({
+      ...step,
+      id: `${episode.id}-step-${index + 1}`,
+    })),
   };
 }
 
 function mapCollectionToUnit(
-  collection: EpisodeCollection & {
-    episodes: Episode[];
-  },
+  collection: EpisodeCollection & { episodes: Episode[] },
   registry: FountainTalkContentRegistry,
+  defaults: RegistryDefaults,
   unitNumber: number,
 ): CurriculumUnit {
   const lessons = collection.episodes
-    .map((episode) =>
-      mapEpisodeToLesson(
-        episode,
-        registry,
-      ),
-    )
-    .filter(
-      (
-        lesson,
-      ): lesson is CurriculumLesson =>
-        lesson !== null,
-    );
+    .map((episode) => mapEpisodeToLesson(episode, registry))
+    .filter((lesson): lesson is CurriculumLesson => lesson !== null);
 
   return {
     id: collection.id,
-    language:
-      lessons[0]?.language ?? "yoruba",
-    level:
-      lessons[0]?.level ?? "foundation",
+    language: lessons[0]?.language ?? defaults.language,
+    level: lessons[0]?.level ?? defaults.level,
     unitNumber,
     title: collection.title,
-    description:
-      collection.description ?? "",
+    description: collection.description ?? "",
     lessons,
   };
 }
@@ -138,28 +130,25 @@ export function adaptLearningPathToFountainTalkCourse(
   path: JourneyLearningPath,
   registry: FountainTalkContentRegistry,
 ): CurriculumCourse {
+  const defaults = getRegistryDefaults(registry);
+
   const units = path.collections
-  .map((collection, index) =>
-    mapCollectionToUnit(
-      collection,
-      registry,
-      index + 1,
-    ),
-  )
-  .filter(
-    (unit) => unit.lessons.length > 0,
-  )
-  .map((unit, index) => ({
-    ...unit,
-    unitNumber: index + 1,
-  }));
+    .map((collection, index) =>
+      mapCollectionToUnit(collection, registry, defaults, index + 1),
+    )
+    .filter((unit) => unit.lessons.length > 0)
+    .map((unit, index) => ({ ...unit, unitNumber: index + 1 }));
+
+  if (units.length === 0) {
+    throw new Error(
+      `No lessons could be mapped for the ${defaults.language} learning path.`,
+    );
+  }
 
   return {
     id: path.journey.id,
-    language:
-      units[0]?.language ?? "yoruba",
-    level:
-      units[0]?.level ?? "foundation",
+    language: units[0]?.language ?? defaults.language,
+    level: units[0]?.level ?? defaults.level,
     title: path.journey.title,
     description: "",
     proficiencyCode: "A0",
@@ -171,9 +160,7 @@ export function adaptLearningPathToFountainTalkCourse(
       (courseTotal, unit) =>
         courseTotal +
         unit.lessons.reduce(
-          (unitTotal, lesson) =>
-            unitTotal +
-            lesson.completionPoints,
+          (unitTotal, lesson) => unitTotal + lesson.completionPoints,
           0,
         ),
       0,

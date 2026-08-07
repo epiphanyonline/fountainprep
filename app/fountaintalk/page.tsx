@@ -108,7 +108,9 @@ function LearnWithAyoHomeContent() {
             <div className="orbit-chip chip-maths">➗ <span>Maths</span></div>
             <div className="orbit-chip chip-code">💻 <span>Coding</span></div>
             <div className="orbit-chip chip-music">🎵 <span>Music</span></div>
-            <div className="orbit-chip chip-wealth">💰 <span>Wealth</span></div>
+            <div className="orbit-chip chip-wealth">
+  💰 <span>Financial Literacy</span>
+</div>
             <div className="orbit-chip chip-values">⚖️ <span>Values</span></div>
           </div>
         </section>
@@ -155,7 +157,9 @@ function LearnWithAyoHomeContent() {
                   href={
   studentId
     ? `${academy.href}?studentId=${encodeURIComponent(studentId)}`
-    : academy.href
+    : academy.id === "wealth"
+      ? "/academies/financial-literacy"
+      : academy.href
 }
                   key={academy.id}
                   className={`academy-card ${index === 0 ? "academy-wide" : ""}`}
@@ -171,7 +175,13 @@ function LearnWithAyoHomeContent() {
                     <p>{academy.tagline}</p>
                   </div>
                   <div className="academy-card-footer">
-                    <span>Enter classroom</span>
+                    <span>
+  {studentId
+    ? "Enter classroom"
+    : academy.id === "wealth"
+      ? "View academy"
+      : "Explore academy"}
+</span>
                     <strong>→</strong>
                   </div>
                 </Link>

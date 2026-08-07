@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import {
+  LANGUAGE_NAMES,
+  LANGUAGES,
+} from "../../config/languages";
+import {
   addCalendarDays,
   dateKeyInTimezone,
   resolveViewerTimezone,
@@ -55,17 +59,17 @@ const timezoneOptions = [
 ]
 
 const currentLaunchSubjects = [
-  'Maths',
-  'English',
-  'Science',
-  'Coding',
-  'Music',
-  'Yoruba',
-  'Igbo',
-  'Hausa',
+  "Maths",
+  "English",
+  "Science",
+  "Coding",
+  "Music",
+  ...LANGUAGES.map((language) => language.name),
 ]
 
-const languageSubjects = ['yoruba', 'igbo', 'hausa']
+const languageSubjectNames = LANGUAGES.map(
+  (language) => language.name,
+);
 
 const days = [
   { key: 'monday', label: 'Monday', jsDay: 1, group: 'weekday' },
@@ -137,8 +141,8 @@ export default function TutorAvailabilityPage() {
 
   const selectedSubject = subjects.find((subject) => subject.id === subjectId)
   const isLanguageSubject = selectedSubject
-    ? languageSubjects.includes(selectedSubject.name.toLowerCase())
-    : false
+  ? LANGUAGE_NAMES.includes(selectedSubject.name.toLowerCase())
+  : false
 
   const allAgesLevel = levels.find(
     (level) =>

@@ -3,245 +3,313 @@
 import Link from "next/link";
 import SupportWidget from "./components/SupportWidget";
 
-const trustItems = [
-  "African language specialists",
-  "Academic excellence",
-  "Progress reports after every lesson",
-  "Learn from anywhere",
+const academies = [
+  {
+    title: "Mathematics",
+    text: "Build number confidence, problem-solving skills and strong foundations.",
+    icon: "➗",
+    href: "/fountaintalk/classroom/mathematics",
+    tone: "blue",
+  },
+  {
+    title: "Coding",
+    text: "Learn logic, websites, games and practical software development.",
+    icon: "💻",
+    href: "/fountaintalk/classroom/coding",
+    tone: "indigo",
+  },
+  {
+    title: "AI",
+    text: "Understand artificial intelligence and use it confidently for learning and work.",
+    icon: "🤖",
+    href: "/fountaintalk/classroom/ai",
+    tone: "purple",
+  },
+  {
+  title: "Financial Literacy",
+  text: "Develop practical saving, budgeting, investing and money-management skills.",
+  icon: "💰",
+  href: "/academies/financial-literacy",
+  tone: "gold",
+},
+  {
+    title: "IELTS Preparation",
+    text: "Strengthen reading, writing, speaking and listening for IELTS success.",
+    icon: "🎓",
+    href: "/fountaintalk/classroom/ielts",
+    tone: "red",
+  },
+  {
+    title: "Data Analysis",
+    text: "Investigate data, discover insights and communicate evidence clearly.",
+    icon: "📊",
+    href: "/fountaintalk/classroom/data-analysis",
+    tone: "sky",
+  },
+  {
+    title: "Articulation",
+    text: "Speak with clarity, confidence, strong pronunciation and expression.",
+    icon: "🎙️",
+    href: "/fountaintalk/classroom/articulation",
+    tone: "orange",
+  },
+  {
+    title: "Music",
+    text: "Explore rhythm, melody, notation and confident musical expression.",
+    icon: "🎵",
+    href: "/fountaintalk/classroom/music",
+    tone: "pink",
+  },
 ];
 
-const features = [
+const platformBenefits = [
   {
-    icon: "👨‍🏫",
-    title: "Private one-to-one lessons",
-    text: "No crowded group classes. Every lesson is focused on one child, one tutor and one learning goal.",
+    icon: "🧠",
+    title: "AI-guided learning",
+    text: "Learners move through structured lessons with guidance, explanations and activities adapted to their stage.",
+  },
+  {
+    icon: "👩‍🏫",
+    title: "Live tutor support",
+    text: "Book private one-to-one lessons when a learner needs human explanation, encouragement or deeper support.",
   },
   {
     icon: "📈",
-    title: "Progress parents can see",
-    text: "Parents receive clearer updates on what was taught, what improved and what the next lesson will focus on.",
+    title: "Progress in one place",
+    text: "Academy learning, tutor sessions and learner progress remain connected across the Fountain Prep platform.",
   },
   {
-    icon: "🧭",
-    title: "Structured learning",
-    text: "Lessons follow clear learning pathways, so tutoring feels purposeful rather than random.",
-  },
-  {
-    icon: "🌍",
-    title: "Learn from anywhere",
-    text: "Children can learn online with experienced tutors wherever your family lives.",
+    icon: "👨‍👩‍👧‍👦",
+    title: "Built for families and adults",
+    text: "Parents can manage multiple learners, while adult learners can study independently through their own account.",
   },
 ];
 
-const steps = [
+const journeySteps = [
   {
     number: "01",
-    title: "Create or log in to your parent account",
-    text: "Your booking stays connected to one secure parent account from start to finish.",
+    title: "Choose a learner",
+    text: "Create a learner profile or select an existing learner from your account.",
   },
   {
     number: "02",
-    title: "Add or choose your child",
-    text: "Tell us their age and school level so we can show suitable learning options.",
+    title: "Enter an academy",
+    text: "Choose from Mathematics, Coding, AI, Financial Literacy and more.",
   },
   {
     number: "03",
-    title: "Choose a subject and plan",
-    text: "Select the support they need and choose one or two private lessons each week.",
+    title: "Learn with AYO",
+    text: "Complete structured lessons, activities and guided classroom experiences.",
   },
   {
     number: "04",
-    title: "Choose a tutor and timetable",
-    text: "Pick the first lesson date. The same day and time then repeats weekly.",
-  },
-  {
-    number: "05",
-    title: "Review and pay securely",
-    text: "Check the full booking summary before continuing to secure Stripe checkout.",
-  },
-  {
-    number: "06",
-    title: "See lessons and progress",
-    text: "The confirmed timetable and learning updates appear in your parent dashboard.",
+    title: "Add live support",
+    text: "Book a private tutor whenever the learner needs additional help.",
   },
 ];
 
-const languagePaths = [
-  {
-    title: "Yoruba",
-    text: "Help your child speak confidently with family and stay connected to their roots.",
-  },
-  {
-    title: "Igbo",
-    text: "Build vocabulary, pronunciation and cultural confidence through private lessons.",
-  },
-  {
-    title: "Hausa",
-    text: "Develop practical communication skills with experienced language tutors.",
-  },
-];
-
-const academicSubjects = ["Maths", "English", "Science", "Coding", "Music"];
-
-const promiseItems = [
-  "One-to-one teaching",
-  "Lesson attendance",
-  "Homework support",
-  "Progress report",
-  "Next lesson objectives",
-  "Parent updates",
+const trustItems = [
+  "Structured academy curricula",
+  "Private live tutoring",
+  "Learner progress tracking",
+  "Secure family accounts",
 ];
 
 export default function HomePage() {
   return (
-    <main className="fp-page">
-      <section className="fp-hero">
-        <div className="fp-hero-copy">
-          <div className="fp-pill">
+    <main className="homePage">
+      <section className="hero">
+        <div className="heroCopy">
+          <div className="productPill">
             <span />
-            Premium one-to-one online tutoring
+            AI academies and live tutoring in one platform
           </div>
 
-          <h1>The learning partner for families around the world.</h1>
+          <h1>
+            Learn independently.
+            <span>Get human support when it matters.</span>
+          </h1>
 
-          <p className="fp-lead">
-            Connecting children to their language, culture and academic success
-            through premium one-to-one online tutoring.
+          <p className="heroLead">
+            Fountain Prep combines AI-guided academies, structured learning
+            pathways and private live tutors to help children and adults build
+            knowledge, confidence and practical skills.
           </p>
 
-          <div className="fp-actions">
-            <Link href="/start" className="fp-primary">
-              Start Booking
+          <div className="heroActions">
+            <Link href="/fountaintalk" className="primaryButton">
+              Explore AI Academies
             </Link>
 
-            <Link href="/subjects" className="fp-secondary">
-              Browse Subjects First
+            <Link href="/start" className="secondaryButton">
+              Book a Live Tutor
             </Link>
           </div>
 
-          <div className="fp-trust">
+          <div className="trustRow">
             {trustItems.map((item) => (
-              <div key={item}>✓ {item}</div>
+              <span key={item}>✓ {item}</span>
             ))}
           </div>
         </div>
 
-        <div className="fp-hero-image-wrap">
-          <img
-            src="/yoruba-tutoring.png"
-            alt="Child learning online with a private tutor"
-            className="fp-hero-image"
-          />
+        <div className="heroVisual">
+          <div className="learningCard mainLearningCard">
+            <div className="cardTop">
+              <span className="cardIcon">🤖</span>
+              <small>Learn with AYO</small>
+            </div>
 
-          <div className="fp-float fp-float-top">
-            <strong>1-to-1 lesson</strong>
-            <span>No crowded group class</span>
+            <h2>Your learning world</h2>
+            <p>
+              Move from numbers to code, communication to money skills, all
+              through one connected learning experience.
+            </p>
+
+            <div className="academyChips">
+              <span>➗ Maths</span>
+              <span>💻 Coding</span>
+              <span>🤖 AI</span>
+              <span>💰 Finance</span>
+            </div>
+
+            <Link href="/fountaintalk">Choose an academy →</Link>
           </div>
 
-          <div className="fp-float fp-float-bottom">
-            <strong>Parent update</strong>
-            <span>Know what your child learned</span>
+          <div className="floatingCard tutorCard">
+            <strong>Live tutor support</strong>
+            <span>Private one-to-one lessons when extra help is needed.</span>
+          </div>
+
+          <div className="floatingCard progressCard">
+            <strong>Progress that follows you</strong>
+            <span>Academy learning and tutor support in one place.</span>
           </div>
         </div>
       </section>
 
-      <section className="fp-choice">
-        <div className="fp-section-head centered">
-          <p>Start here</p>
-          <h2>What would you like your child to learn today?</h2>
+      <section className="pathSection">
+        <div className="sectionHeading centered">
+          <p>Two connected ways to learn</p>
+          <h2>Choose independent learning, live support, or both.</h2>
+          <span>
+            Fountain Prep gives every learner a flexible pathway rather than
+            forcing one learning method.
+          </span>
         </div>
 
-        <div className="fp-choice-grid">
-          <article className="fp-choice-card">
-            <div className="fp-choice-icon">🌍</div>
-            <h3>African Languages</h3>
+        <div className="pathGrid">
+          <article className="pathCard academyPath">
+            <div className="pathIcon">🤖</div>
+            <p className="eyebrow">AI-powered learning</p>
+            <h3>Learn with AYO Academies</h3>
             <p>
-              Preserve your family’s language and culture through engaging
-              private lessons.
+              Follow structured lessons, activities and guided classroom
+              experiences across academic, career and life-skill subjects.
             </p>
 
-            <div className="fp-mini-list">
-              <span>Yoruba</span>
-              <span>Igbo</span>
-              <span>Hausa</span>
-            </div>
+            <ul>
+              <li>Learn at your own pace</li>
+              <li>Access multiple academies</li>
+              <li>Track learner progress</li>
+              <li>Study from anywhere</li>
+            </ul>
 
-            <em>More African languages coming soon.</em>
-
-            <Link href="/subjects?category=Language" className="fp-card-link">
-              Explore African Languages →
+            <Link href="/fountaintalk" className="cardButton">
+              Explore Academies
             </Link>
           </article>
 
-          <article className="fp-choice-card">
-            <div className="fp-choice-icon">📚</div>
-            <h3>Academic Subjects</h3>
+          <article className="pathCard tutorPath">
+            <div className="pathIcon">👩‍🏫</div>
+            <p className="eyebrow">Human learning support</p>
+            <h3>Book a Live Tutor</h3>
             <p>
-              Build confidence and improve school performance with structured
-              private tutoring.
+              Schedule private online lessons with a tutor for focused support,
+              explanation, confidence-building and accountability.
             </p>
 
-            <div className="fp-mini-list">
-              <span>Maths</span>
-              <span>English</span>
-              <span>Science</span>
-              <span>Coding</span>
-              <span>Music</span>
-            </div>
+            <ul>
+              <li>Private one-to-one lessons</li>
+              <li>Weekly structured timetables</li>
+              <li>Subject and level matching</li>
+              <li>Academy subscriber discounts</li>
+            </ul>
 
-            <em>More academic subjects coming soon.</em>
+            <Link href="/start" className="cardButton secondary">
+              Start Tutor Booking
+            </Link>
+          </article>
+        </div>
+      </section>
 
+      <section className="academySection">
+        <div className="sectionHeading">
+          <p>Explore the academies</p>
+          <h2>Practical learning for school, work and life.</h2>
+          <span>
+            Begin with one academy or explore several through a single Fountain
+            Prep learner account.
+          </span>
+        </div>
+
+        <div className="academyGrid">
+          {academies.map((academy) => (
             <Link
-              href="/subjects?category=Academic"
-              className="fp-card-link secondary"
+              href={academy.href}
+              key={academy.title}
+              className={`academyCard ${academy.tone}`}
             >
-              Explore Subjects →
+              <div className="academyIcon">{academy.icon}</div>
+              <div>
+                <h3>{academy.title}</h3>
+                <p>{academy.text}</p>
+              </div>
+              <strong>Enter academy →</strong>
             </Link>
-          </article>
+          ))}
+        </div>
+
+        <div className="academyActions">
+          <Link href="/fountaintalk" className="primaryButton">
+            View All Academies
+          </Link>
+
+          <Link
+            href="/pricing?product=academies"
+            className="secondaryButton"
+          >
+            View Academy Plans
+          </Link>
         </div>
       </section>
 
-      <section className="fp-proof">
-        <div>
-          <strong>Private</strong>
-          <span>Every lesson is focused on one child.</span>
-        </div>
-        <div>
-          <strong>Structured</strong>
-          <span>Lessons follow clear learning pathways.</span>
-        </div>
-        <div>
-          <strong>Visible</strong>
-          <span>Parents can follow progress more clearly.</span>
-        </div>
-      </section>
-
-      <section className="fp-section">
-        <div className="fp-section-head">
-          <p>Why parents choose Fountain Prep</p>
-          <h2>Visible value from every private lesson.</h2>
+      <section className="benefitSection">
+        <div className="sectionHeading centered">
+          <p>One connected platform</p>
+          <h2>Designed around the learner, not a single service.</h2>
         </div>
 
-        <div className="fp-feature-grid">
-          {features.map((feature) => (
-            <article className="fp-card" key={feature.title}>
-              <div className="fp-feature-icon">{feature.icon}</div>
-              <h3>{feature.title}</h3>
-              <p>{feature.text}</p>
+        <div className="benefitGrid">
+          {platformBenefits.map((benefit) => (
+            <article key={benefit.title} className="benefitCard">
+              <div>{benefit.icon}</div>
+              <h3>{benefit.title}</h3>
+              <p>{benefit.text}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="fp-section">
-        <div className="fp-section-head centered">
-          <p>Simple parent journey</p>
-          <h2>One clear next step, all the way to payment.</h2>
+      <section className="journeySection">
+        <div className="sectionHeading">
+          <p>How Fountain Prep works</p>
+          <h2>A clear learning journey from first lesson to lasting progress.</h2>
         </div>
 
-        <div className="fp-step-grid">
-          {steps.map((step) => (
-            <article className="fp-step" key={step.number}>
+        <div className="journeyGrid">
+          {journeySteps.map((step) => (
+            <article key={step.number} className="journeyCard">
               <span>{step.number}</span>
               <h3>{step.title}</h3>
               <p>{step.text}</p>
@@ -250,130 +318,88 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="fp-learning-paths">
-        <div className="fp-section-head">
-          <p>Featured learning paths</p>
-          <h2>African languages and academic confidence in one platform.</h2>
-        </div>
-
-        <div className="fp-path-split">
-          <div className="fp-path-panel">
-            <div className="fp-path-top">
-              <span>🌍</span>
-              <div>
-                <h3>African Languages</h3>
-                <p>Available now</p>
-              </div>
-            </div>
-
-            <div className="fp-path-list">
-              {languagePaths.map((item) => (
-                <article key={item.title}>
-                  <strong>{item.title}</strong>
-                  <p>{item.text}</p>
-                  <small>Lessons from £9 per class</small>
-                </article>
-              ))}
-            </div>
-
-            <Link href="/subjects?category=Language" className="fp-wide-link">
-              Explore language lessons →
-            </Link>
-          </div>
-
-          <div className="fp-path-panel">
-            <div className="fp-path-top">
-              <span>📚</span>
-              <div>
-                <h3>Academic Subjects</h3>
-                <p>Structured private support</p>
-              </div>
-            </div>
-
-            <div className="fp-subject-grid">
-              {academicSubjects.map((subject) => (
-                <Link
-                  href={`/subjects?category=${subject === "Coding" || subject === "Music" ? "Skill" : "Academic"}&subject=${encodeURIComponent(subject)}`}
-                  key={subject}
-                  className="fp-subject"
-                >
-                  {subject}
-                </Link>
-              ))}
-            </div>
-
-            <div className="fp-price-note">
-              <strong>Lessons from £9 per class</strong>
-              <span>Private one-to-one lessons with progress visibility.</span>
-            </div>
-
-            <Link
-              href="/subjects?category=Academic"
-              className="fp-wide-link secondary"
-            >
-              Explore academic tutoring →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="fp-value">
+      <section className="familySection">
         <div>
-          <p>The Fountain Prep Promise</p>
-          <h2>Every lesson should give parents confidence.</h2>
+          <p className="eyebrow">Learning that grows with you</p>
+          <h2>One account. Multiple learners. Many possibilities.</h2>
           <span>
-            Parents want to know that tutoring is making a difference. Fountain
-            Prep combines private teaching, curriculum structure and progress
-            visibility so every lesson feels purposeful.
+            Parents can manage academy access for their children, follow
+            progress and add live tutoring when needed. Adult learners can
+            create an independent account and manage their own learning journey.
           </span>
 
-          <div className="fp-promise-grid">
-            {promiseItems.map((item) => (
-              <div key={item}>✓ {item}</div>
-            ))}
+          <div className="familyChecks">
+            <div>✓ Child and adult learner profiles</div>
+            <div>✓ Individual and family academy plans</div>
+            <div>✓ Covered learner management</div>
+            <div>✓ Live-tutor subscriber discounts</div>
           </div>
+
+          <Link
+            href="/pricing?product=academies"
+            className="primaryButton"
+          >
+            Compare Academy Plans
+          </Link>
         </div>
 
-        <div className="fp-report">
-          <div className="fp-report-top">
-            <strong>Lesson progress update</strong>
-            <span>After class</span>
+        <div className="dashboardPreview">
+          <div className="previewHeader">
+            <div>
+              <small>Fountain Prep learner</small>
+              <strong>Learning overview</strong>
+            </div>
+            <span>Active</span>
           </div>
 
-          <div className="fp-report-row">
-            <b>Covered today</b>
-            <span>Reading practice, vocabulary and pronunciation</span>
+          <div className="previewAcademy">
+            <div>
+              <span>🤖</span>
+              <section>
+                <strong>AI Academy</strong>
+                <small>Foundation pathway</small>
+              </section>
+            </div>
+            <b>62%</b>
           </div>
 
-          <div className="fp-report-row">
-            <b>Improved</b>
-            <span>Confidence answering questions</span>
+          <div className="progressTrack">
+            <i />
           </div>
 
-          <div className="fp-report-row">
-            <b>Next focus</b>
-            <span>Fluency and sentence building</span>
+          <div className="previewRows">
+            <div>
+              <span>Current lesson</span>
+              <strong>Understanding intelligent systems</strong>
+            </div>
+            <div>
+              <span>Live support</span>
+              <strong>Tutor booking available</strong>
+            </div>
+            <div>
+              <span>Next step</span>
+              <strong>Continue learning with AYO</strong>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="fp-support-strip">
+      <section className="supportSection">
         <div>
-          <p>Need help before booking?</p>
-          <h2>Use the in-app support chat.</h2>
+          <p className="eyebrow">Need help choosing?</p>
+          <h2>Talk to Fountain Prep support.</h2>
           <span>
-            Parents, tutors and visitors can reach Fountain Prep through the
-            support button on this page. Replies are handled securely through
-            our support inbox.
+            Ask about academies, subscriptions, learner access or live tutoring
+            through the support button on this page.
           </span>
         </div>
 
         <button
           type="button"
-          className="fp-support-hint"
           onClick={() => {
             const supportButton =
               document.querySelector<HTMLButtonElement>(".supportButton");
+
             supportButton?.click();
           }}
         >
@@ -381,850 +407,901 @@ export default function HomePage() {
         </button>
       </section>
 
-      <section className="fp-final">
+      <section className="finalSection">
         <p>Fountain Prep</p>
-        <h2>The learning partner for families around the world.</h2>
+        <h2>A complete learning platform for every stage of life.</h2>
         <span>
-          Whether your goal is preserving your family’s language, strengthening
-          cultural identity or helping your child succeed academically, Fountain
-          Prep is here to support every step of the journey.
+          Learn independently with AI-powered academies, add private tutor
+          support when needed and keep every learner&apos;s progress connected.
         </span>
 
-        <div className="fp-actions centered-actions">
-          <Link href="/start" className="fp-primary">
-            Start Booking
+        <div className="heroActions finalActions">
+          <Link href="/fountaintalk" className="primaryButton">
+            Explore AI Academies
           </Link>
-          <Link href="/subjects" className="fp-secondary">
-            Browse Subjects First
+
+          <Link href="/start" className="secondaryButton">
+            Book a Live Tutor
           </Link>
         </div>
       </section>
 
+      <SupportWidget />
+
       <style jsx global>{`
-        .fp-page {
+        * {
+          box-sizing: border-box;
+        }
+
+        html {
+          scroll-behavior: smooth;
+        }
+
+        .homePage {
           min-height: 100vh;
-          color: #201230;
+          padding: 24px 16px 80px;
+          color: #21152f;
           background:
             radial-gradient(
-              circle at 10% 0%,
-              rgba(124, 58, 237, 0.12),
-              transparent 30%
+              circle at 8% 2%,
+              rgba(124, 58, 237, 0.14),
+              transparent 27%
             ),
             radial-gradient(
-              circle at 90% 6%,
-              rgba(236, 72, 153, 0.08),
-              transparent 28%
+              circle at 92% 6%,
+              rgba(37, 99, 235, 0.1),
+              transparent 25%
             ),
-            linear-gradient(180deg, #fffaff 0%, #fbf7ff 44%, #f5edff 100%);
-          padding: 22px 16px 80px;
+            linear-gradient(180deg, #fdfbff 0%, #f8f4fc 48%, #eee8f6 100%);
           overflow: hidden;
         }
 
-        .fp-hero,
-        .fp-choice,
-        .fp-proof,
-        .fp-section,
-        .fp-learning-paths,
-        .fp-value,
-        .fp-support-strip,
-        .fp-final {
-          width: min(1160px, 100%);
+        .hero,
+        .pathSection,
+        .academySection,
+        .benefitSection,
+        .journeySection,
+        .familySection,
+        .supportSection,
+        .finalSection {
+          width: min(1180px, 100%);
           margin-left: auto;
           margin-right: auto;
         }
 
-        .fp-hero {
+        .hero {
+          min-height: 650px;
           display: grid;
-          grid-template-columns: 0.95fr 1.05fr;
-          gap: 34px;
+          grid-template-columns: 1.02fr 0.98fr;
           align-items: center;
-          padding: 34px;
-          border-radius: 38px;
-          border: 1px solid rgba(124, 58, 237, 0.12);
+          gap: 46px;
+          padding: 54px;
+          border-radius: 42px;
+          border: 1px solid rgba(124, 58, 237, 0.1);
           background:
-            linear-gradient(
-              135deg,
-              rgba(255, 255, 255, 0.98),
-              rgba(249, 244, 255, 0.94)
-            ),
             radial-gradient(
               circle at top right,
-              rgba(124, 58, 237, 0.16),
-              transparent 34%
-            );
-          box-shadow: 0 28px 90px rgba(52, 30, 83, 0.12);
+              rgba(124, 58, 237, 0.12),
+              transparent 38%
+            ),
+            rgba(255, 255, 255, 0.9);
+          box-shadow: 0 32px 100px rgba(55, 31, 86, 0.13);
         }
 
-        .fp-pill {
+        .productPill {
           width: fit-content;
           display: inline-flex;
           align-items: center;
-          gap: 9px;
+          gap: 10px;
           padding: 10px 15px;
           border-radius: 999px;
           color: #6d28d9;
-          background: rgba(124, 58, 237, 0.1);
-          border: 1px solid rgba(124, 58, 237, 0.1);
-          font-size: 14px;
+          background: #f2eaff;
+          font-size: 13px;
           font-weight: 900;
-          margin-bottom: 22px;
         }
 
-        .fp-pill span {
-          width: 10px;
-          height: 10px;
+        .productPill span {
+          width: 9px;
+          height: 9px;
           border-radius: 50%;
-          background: #7c3aed;
-          box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.15);
+          background: #22c55e;
+          box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.13);
         }
 
-        .fp-hero h1,
-        .fp-section h2,
-        .fp-choice h2,
-        .fp-learning-paths h2,
-        .fp-value h2,
-        .fp-support-strip h2,
-        .fp-final h2 {
+        .hero h1,
+        .sectionHeading h2,
+        .familySection h2,
+        .supportSection h2,
+        .finalSection h2 {
           margin: 0;
-          color: #1f1230;
+          color: #20122f;
           font-weight: 950;
-          letter-spacing: -0.055em;
+          letter-spacing: -0.058em;
         }
 
-        .fp-hero h1 {
-          max-width: 670px;
-          font-size: clamp(42px, 5.2vw, 72px);
+        .hero h1 {
+          margin-top: 24px;
+          font-size: clamp(46px, 5.6vw, 76px);
           line-height: 0.96;
         }
 
-        .fp-lead {
-          max-width: 620px;
-          margin: 22px 0 0;
-          color: #655a76;
-          font-size: 17px;
-          line-height: 1.75;
-          font-weight: 520;
+        .hero h1 span {
+          display: block;
+          color: #7c3aed;
         }
 
-        .fp-actions {
+        .heroLead {
+          max-width: 660px;
+          margin: 24px 0 0;
+          color: #6b6174;
+          font-size: 17px;
+          line-height: 1.75;
+        }
+
+        .heroActions,
+        .academyActions {
+          margin-top: 30px;
           display: flex;
           gap: 13px;
           flex-wrap: wrap;
-          margin-top: 28px;
         }
 
-        .fp-primary,
-        .fp-secondary,
-        .fp-card-link,
-        .fp-wide-link {
+        .primaryButton,
+        .secondaryButton,
+        .cardButton {
           min-height: 56px;
-          padding: 0 26px;
-          border-radius: 18px;
+          padding: 0 25px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          border-radius: 18px;
           text-decoration: none;
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 950;
         }
 
-        .fp-primary,
-        .fp-card-link,
-        .fp-wide-link {
-          color: #fff;
+        .primaryButton,
+        .cardButton {
+          color: white;
           background: linear-gradient(135deg, #7c3aed, #5b21b6);
-          box-shadow: 0 18px 42px rgba(109, 40, 217, 0.28);
+          box-shadow: 0 18px 40px rgba(91, 33, 182, 0.25);
         }
 
-        .fp-secondary,
-        .fp-card-link.secondary,
-        .fp-wide-link.secondary {
-          color: #241535;
-          background: #fff;
-          border: 1px solid rgba(124, 58, 237, 0.16);
-          box-shadow: 0 14px 34px rgba(55, 35, 95, 0.06);
+        .secondaryButton,
+        .cardButton.secondary {
+          color: #2d1c3e;
+          background: white;
+          border: 1px solid rgba(124, 58, 237, 0.14);
+          box-shadow: 0 14px 32px rgba(52, 32, 75, 0.07);
         }
 
-        .fp-browse-note {
-          margin: 14px 0 0;
-          color: #6b5b7a;
-          font-size: 14px;
+        .trustRow {
+          margin-top: 25px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .trustRow span {
+          padding: 9px 12px;
+          border-radius: 999px;
+          color: #65596f;
+          background: rgba(255, 255, 255, 0.84);
+          border: 1px solid rgba(124, 58, 237, 0.08);
+          font-size: 12px;
           font-weight: 850;
         }
 
-        .fp-trust {
+        .heroVisual {
+          min-height: 520px;
+          position: relative;
+          display: grid;
+          place-items: center;
+        }
+
+        .learningCard,
+        .floatingCard {
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.94);
+          box-shadow: 0 26px 70px rgba(50, 29, 78, 0.15);
+        }
+
+        .mainLearningCard {
+          width: min(440px, 100%);
+          padding: 32px;
+          border-radius: 34px;
+          position: relative;
+          z-index: 2;
+        }
+
+        .cardTop {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .cardTop small {
+          color: #6d28d9;
+          font-weight: 900;
+        }
+
+        .cardIcon {
+          width: 55px;
+          height: 55px;
+          display: grid;
+          place-items: center;
+          border-radius: 18px;
+          background: #eee7ff;
+          font-size: 28px;
+        }
+
+        .mainLearningCard h2 {
+          margin: 24px 0 0;
+          font-size: 36px;
+          letter-spacing: -0.05em;
+        }
+
+        .mainLearningCard p {
+          margin: 13px 0 0;
+          color: #6c6275;
+          line-height: 1.65;
+        }
+
+        .academyChips {
           margin-top: 22px;
           display: flex;
-          gap: 10px;
+          gap: 9px;
           flex-wrap: wrap;
         }
 
-        .fp-trust div {
-          padding: 10px 13px;
-          border-radius: 999px;
-          color: #574764;
-          background: rgba(255, 255, 255, 0.82);
-          border: 1px solid rgba(124, 58, 237, 0.08);
-          font-size: 13px;
-          font-weight: 850;
+        .academyChips span {
+          padding: 9px 11px;
+          border-radius: 12px;
+          background: #f7f2ff;
+          color: #4c1d95;
+          font-size: 12px;
+          font-weight: 900;
         }
 
-        .fp-hero-image-wrap {
-          position: relative;
-          height: 560px;
-          border-radius: 32px;
-          overflow: hidden;
-          background: #eee7f7;
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          box-shadow: 0 30px 82px rgba(47, 25, 80, 0.19);
-        }
-
-        .fp-hero-image {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-          object-position: center;
-        }
-
-        .fp-hero-image-wrap::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            to top,
-            rgba(25, 14, 38, 0.28),
-            transparent 50%
-          );
-          pointer-events: none;
-        }
-
-        .fp-float {
-          position: absolute;
-          z-index: 2;
-          padding: 14px 16px;
-          border-radius: 20px;
-          background: rgba(255, 255, 255, 0.93);
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          box-shadow: 0 18px 44px rgba(31, 18, 48, 0.18);
-          backdrop-filter: blur(16px);
-        }
-
-        .fp-float strong,
-        .fp-float span {
-          display: block;
-        }
-
-        .fp-float strong {
-          color: #241535;
-          font-size: 14.5px;
+        .mainLearningCard a {
+          margin-top: 24px;
+          display: inline-flex;
+          color: #6d28d9;
+          text-decoration: none;
           font-weight: 950;
         }
 
-        .fp-float span {
-          margin-top: 5px;
-          color: #655a76;
-          font-size: 12.5px;
-          font-weight: 760;
+        .floatingCard {
+          position: absolute;
+          width: 220px;
+          padding: 17px;
+          border-radius: 20px;
+          z-index: 3;
         }
 
-        .fp-float-top {
+        .floatingCard strong,
+        .floatingCard span {
+          display: block;
+        }
+
+        .floatingCard strong {
+          color: #251536;
+          font-size: 14px;
+        }
+
+        .floatingCard span {
+          margin-top: 6px;
+          color: #6d6275;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .tutorCard {
           top: 20px;
-          right: 20px;
+          right: -10px;
         }
 
-        .fp-float-bottom {
-          left: 20px;
-          bottom: 20px;
+        .progressCard {
+          left: -20px;
+          bottom: 28px;
         }
 
-        .fp-choice,
-        .fp-section,
-        .fp-learning-paths {
-          margin-top: 78px;
+        .pathSection,
+        .academySection,
+        .benefitSection,
+        .journeySection,
+        .familySection,
+        .supportSection,
+        .finalSection {
+          margin-top: 82px;
         }
 
-        .fp-section-head {
-          max-width: 780px;
+        .sectionHeading {
+          max-width: 790px;
         }
 
-        .fp-section-head.centered {
+        .sectionHeading.centered {
           text-align: center;
-          margin: 0 auto;
+          margin-left: auto;
+          margin-right: auto;
         }
 
-        .fp-section-head p,
-        .fp-choice p,
-        .fp-learning-paths p,
-        .fp-value p,
-        .fp-support-strip p,
-        .fp-final p {
+        .sectionHeading > p,
+        .eyebrow,
+        .finalSection > p {
           margin: 0 0 10px;
           color: #6d28d9;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        .fp-section h2,
-        .fp-choice h2,
-        .fp-learning-paths h2,
-        .fp-value h2,
-        .fp-support-strip h2,
-        .fp-final h2 {
-          font-size: clamp(34px, 4.3vw, 56px);
-          line-height: 1.04;
+        .sectionHeading h2,
+        .familySection h2,
+        .supportSection h2,
+        .finalSection h2 {
+          font-size: clamp(35px, 4.5vw, 58px);
+          line-height: 1.03;
         }
 
-        .fp-choice-grid {
-          margin-top: 26px;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 18px;
-        }
-
-        .fp-choice-card,
-        .fp-card,
-        .fp-step,
-        .fp-report,
-        .fp-path-panel,
-        .fp-proof div,
-        .fp-value,
-        .fp-support-strip,
-        .fp-final {
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(124, 58, 237, 0.1);
-          box-shadow: 0 18px 48px rgba(55, 35, 95, 0.07);
-        }
-
-        .fp-choice-card {
-          padding: 30px;
-          border-radius: 32px;
-        }
-
-        .fp-choice-icon,
-        .fp-feature-icon {
-          width: 54px;
-          height: 54px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 18px;
-          background: #f3eaff;
-          font-size: 28px;
-          margin-bottom: 18px;
-        }
-
-        .fp-choice-card h3,
-        .fp-path-panel h3 {
-          margin: 0;
-          color: #241535;
-          font-size: 28px;
-          letter-spacing: -0.04em;
-          font-weight: 950;
-        }
-
-        .fp-choice-card p {
-          margin: 12px 0 0;
-          color: #6d647c;
+        .sectionHeading > span {
+          display: block;
+          margin-top: 17px;
+          color: #6d6376;
           font-size: 16px;
           line-height: 1.7;
         }
 
-        .fp-mini-list {
-          margin-top: 18px;
-          display: flex;
-          gap: 9px;
-          flex-wrap: wrap;
+        .pathGrid {
+          margin-top: 28px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
         }
 
-        .fp-mini-list span {
-          padding: 9px 12px;
-          border-radius: 999px;
-          background: #f5efff;
-          color: #4c1d95;
-          font-weight: 900;
-          font-size: 13px;
+        .pathCard {
+          padding: 34px;
+          border-radius: 34px;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.92);
+          box-shadow: 0 20px 55px rgba(54, 32, 82, 0.08);
         }
 
-        .fp-choice-card em {
-          margin-top: 16px;
-          display: block;
-          color: #7a6d85;
-          font-style: normal;
+        .pathIcon {
+          width: 60px;
+          height: 60px;
+          display: grid;
+          place-items: center;
+          margin-bottom: 22px;
+          border-radius: 19px;
+          background: #f0e8ff;
+          font-size: 30px;
+        }
+
+        .pathCard h3 {
+          margin: 0;
+          font-size: 31px;
+          letter-spacing: -0.045em;
+        }
+
+        .pathCard > p:not(.eyebrow) {
+          margin: 14px 0 0;
+          color: #6d6376;
+          line-height: 1.7;
+        }
+
+        .pathCard ul {
+          margin: 22px 0 0;
+          padding: 0;
+          list-style: none;
+          display: grid;
+          gap: 10px;
+        }
+
+        .pathCard li {
+          color: #50445c;
           font-weight: 800;
         }
 
-        .fp-card-link {
+        .pathCard li::before {
+          content: "✓";
+          margin-right: 9px;
+          color: #7c3aed;
+        }
+
+        .cardButton {
           width: 100%;
-          margin-top: 22px;
-        }
-
-        .fp-proof {
-          margin-top: 18px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
-        }
-
-        .fp-proof div {
-          padding: 20px;
-          border-radius: 24px;
-        }
-
-        .fp-proof strong {
-          display: block;
-          font-size: 18px;
-          color: #241535;
-          font-weight: 950;
-        }
-
-        .fp-proof span {
-          display: block;
-          margin-top: 6px;
-          color: #6d647c;
-          line-height: 1.55;
-        }
-
-        .fp-feature-grid {
           margin-top: 26px;
+        }
+
+        .academyGrid {
+          margin-top: 30px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 16px;
         }
 
-        .fp-card,
-        .fp-step {
+        .academyCard {
+          min-height: 255px;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
           border-radius: 28px;
-          padding: 25px;
-        }
-
-        .fp-card h3,
-        .fp-step h3,
-        .fp-report strong {
-          margin: 0;
           color: #241535;
-          font-size: 21px;
-          font-weight: 950;
-          letter-spacing: -0.025em;
+          text-decoration: none;
+          border: 1px solid rgba(124, 58, 237, 0.09);
+          background: rgba(255, 255, 255, 0.93);
+          box-shadow: 0 18px 45px rgba(50, 29, 76, 0.07);
+          transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
         }
 
-        .fp-card p,
-        .fp-step p {
-          margin: 12px 0 0;
-          color: #6d647c;
-          font-size: 15.5px;
-          line-height: 1.68;
+        .academyCard:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 25px 55px rgba(50, 29, 76, 0.12);
         }
 
-        .fp-step-grid {
-          margin-top: 26px;
+        .academyIcon {
+          width: 52px;
+          height: 52px;
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          place-items: center;
+          border-radius: 17px;
+          font-size: 27px;
+          background: #f3edff;
+        }
+
+        .academyCard h3 {
+          margin: 21px 0 0;
+          font-size: 22px;
+          letter-spacing: -0.035em;
+        }
+
+        .academyCard p {
+          margin: 9px 0 0;
+          color: #6c6275;
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .academyCard strong {
+          margin-top: 20px;
+          color: #6d28d9;
+          font-size: 13px;
+        }
+
+        .academyCard.blue .academyIcon {
+          background: #dbeafe;
+        }
+
+        .academyCard.indigo .academyIcon {
+          background: #e0e7ff;
+        }
+
+        .academyCard.purple .academyIcon {
+          background: #ede9fe;
+        }
+
+        .academyCard.gold .academyIcon {
+          background: #fef3c7;
+        }
+
+        .academyCard.red .academyIcon {
+          background: #fee2e2;
+        }
+
+        .academyCard.sky .academyIcon {
+          background: #e0f2fe;
+        }
+
+        .academyCard.orange .academyIcon {
+          background: #ffedd5;
+        }
+
+        .academyCard.pink .academyIcon {
+          background: #fce7f3;
+        }
+
+        .benefitGrid {
+          margin-top: 28px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
           gap: 16px;
         }
 
-        .fp-step span {
-          display: inline-flex;
-          margin-bottom: 18px;
-          color: #6d28d9;
+        .benefitCard {
+          padding: 27px;
+          border-radius: 27px;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 17px 42px rgba(49, 29, 75, 0.07);
+        }
+
+        .benefitCard > div {
+          font-size: 30px;
+        }
+
+        .benefitCard h3 {
+          margin: 18px 0 0;
+          font-size: 21px;
+        }
+
+        .benefitCard p {
+          margin: 11px 0 0;
+          color: #6d6376;
+          line-height: 1.65;
+        }
+
+        .journeyGrid {
+          margin-top: 28px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 15px;
+        }
+
+        .journeyCard {
+          padding: 25px;
+          border-radius: 27px;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.9);
+        }
+
+        .journeyCard > span {
+          color: #7c3aed;
           font-size: 24px;
           font-weight: 950;
         }
 
-        .fp-path-split {
-          margin-top: 26px;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 18px;
-        }
-
-        .fp-path-panel {
-          border-radius: 34px;
-          padding: 28px;
-        }
-
-        .fp-path-top {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          margin-bottom: 20px;
-        }
-
-        .fp-path-top span {
-          width: 54px;
-          height: 54px;
-          border-radius: 18px;
-          background: #f3eaff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 28px;
-        }
-
-        .fp-path-top p {
-          margin: 4px 0 0;
-          color: #6d28d9;
-          font-size: 13px;
-          font-weight: 900;
-        }
-
-        .fp-path-list {
-          display: grid;
-          gap: 12px;
-        }
-
-        .fp-path-list article {
-          padding: 18px;
-          border-radius: 22px;
-          background: #fff;
-          border: 1px solid rgba(124, 58, 237, 0.1);
-        }
-
-        .fp-path-list strong {
-          display: block;
+        .journeyCard h3 {
+          margin: 18px 0 0;
           font-size: 20px;
-          color: #241535;
-          font-weight: 950;
         }
 
-        .fp-path-list p {
-          margin: 8px 0 0;
-          color: #6d647c;
+        .journeyCard p {
+          margin: 10px 0 0;
+          color: #6c6275;
           line-height: 1.6;
-          font-weight: 500;
         }
 
-        .fp-path-list small {
-          display: inline-flex;
-          margin-top: 12px;
-          color: #6d28d9;
-          font-weight: 950;
-          font-size: 13px;
-        }
-
-        .fp-subject-grid {
+        .familySection {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-        }
-
-        .fp-subject {
-          min-height: 54px;
-          display: flex;
+          grid-template-columns: 1fr 0.88fr;
+          gap: 35px;
           align-items: center;
-          justify-content: center;
-          border-radius: 18px;
-          color: #2a1640;
-          background: #fff;
-          text-decoration: none;
-          font-weight: 950;
+          padding: 42px;
+          border-radius: 40px;
           border: 1px solid rgba(124, 58, 237, 0.1);
-          box-shadow: 0 12px 28px rgba(55, 35, 95, 0.05);
-        }
-
-        .fp-price-note {
-          margin-top: 18px;
-          padding: 18px;
-          border-radius: 22px;
-          background: #f7f1ff;
-          border: 1px solid #e5d8ff;
-        }
-
-        .fp-price-note strong,
-        .fp-price-note span {
-          display: block;
-        }
-
-        .fp-price-note span {
-          margin-top: 5px;
-          color: #6d647c;
-        }
-
-        .fp-wide-link {
-          width: 100%;
-          margin-top: 18px;
-        }
-
-        .fp-value {
-          margin-top: 78px;
-          display: grid;
-          grid-template-columns: 1fr 0.9fr;
-          gap: 26px;
-          align-items: center;
-          padding: 38px;
-          border-radius: 38px;
-          background:
-            radial-gradient(
-              circle at top right,
-              rgba(124, 58, 237, 0.14),
-              transparent 34%
-            ),
-            linear-gradient(
-              135deg,
-              rgba(255, 255, 255, 0.96),
-              rgba(246, 239, 255, 0.95)
-            );
-        }
-
-        .fp-value span {
-          display: block;
-          margin-top: 18px;
-          color: #6d647c;
-          font-size: 16.5px;
-          line-height: 1.75;
-        }
-
-        .fp-promise-grid {
-          margin-top: 22px;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-        }
-
-        .fp-promise-grid div {
-          padding: 11px 13px;
-          border-radius: 16px;
-          background: #fff;
-          color: #574764;
-          font-size: 13px;
-          font-weight: 900;
-          border: 1px solid rgba(124, 58, 237, 0.08);
-        }
-
-        .fp-report {
-          border-radius: 28px;
-          padding: 24px;
-        }
-
-        .fp-report-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-          align-items: center;
-          padding-bottom: 16px;
-          border-bottom: 1px solid rgba(124, 58, 237, 0.12);
-        }
-
-        .fp-report-top span {
-          margin: 0;
-          color: #6d28d9;
-          font-size: 13px;
-          font-weight: 900;
-        }
-
-        .fp-report-row {
-          padding-top: 16px;
-        }
-
-        .fp-report-row b {
-          display: block;
-          color: #241535;
-          font-size: 14px;
-        }
-
-        .fp-report-row span {
-          margin-top: 4px;
-          display: block;
-          color: #6d647c;
-          font-size: 14.5px;
-          line-height: 1.55;
-        }
-
-        .fp-support-strip,
-        .fp-final {
-          margin-top: 78px;
-          border-radius: 38px;
-          padding: 38px;
           background:
             radial-gradient(
               circle at top right,
               rgba(124, 58, 237, 0.13),
-              transparent 36%
+              transparent 35%
             ),
-            linear-gradient(135deg, #ffffff, #f5efff);
+            rgba(255, 255, 255, 0.91);
+          box-shadow: 0 25px 70px rgba(50, 29, 77, 0.1);
         }
 
-        .fp-support-strip {
+        .familySection > div > span {
+          display: block;
+          margin-top: 18px;
+          color: #6c6275;
+          line-height: 1.75;
+        }
+
+        .familyChecks {
+          margin: 24px 0;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 11px;
+        }
+
+        .familyChecks div {
+          padding: 12px 14px;
+          border-radius: 15px;
+          background: white;
+          border: 1px solid rgba(124, 58, 237, 0.08);
+          color: #574a61;
+          font-size: 13px;
+          font-weight: 850;
+        }
+
+        .dashboardPreview {
+          padding: 25px;
+          border-radius: 29px;
+          background: white;
+          border: 1px solid rgba(124, 58, 237, 0.11);
+          box-shadow: 0 22px 55px rgba(45, 26, 70, 0.12);
+        }
+
+        .previewHeader,
+        .previewAcademy,
+        .previewRows > div {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .previewHeader small,
+        .previewHeader strong,
+        .previewAcademy small,
+        .previewAcademy strong,
+        .previewRows span,
+        .previewRows strong {
+          display: block;
+        }
+
+        .previewHeader small {
+          color: #84768f;
+        }
+
+        .previewHeader strong {
+          margin-top: 3px;
+          font-size: 18px;
+        }
+
+        .previewHeader > span {
+          padding: 8px 11px;
+          border-radius: 999px;
+          color: #15803d;
+          background: #dcfce7;
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .previewAcademy {
+          margin-top: 25px;
+        }
+
+        .previewAcademy > div {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+        }
+
+        .previewAcademy > div > span {
+          width: 45px;
+          height: 45px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: #ede9fe;
+          font-size: 22px;
+        }
+
+        .previewAcademy small {
+          margin-top: 3px;
+          color: #7d7187;
+        }
+
+        .previewAcademy b {
+          color: #6d28d9;
+        }
+
+        .progressTrack {
+          height: 9px;
+          margin-top: 16px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #eee8f5;
+        }
+
+        .progressTrack i {
+          display: block;
+          width: 62%;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #7c3aed, #2563eb);
+        }
+
+        .previewRows {
+          margin-top: 22px;
+          display: grid;
+          gap: 11px;
+        }
+
+        .previewRows > div {
+          padding: 13px 0;
+          border-top: 1px solid #eee8f4;
+        }
+
+        .previewRows span {
+          color: #817488;
+          font-size: 12px;
+        }
+
+        .previewRows strong {
+          text-align: right;
+          font-size: 13px;
+        }
+
+        .supportSection,
+        .finalSection {
+          padding: 40px;
+          border-radius: 38px;
+          border: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 22px 55px rgba(50, 29, 77, 0.08);
+        }
+
+        .supportSection {
           display: grid;
           grid-template-columns: 1fr auto;
-          gap: 24px;
           align-items: center;
+          gap: 28px;
         }
 
-        .fp-support-strip span {
+        .supportSection span,
+        .finalSection > span {
           display: block;
           margin-top: 16px;
-          color: #6d647c;
+          color: #6c6275;
           font-size: 16px;
           line-height: 1.7;
         }
 
-        .fp-support-hint {
-          border: 0;
+        .supportSection button {
           min-height: 56px;
-          padding: 0 24px;
+          padding: 0 25px;
+          border: 0;
           border-radius: 18px;
-          color: #fff;
+          color: white;
           background: linear-gradient(135deg, #7c3aed, #5b21b6);
-          box-shadow: 0 18px 42px rgba(109, 40, 217, 0.24);
           font-weight: 950;
           cursor: pointer;
-          white-space: nowrap;
         }
 
-        .fp-final {
+        .finalSection {
           text-align: center;
         }
 
-        .fp-final h2 {
-          max-width: 820px;
-          margin: 0 auto;
+        .finalSection h2 {
+          max-width: 850px;
+          margin-left: auto;
+          margin-right: auto;
         }
 
-        .fp-final span {
-          display: block;
-          max-width: 700px;
-          margin: 18px auto 0;
-          color: #6d647c;
-          font-size: 17px;
-          line-height: 1.75;
+        .finalSection > span {
+          max-width: 720px;
+          margin-left: auto;
+          margin-right: auto;
         }
 
-        .centered-actions {
+        .finalActions {
           justify-content: center;
         }
 
-        @media (max-width: 980px) {
-          .fp-page {
-            padding: 14px 10px 64px;
-          }
-
-          .fp-hero {
+        @media (max-width: 1000px) {
+          .hero {
             grid-template-columns: 1fr;
-            padding: 20px;
-            gap: 24px;
-            border-radius: 30px;
+            padding: 28px;
           }
 
-          .fp-hero h1 {
-            font-size: clamp(38px, 10.4vw, 50px);
-            line-height: 1;
-            letter-spacing: -0.058em;
+          .heroVisual {
+            min-height: 470px;
           }
 
-          .fp-lead {
-            font-size: 15.8px;
-            line-height: 1.72;
+          .academyGrid,
+          .benefitGrid,
+          .journeyGrid {
+            grid-template-columns: repeat(2, 1fr);
           }
 
-          .fp-actions {
-            flex-direction: column;
-          }
-
-          .fp-primary,
-          .fp-secondary {
-            width: 100%;
-            min-height: 56px;
-          }
-
-          .fp-trust {
-            display: grid;
+          .familySection {
             grid-template-columns: 1fr;
           }
+        }
 
-          .fp-trust div {
-            text-align: center;
-            border-radius: 16px;
+        @media (max-width: 720px) {
+          .homePage {
+            padding: 14px 10px 60px;
           }
 
-          .fp-hero-image-wrap {
-            height: 365px;
-            border-radius: 26px;
-          }
-
-          .fp-hero-image {
-            object-position: 52% center;
-          }
-
-          .fp-float-top {
-            top: 12px;
-            right: 12px;
-          }
-
-          .fp-float-bottom {
-            left: 12px;
-            right: 12px;
-            bottom: 12px;
-          }
-
-          .fp-choice,
-          .fp-section,
-          .fp-learning-paths,
-          .fp-value,
-          .fp-support-strip,
-          .fp-final {
-            margin-top: 56px;
-          }
-
-          .fp-choice-grid,
-          .fp-proof,
-          .fp-feature-grid,
-          .fp-step-grid,
-          .fp-path-split,
-          .fp-value,
-          .fp-support-strip {
-            grid-template-columns: 1fr;
-          }
-
-          .fp-value,
-          .fp-choice-card,
-          .fp-path-panel,
-          .fp-support-strip,
-          .fp-final {
+          .hero {
+            min-height: auto;
             padding: 24px 20px;
             border-radius: 30px;
           }
 
-          .fp-section h2,
-          .fp-choice h2,
-          .fp-learning-paths h2,
-          .fp-value h2,
-          .fp-support-strip h2,
-          .fp-final h2 {
-            font-size: clamp(31px, 8.6vw, 42px);
-            line-height: 1.06;
+          .hero h1 {
+            font-size: clamp(40px, 11vw, 54px);
           }
 
-          .fp-card,
-          .fp-step,
-          .fp-proof div,
-          .fp-report {
-            border-radius: 24px;
-            padding: 21px;
+          .heroLead {
+            font-size: 15.5px;
           }
 
-          .fp-subject-grid,
-          .fp-promise-grid {
+          .heroActions,
+          .academyActions {
+            flex-direction: column;
+          }
+
+          .primaryButton,
+          .secondaryButton {
+            width: 100%;
+          }
+
+          .trustRow {
+            display: grid;
+          }
+
+          .trustRow span {
+            text-align: center;
+            border-radius: 14px;
+          }
+
+          .heroVisual {
+            min-height: auto;
+            display: block;
+            padding-top: 20px;
+          }
+
+          .mainLearningCard {
+            width: 100%;
+          }
+
+          .floatingCard {
+            position: static;
+            width: 100%;
+            margin-top: 12px;
+          }
+
+          .pathSection,
+          .academySection,
+          .benefitSection,
+          .journeySection,
+          .familySection,
+          .supportSection,
+          .finalSection {
+            margin-top: 58px;
+          }
+
+          .pathGrid,
+          .academyGrid,
+          .benefitGrid,
+          .journeyGrid,
+          .familyChecks,
+          .supportSection {
             grid-template-columns: 1fr;
           }
 
-          .fp-support-hint {
+          .pathCard,
+          .familySection,
+          .supportSection,
+          .finalSection {
+            padding: 25px 20px;
+            border-radius: 30px;
+          }
+
+          .sectionHeading h2,
+          .familySection h2,
+          .supportSection h2,
+          .finalSection h2 {
+            font-size: clamp(32px, 9vw, 43px);
+          }
+
+          .academyCard {
+            min-height: 230px;
+          }
+
+          .previewRows > div {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .previewRows strong {
+            text-align: left;
+          }
+
+          .supportSection button {
             width: 100%;
           }
         }
-
-        @media (max-width: 380px) {
-          .fp-hero h1 {
-            font-size: 36px;
-          }
-
-          .fp-hero-image-wrap {
-            height: 335px;
-          }
-        }
       `}</style>
-
-      <SupportWidget />
     </main>
   );
 }
