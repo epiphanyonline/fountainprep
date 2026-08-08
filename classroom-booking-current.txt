@@ -1,6 +1,6 @@
  'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
@@ -265,7 +265,18 @@ export default function ClassroomPage() {
 
   return () => window.clearInterval(timer)
 }, [classroomStatus, classroomStartedAt])
-  
+
+  const jitsiSrc = useMemo(() => {
+    if (!booking?.meeting_link) return ''
+
+    try {
+      const url = new URL(booking.meeting_link)
+      return `${url.origin}${url.pathname}#config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.startWithAudioMuted=false&config.startWithVideoMuted=false&interfaceConfig.SHOW_JITSI_WATERMARK=false&interfaceConfig.DISABLE_JOIN_LEAVE_NOTIFICATIONS=true`
+    } catch {
+      return booking.meeting_link
+    }
+  }, [booking])
+
   async function saveLessonNotes(status?: string) {
     if (!booking || !canEdit) return
 
@@ -511,7 +522,7 @@ export default function ClassroomPage() {
                 rel="noopener noreferrer"
                 className="primaryBtn"
               >
-                Join Google Meet
+                Open backup meeting
               </a>
             ) : null}
           </div>
@@ -553,45 +564,28 @@ export default function ClassroomPage() {
           />
 
           <div className="videoShell" ref={videoRef}>
-  <div className="meetingReady">
-    <div className="meetingIcon">
-      🎥
-    </div>
+            <button
+              type="button"
+              className="fullScreenBtn"
+              onClick={toggleVideoFullScreen}
+            >
+              Full screen
+            </button>
 
-    <p className="eyebrow light">
-      Google Meet
-    </p>
-
-    <h2>Join your live lesson</h2>
-
-    <p className="meetingCopy">
-      Meet your tutor in Google Meet.
-      When the lesson ends, return to FountainPrep
-      to complete lesson notes, homework and progress.
-    </p>
-
-    {booking.meeting_link ? (
-      <a
-        href={booking.meeting_link}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="googleMeetBtn"
-      >
-        Join Google Meet
-      </a>
-    ) : (
-      <div className="meetingPending">
-        <strong>
-          Meeting link is being prepared
-        </strong>
-
-        <span>
-          Refresh this page shortly.
-        </span>
-      </div>
-    )}
-  </div>
-</div>
+            {jitsiSrc ? (
+              <iframe
+                src={jitsiSrc}
+                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                className="meetingFrame"
+                title="Fountain Prep Live Classroom"
+              />
+            ) : (
+              <div className="noMeeting">
+                <h2>Meeting link not ready</h2>
+                <p>Your lesson room has not been created yet.</p>
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="mainGrid">
@@ -965,87 +959,6 @@ const styles = `
     border: 1px solid rgba(124,58,237,0.18);
     box-shadow: 0 30px 90px rgba(71,43,117,0.18);
   }
-
-  .meetingReady {
-  min-height: 650px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 50px 30px;
-  text-align: center;
-  color: white;
-  background:
-    radial-gradient(
-      circle at 50% 20%,
-      rgba(124, 58, 237, 0.28),
-      transparent 34%
-    ),
-    linear-gradient(
-      180deg,
-      #12081d,
-      #07020d
-    );
-}
-
-.meetingIcon {
-  width: 90px;
-  height: 90px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 20px;
-  border-radius: 28px;
-  background: rgba(255,255,255,0.09);
-  font-size: 46px;
-}
-
-.meetingReady h2 {
-  margin-top: 12px;
-  color: white;
-}
-
-.meetingCopy {
-  max-width: 620px;
-  margin: 16px auto 28px;
-  color: #d8c9ff;
-  font-size: 16px;
-  line-height: 1.7;
-}
-
-.googleMeetBtn {
-  min-height: 56px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 28px;
-  border-radius: 18px;
-  color: white;
-  background: linear-gradient(
-    135deg,
-    #7c3aed,
-    #6d28d9
-  );
-  text-decoration: none;
-  font-weight: 950;
-  box-shadow: 0 16px 38px rgba(124,58,237,0.28);
-}
-
-.meetingPending {
-  display: grid;
-  gap: 6px;
-  padding: 18px 22px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.08);
-}
-
-.meetingPending strong {
-  color: white;
-}
-
-.meetingPending span {
-  color: #d8c9ff;
-  font-size: 13px;
-}
 
   .meetingFrame {
     width: 100%;

@@ -266,7 +266,7 @@ marketplace_discount_percent:
   occurrence.seedIndex === 0 && occurrence.weekIndex === 0
     ? marketplaceDiscountPercent
     : 0,
-        meeting_link: `https://meet.jit.si/fountainprep-${bookingGroupId}-${occurrence.seedIndex + 1}-${occurrence.weekIndex + 1}`,
+        meeting_link: null,
         booking_frequency: frequency,
         repeat_weeks: plan.weeks,
         parent_booking_group_id: bookingGroupId,

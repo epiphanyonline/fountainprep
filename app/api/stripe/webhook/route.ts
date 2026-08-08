@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "../../../lib/stripe";
+import {
+  createGoogleMeetEvent,
+  isGoogleMeetUrl,
+} from "@/app/lib/googleMeet";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -559,7 +563,7 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
   validatePaidSession(session, payment);
 
   const anchorBooking = await getBooking(bookingId);
-  const groupBookings = await getBookingGroup(anchorBooking);
+  let groupBookings = await getBookingGroup(anchorBooking);
 
   if (groupBookings.length === 0) {
     throw new Error(`No bookings were found for booking group ${bookingId}.`);
@@ -616,6 +620,11 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
 
     if (slotUpdateError) throw slotUpdateError;
   }
+
+  groupBookings =
+    await ensureGoogleMeetLinks(
+      groupBookings,
+    );
 
   await ensureLessonSessions(groupBookings);
   await ensureLessonReminders(groupBookings);
@@ -814,6 +823,102 @@ function validateBookingGroup(bookings: BookingRow[]) {
   }
 }
 
+
+async function ensureGoogleMeetLinks(
+  bookings: BookingRow[],
+): Promise<BookingRow[]> {
+  if (bookings.length === 0) {
+    return bookings;
+  }
+
+  const party =
+    await getBookingParty(
+      bookings[0],
+    );
+
+  const updated: BookingRow[] = [];
+
+  for (const booking of bookings) {
+    if (
+      isGoogleMeetUrl(
+        booking.meeting_link,
+      )
+    ) {
+      updated.push(booking);
+      continue;
+    }
+
+    if (
+      !booking.lesson_date ||
+      !booking.lesson_time
+    ) {
+      throw new Error(
+        `Booking ${booking.id} is missing its timetable and cannot receive a Google Meet link.`,
+      );
+    }
+
+    const startIso =
+      bookingStartIso(booking);
+
+    const endIso =
+      new Date(
+        new Date(
+          startIso,
+        ).getTime() +
+          60 * 60 * 1000,
+      ).toISOString();
+
+    const created =
+      await createGoogleMeetEvent({
+        summary:
+          `${party.subjectName} lesson · ${party.studentName} · Fountain Prep`,
+        description:
+          `Fountain Prep private lesson for ${party.studentName} with ${party.tutorName}.`,
+        startIso,
+        endIso,
+        timeZone:
+          booking.timezone ||
+          "Europe/London",
+        attendees: [
+          party.parentEmail,
+          party.tutorEmail,
+        ].filter(
+          (
+            email,
+          ): email is string =>
+            Boolean(email),
+        ),
+        requestKey:
+          `lesson-${booking.id}`,
+      });
+
+    const { error } =
+      await supabaseAdmin
+        .from(
+          "lesson_bookings",
+        )
+        .update({
+          meeting_link:
+            created.meetUrl,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", booking.id);
+
+    if (error) {
+      throw error;
+    }
+
+    updated.push({
+      ...booking,
+      meeting_link:
+        created.meetUrl,
+    });
+  }
+
+  return updated;
+}
+
 async function ensureLessonSessions(bookings: BookingRow[]) {
   const bookingIds = bookings.map((booking) => booking.id);
 
@@ -896,8 +1001,7 @@ async function ensureLessonSessions(bookings: BookingRow[]) {
           (new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000,
         ),
         meeting_link:
-          booking.meeting_link ||
-          `https://meet.jit.si/fountainprep-${booking.id}`,
+          booking.meeting_link,
         status: "scheduled",
       };
     });
