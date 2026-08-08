@@ -1,17 +1,34 @@
 "use client";
-import { Suspense,useEffect,useMemo,useState } from "react";
-import Link from "next/link";
-import { useParams,useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
-import { getAcademyMarketing } from "@/app/data/academies/marketing";
-type Student={id:string;full_name:string;child_age:number|null};
-export default function Page(){return <Suspense fallback={<Loading/>}><Content/></Suspense>}
-function Loading(){return <main className="page"><div className="card">Preparing learner selection...</div></main>}
-function Content(){
- const router=useRouter(); const params=useParams<{academy:string}>(); const academy=useMemo(()=>getAcademyMarketing(params.academy),[params.academy]);
- const [students,setStudents]=useState<Student[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);
- useEffect(()=>{let cancelled=false;(async()=>{try{if(!academy)throw new Error("Academy not found.");const {data:{user},error:e}=await supabase.auth.getUser();if(e)throw e;if(!user){router.replace(`/login?next=${encodeURIComponent(`/academies/${academy.slug}/start`)}`);return}const {data:parent,error:pe}=await supabase.from("parent_profiles").select("id").eq("user_id",user.id).maybeSingle();if(pe)throw pe;if(!parent){router.replace("/parent/onboarding");return}const {data,error:se}=await supabase.from("student_profiles").select("id, full_name, child_age").eq("parent_id",parent.id).order("created_at",{ascending:false});if(se)throw se;if(!cancelled)setStudents((data as Student[]|null)??[])}catch(x){if(!cancelled)setError(x instanceof Error?x.message:"Unable to load learners.")}finally{if(!cancelled)setLoading(false)}})();return()=>{cancelled=true}},[academy,router]);
- if(loading)return <Loading/>; if(!academy||error)return <main className="page"><div className="card"><h1>Unable to continue</h1><p>{error??"Academy not found."}</p><Link href="/academies">View academies</Link></div></main>;
- const href=(studentId:string)=>{const q=new URLSearchParams({studentId,academy:academy.academyCode});if(academy.programmeId)q.set("programme",academy.programmeId);return `/classroom/academy?${q}`};
- return <main className="page"><section className="card"><p className="eyebrow">{academy.title}</p><h1>Who is learning today?</h1><p>Select a learner to restore progress and continue.</p><div className="students">{students.map(s=><Link key={s.id} href={href(s.id)} className="student"><b className="avatar">{s.full_name.trim().charAt(0).toUpperCase()}</b><span><strong>{s.full_name}</strong><small>{s.child_age?`Age ${s.child_age}`:"Learner profile"}</small></span><em>Continue →</em></Link>)}</div>{!students.length&&<div className="empty">No learner profile has been added yet.</div>}<div className="actions"><Link className="primary" href="/parent/students">Add a learner</Link><Link className="secondary" href={`/academies/${academy.slug}`}>Back to academy</Link></div></section><style jsx>{`.page{min-height:100vh;display:grid;place-items:center;padding:50px 20px;background:linear-gradient(180deg,#fff,#f5efff);color:#241438}.card{width:min(900px,100%);padding:40px;border:1px solid #eadff5;border-radius:34px;background:#fff;box-shadow:0 28px 80px rgba(48,29,82,.12)}.eyebrow{color:#7c3aed;font-weight:900;text-transform:uppercase}.card h1{font-size:clamp(38px,6vw,62px);letter-spacing:-.055em;margin:12px 0}.students{display:grid;gap:12px;margin-top:25px}.student{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:15px;padding:15px;border:1px solid #e8dcf4;border-radius:21px;color:inherit;text-decoration:none}.avatar{width:50px;height:50px;display:grid;place-items:center;border-radius:17px;background:#7c3aed;color:#fff}.student strong,.student small{display:block}.student small{margin-top:4px;color:#7b7083}.student em{font-style:normal;color:#6d28d9;font-weight:900}.empty{margin-top:24px;padding:22px;border-radius:18px;background:#faf7ff;text-align:center}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}.actions :global(a){min-height:50px;display:inline-flex;align-items:center;padding:0 20px;border-radius:999px;text-decoration:none;font-weight:900}.primary{background:#7c3aed;color:#fff}.secondary{background:#f5efff;color:#6d28d9}@media(max-width:600px){.card{padding:27px 20px}.student{grid-template-columns:auto 1fr}.student em{grid-column:2}}`}</style></main>
+
+import {
+  Suspense,
+} from "react";
+import { useParams } from "next/navigation";
+
+import AcademyStartClient from "@/app/components/academy/AcademyStartClient";
+
+export default function AcademyStartPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen grid place-items-center">
+          Preparing your learning pathway...
+        </main>
+      }
+    >
+      <DynamicStart />
+    </Suspense>
+  );
+}
+
+function DynamicStart() {
+  const params = useParams<{
+    academy: string;
+  }>();
+
+  return (
+    <AcademyStartClient
+      academySlug={params.academy}
+    />
+  );
 }

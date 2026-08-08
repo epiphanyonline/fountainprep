@@ -1,20 +1,54 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import type {
+  Metadata,
+} from "next";
 import { notFound } from "next/navigation";
-import { getAcademyMarketing, publicAcademySlugs } from "@/app/data/academies/marketing";
 
-type Props={params:Promise<{academy:string}>};
-export function generateStaticParams(){return publicAcademySlugs.map(academy=>({academy}))}
-export async function generateMetadata({params}:Props):Promise<Metadata>{const {academy:slug}=await params;const a=getAcademyMarketing(slug);return a?{title:a.title,description:a.summary}:{};}
+import AcademyLanding from "@/app/components/academy/AcademyLanding";
+import {
+  getAcademyMarketing,
+  publicAcademySlugs,
+} from "@/app/data/academies/marketing";
 
-export default async function Page({params}:Props){
- const {academy:slug}=await params; const a=getAcademyMarketing(slug); if(!a) notFound();
- const start=a.startHref??`/academies/${a.slug}/start`;
- return <main className="landing">
-  <section className="hero"><div><p className="eyebrow">{a.title}</p><h1>{a.headline}</h1><p className="summary">{a.summary}</p><p className="audience">{a.audience}</p><div className="actions"><Link href={start} className="primary">Start learning</Link><a href="#curriculum" className="secondary">View curriculum</a></div><div className="proof">{a.proofPoints.map(x=><span key={x}>✓ {x}</span>)}</div></div><aside><small>Inside the academy</small><h2>Learn. Practise. Apply.</h2>{["Learn the idea","Practise with Ayo","Apply it to a real task","Save progress and continue"].map((x,i)=><div className="step" key={x}><b>{i+1}</b><span>{x}</span></div>)}</aside></section>
-  <section className="outcomes"><div><p className="eyebrow">Outcomes</p><h2>Progress with a practical result.</h2></div><div className="outgrid">{a.outcomes.map(x=><article key={x}>✓<p>{x}</p></article>)}</div></section>
-  <section id="curriculum" className="curriculum"><p className="eyebrow">MVP pathway</p><h2>What the learner will study</h2><p className="note">Learners can begin from the stage that fits their understanding. Age informs the teaching style but does not block access.</p><div className="lessons">{a.curriculum.map((x,i)=><article key={x}><b>{String(i+1).padStart(2,"0")}</b><h3>{x}</h3></article>)}</div></section>
-  <section className="cta"><p className="eyebrow">{a.title}</p><h2>Ready to begin?</h2><p>Choose an existing learner or create a learner profile before entering the classroom.</p><Link href={start} className="primary">Choose a learner</Link></section>
-  <style>{`.landing{--a:#7c3aed;min-height:100vh;color:#241438;background:radial-gradient(circle at 85% 5%,rgba(124,58,237,.14),transparent 30%),linear-gradient(180deg,#fff,#faf7ff)}.hero,.outcomes,.curriculum,.cta{width:min(1280px,calc(100% - 40px));margin:auto}.hero{min-height:700px;display:grid;grid-template-columns:1.1fr .9fr;gap:65px;align-items:center;padding:70px 0}.eyebrow{color:var(--a);font-weight:950;text-transform:uppercase;letter-spacing:.1em}.hero h1{font-size:clamp(48px,7vw,84px);line-height:.96;letter-spacing:-.065em;margin:18px 0}.summary{font-size:20px;line-height:1.7;color:#55495e}.audience,.note{color:#756a7d;line-height:1.65}.actions,.proof{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}.primary,.secondary{min-height:55px;display:inline-flex;align-items:center;justify-content:center;padding:0 23px;border-radius:999px;text-decoration:none;font-weight:900}.primary{background:var(--a);color:#fff}.secondary{background:#fff;color:var(--a);border:1px solid #e3d7f3}.proof span{padding:9px 13px;border-radius:999px;background:#f3ecff;color:#6d28d9;font-weight:800;font-size:13px}.hero aside{padding:36px;border:1px solid #e8ddf4;border-radius:34px;background:#fff;box-shadow:0 28px 80px rgba(48,29,82,.12)}.hero aside h2{font-size:38px;letter-spacing:-.05em}.step{display:flex;align-items:center;gap:14px;padding:15px;margin-top:12px;border-radius:18px;background:#f5efff}.step b{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--a);color:#fff}.outcomes{padding:80px 0;display:grid;grid-template-columns:.8fr 1.2fr;gap:55px}.outcomes h2,.curriculum h2,.cta h2{font-size:clamp(36px,5vw,58px);line-height:1;letter-spacing:-.055em}.outgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}.outgrid article{padding:23px;border-radius:23px;background:#fff;border:1px solid #eee5f6;color:var(--a);font-weight:900}.outgrid p{color:#55495e;line-height:1.55}.curriculum{padding:80px 0}.curriculum .note{max-width:760px}.lessons{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:30px}.lessons article{min-height:165px;padding:23px;border-radius:23px;background:#f5efff}.lessons b{color:var(--a)}.lessons h3{margin-top:42px}.cta{margin-top:70px;margin-bottom:100px;padding:65px 30px;text-align:center;border-radius:38px;background:#f3ecff}.cta p:not(.eyebrow){max-width:650px;margin:0 auto 26px;color:#665a70}@media(max-width:900px){.hero,.outcomes{grid-template-columns:1fr}.lessons{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.outgrid,.lessons{grid-template-columns:1fr}}`}</style>
- </main>
+type PageProps = {
+  params: Promise<{
+    academy: string;
+  }>;
+};
+
+export function generateStaticParams() {
+  return publicAcademySlugs.map((academy) => ({
+    academy,
+  }));
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { academy: slug } = await params;
+  const academy = getAcademyMarketing(slug);
+
+  if (!academy) return {};
+
+  return {
+    title: academy.title,
+    description: academy.summary,
+    openGraph: {
+      title: academy.headline,
+      description: academy.summary,
+      type: "website",
+    },
+  };
+}
+
+export default async function AcademyPage({
+  params,
+}: PageProps) {
+  const { academy: slug } = await params;
+  const academy = getAcademyMarketing(slug);
+
+  if (!academy) {
+    notFound();
+  }
+
+  return <AcademyLanding academy={academy} />;
 }

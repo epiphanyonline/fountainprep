@@ -119,6 +119,7 @@ export default function UniversalAcademyClassroom({
 
           <ActivityRenderer
             key={state.activity.id}
+            academyCode={academyCode}
             activity={state.activity}
             feedback={engine.feedback}
             busy={busy}

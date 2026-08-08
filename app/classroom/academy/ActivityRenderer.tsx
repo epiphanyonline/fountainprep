@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 
+import AcademyMediaPanel from "./AcademyMediaPanel";
+import {
+  storyForActivity,
+  visualForActivity,
+} from "./mediaExamples";
+
 import type {
   LessonActivity,
 } from "@/features/academy-content";
 
 type Props = {
+  academyCode: string;
   activity: LessonActivity;
   feedback: string;
   busy: boolean;
@@ -17,6 +24,7 @@ type Props = {
 };
 
 export default function ActivityRenderer({
+  academyCode,
   activity,
   feedback,
   busy,
@@ -44,7 +52,7 @@ export default function ActivityRenderer({
     <section className="activityCard">
       <div className="activityTopline">
         <span>{activity.type.replaceAll("-", " ")}</span>
-        <b>+{activity.points ?? 0} XP</b>
+        <b>Learning activity</b>
       </div>
 
       <h2>{activity.title}</h2>
@@ -55,6 +63,37 @@ export default function ActivityRenderer({
           {activity.explanation}
         </div>
       ) : null}
+
+      <AcademyMediaPanel
+        activityId={activity.id}
+        title={activity.title}
+        text={activity.teacherPrompt}
+        explanation={activity.explanation}
+        instruction={activity.learnerInstruction}
+        narrationText={activity.narrationText}
+        story={
+          activity.story ??
+          storyForActivity(
+            academyCode,
+            activity.id,
+          )
+        }
+        visualTitle={
+          activity.visualTitle ??
+          visualForActivity(
+            activity.id,
+          )?.title
+        }
+        visualDescription={
+          activity.visualDescription ??
+          visualForActivity(
+            activity.id,
+          )?.description
+        }
+        autoNarrate={
+          activity.autoNarrate !== false
+        }
+      />
 
       {activity.learnerInstruction ? (
         <p className="instruction">
@@ -92,7 +131,7 @@ export default function ActivityRenderer({
           }
           placeholder={
             activity.type === "voice-response"
-              ? "Voice capture will be connected here. Type the response during MVP testing."
+              ? "Say your answer aloud if you wish, then type it here so FountainPrep can check it."
               : "Enter your answer..."
           }
           rows={5}

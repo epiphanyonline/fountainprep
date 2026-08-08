@@ -4,6 +4,7 @@ import {
 
 import { aiAcademy } from "./ai";
 import { codingAcademy } from "./coding";
+import { biographyAcademy } from "./biography";
 import { dataAnalyticsAcademy } from "./data-analytics";
 import { digitalSkillsAcademy } from "./digital-skills";
 import { englishAcademy } from "./english";
@@ -21,6 +22,7 @@ export function registerMvpAcademies(): void {
 
   registerAcademy(aiAcademy);
   registerAcademy(codingAcademy);
+  registerAcademy(biographyAcademy);
   registerAcademy(ieltsAcademy);
   registerAcademy(dataAnalyticsAcademy);
   registerAcademy(personalFinanceAcademy);
@@ -35,6 +37,7 @@ export function registerMvpAcademies(): void {
 export {
   aiAcademy,
   codingAcademy,
+  biographyAcademy,
   dataAnalyticsAcademy,
   digitalSkillsAcademy,
   englishAcademy,

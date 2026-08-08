@@ -1,0 +1,125 @@
+:root {
+  --fp-bg: #f8f6fc;
+  --fp-surface: #ffffff;
+  --fp-surface-soft: #f7f2ff;
+  --fp-text: #21152f;
+  --fp-muted: #706477;
+  --fp-primary: #7c3aed;
+  --fp-primary-dark: #5b21b6;
+  --fp-border: rgba(124, 58, 237, 0.12);
+
+  --fp-radius-sm: 14px;
+  --fp-radius-md: 20px;
+  --fp-radius-lg: 28px;
+  --fp-radius-xl: 40px;
+
+  --fp-shadow-sm: 0 12px 30px rgba(48, 29, 82, 0.07);
+  --fp-shadow-md: 0 22px 60px rgba(48, 29, 82, 0.11);
+  --fp-shadow-lg: 0 32px 100px rgba(48, 29, 82, 0.14);
+
+  --fp-container: 1180px;
+
+  --fp-space-1: 8px;
+  --fp-space-2: 12px;
+  --fp-space-3: 16px;
+  --fp-space-4: 24px;
+  --fp-space-5: 32px;
+  --fp-space-6: 48px;
+  --fp-space-7: 72px;
+  --fp-space-8: 96px;
+}
+
+.fp-container {
+  width: min(var(--fp-container), calc(100% - 32px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fp-kicker {
+  margin: 0;
+  color: var(--fp-primary);
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fp-display {
+  margin: 0;
+  color: var(--fp-text);
+  font-size: clamp(44px, 6.5vw, 78px);
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+  font-weight: 950;
+}
+
+.fp-heading {
+  margin: 0;
+  color: var(--fp-text);
+  font-size: clamp(34px, 4.5vw, 56px);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  font-weight: 950;
+}
+
+.fp-lead {
+  color: var(--fp-muted);
+  font-size: 18px;
+  line-height: 1.72;
+}
+
+.fp-card {
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius-lg);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--fp-shadow-sm);
+}
+
+.fp-button {
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 950;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.fp-button:hover {
+  transform: translateY(-2px);
+}
+
+.fp-button-primary {
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--fp-primary),
+    var(--fp-primary-dark)
+  );
+  box-shadow: 0 15px 34px rgba(91, 33, 182, 0.23);
+}
+
+.fp-button-secondary {
+  color: var(--fp-text);
+  background: #fff;
+  border: 1px solid var(--fp-border);
+  box-shadow: var(--fp-shadow-sm);
+}
+
+.fp-button-quiet {
+  color: var(--fp-primary-dark);
+  background: var(--fp-surface-soft);
+}
+
+@media (max-width: 640px) {
+  .fp-button {
+    width: 100%;
+  }
+}

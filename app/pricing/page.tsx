@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { BookingJourney } from '../components/BookingJourney'
 import {
+  academyClassroomHref,
+} from '../data/academy-routing'
+import {
   getAcademyPlans,
   type AcademySubscriptionPlan,
 } from '../fountaintalk/services/subscriptionAccess'
@@ -105,7 +108,8 @@ function PricingContent() {
   const programId = searchParams.get('programId')
   const product = searchParams.get('product')
   const academyId = searchParams.get('academy')
-const isAcademyPricing = product === 'academies'
+  const academyProgrammeId = searchParams.get('programme')
+  const isAcademyPricing = product === 'academies'
 
   const [student, setStudent] = useState<Student | null>(null)
   const [currency, setCurrency] = useState<CurrencyDisplay>(
@@ -257,10 +261,17 @@ async function handleChooseAcademyPlan(
   planId: string,
 ) {
   if (planId === 'free') {
+    if (!studentId || !academyId) {
+      router.push('/academies')
+      return
+    }
+
     router.push(
-      studentId
-        ? `/fountaintalk?studentId=${encodeURIComponent(studentId)}`
-        : '/fountaintalk',
+      academyClassroomHref({
+        studentId,
+        academy: academyId,
+        programme: academyProgrammeId,
+      }),
     )
     return
   }
@@ -294,10 +305,11 @@ async function handleChooseAcademyPlan(
             `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-  planId,
-  studentId,
-  academyId,
-}),
+          planId,
+          studentId,
+          academyId,
+          programmeId: academyProgrammeId,
+        }),
       },
     )
 
@@ -370,7 +382,7 @@ if (isAcademyPricing) {
         </h1>
 
         <p className="heroSubtitle">
-          Start free, then unlock complete courses,
+          Choose the access level that fits the learner,
           assessments, certificates, and advanced
           professional pathways.
         </p>

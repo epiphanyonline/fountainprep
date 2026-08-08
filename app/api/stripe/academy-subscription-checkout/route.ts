@@ -45,19 +45,24 @@ type RequestBody = {
   planId?: string;
   studentId?: string | null;
   academyId?: string | null;
+  programmeId?: string | null;
 };
 
 type PlanRow = {
   id: string;
   name: string;
   stripe_price_id: string | null;
-  included_learner_count: number | null;
+  included_learner_count:
+    number | null;
   is_active: boolean;
 };
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+) {
   try {
-    const user = await authenticateRequest(req);
+    const user =
+      await authenticateRequest(req);
 
     if (!user) {
       return NextResponse.json(
@@ -72,17 +77,23 @@ export async function POST(req: Request) {
     const body =
       (await req.json()) as RequestBody;
 
-    const planId = body.planId?.trim();
+    const planId =
+      body.planId?.trim();
+
     const studentId =
       body.studentId?.trim() || null;
 
-      const academyId =
-  body.academyId?.trim() || null;
+    const academyId =
+      canonicalAcademyCode(
+        body.academyId?.trim() ||
+          null,
+      );
 
-const academyQuery =
-  academyId === "wealth"
-    ? "&academy=wealth"
-    : "";
+    const programmeId =
+      body.programmeId?.trim() ||
+      defaultProgrammeId(
+        academyId,
+      );
 
     if (!planId) {
       return NextResponse.json(
@@ -101,7 +112,8 @@ const academyQuery =
       );
     }
 
-    const plan = await getPlan(planId);
+    const plan =
+      await getPlan(planId);
 
     if (!plan || !plan.is_active) {
       return NextResponse.json(
@@ -142,7 +154,9 @@ const academyQuery =
     }
 
     const existingSubscription =
-      await getExistingSubscription(user.id);
+      await getExistingSubscription(
+        user.id,
+      );
 
     if (existingSubscription) {
       return NextResponse.json(
@@ -154,6 +168,20 @@ const academyQuery =
       );
     }
 
+    const successPath =
+      buildClassroomSuccessPath({
+        academyId,
+        programmeId,
+        studentId,
+      });
+
+    const cancelPath =
+      buildPricingCancelPath({
+        academyId,
+        programmeId,
+        studentId,
+      });
+
     const session =
       await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -161,31 +189,19 @@ const academyQuery =
         customer_email:
           user.email || undefined,
 
-        client_reference_id: user.id,
+        client_reference_id:
+          user.id,
 
         success_url:
-  `${normalisedAppUrl()}` +
-  (academyId === "wealth"
-    ? `/fountaintalk/classroom/wealth?subscription=success`
-    : `/fountaintalk?subscription=success`) +
-  `&session_id={CHECKOUT_SESSION_ID}` +
-  academyQuery +
-  (studentId
-    ? `&studentId=${encodeURIComponent(studentId)}`
-    : ""),
+          `${normalisedAppUrl()}${successPath}`,
 
         cancel_url:
-  `${normalisedAppUrl()}` +
-  `/pricing?product=academies` +
-  `&subscription=cancelled` +
-  academyQuery +
-  (studentId
-    ? `&studentId=${encodeURIComponent(studentId)}`
-    : ""),
+          `${normalisedAppUrl()}${cancelPath}`,
 
         line_items: [
           {
-            price: plan.stripe_price_id,
+            price:
+              plan.stripe_price_id,
             quantity: 1,
           },
         ],
@@ -195,8 +211,12 @@ const academyQuery =
             "academy_subscription",
           user_id: user.id,
           plan_id: plan.id,
-          student_id: studentId || "",
-academy_id: academyId || "",
+          student_id:
+            studentId || "",
+          academy_id:
+            academyId || "",
+          programme_id:
+            programmeId || "",
         },
 
         subscription_data: {
@@ -205,8 +225,12 @@ academy_id: academyId || "",
               "academy_subscription",
             user_id: user.id,
             plan_id: plan.id,
-            student_id: studentId || "",
-academy_id: academyId || "",
+            student_id:
+              studentId || "",
+            academy_id:
+              academyId || "",
+            programme_id:
+              programmeId || "",
           },
         },
       });
@@ -224,7 +248,9 @@ academy_id: academyId || "",
     const {
       error: insertError,
     } = await supabaseAdmin
-      .from("academy_subscriptions")
+      .from(
+        "academy_subscriptions",
+      )
       .insert({
         user_id: user.id,
         plan_id: plan.id,
@@ -256,16 +282,137 @@ academy_id: academyId || "",
   }
 }
 
+function buildClassroomSuccessPath({
+  academyId,
+  programmeId,
+  studentId,
+}: {
+  academyId: string | null;
+  programmeId: string | null;
+  studentId: string | null;
+}) {
+  /*
+   * Language lessons use the existing
+   * FountainTalk classroom.
+   */
+  if (
+    academyId === "language"
+  ) {
+    const query =
+      new URLSearchParams({
+        subscription: "success",
+        session_id:
+          "{CHECKOUT_SESSION_ID}",
+      });
+
+    if (studentId) {
+      query.set(
+        "studentId",
+        studentId,
+      );
+    }
+
+    return `/classroom?${query.toString()}`;
+  }
+
+  const query =
+    new URLSearchParams({
+      subscription: "success",
+      session_id:
+        "{CHECKOUT_SESSION_ID}",
+    });
+
+  if (studentId) {
+    query.set(
+      "studentId",
+      studentId,
+    );
+  }
+
+  if (academyId) {
+    query.set(
+      "academy",
+      academyId,
+    );
+  }
+
+  if (programmeId) {
+    query.set(
+      "programme",
+      programmeId,
+    );
+  }
+
+  /*
+   * Stripe requires the checkout-session
+   * placeholder to remain unescaped.
+   */
+  return (
+    `/classroom/academy?` +
+    query
+      .toString()
+      .replace(
+        "%7BCHECKOUT_SESSION_ID%7D",
+        "{CHECKOUT_SESSION_ID}",
+      )
+  );
+}
+
+function buildPricingCancelPath({
+  academyId,
+  programmeId,
+  studentId,
+}: {
+  academyId: string | null;
+  programmeId: string | null;
+  studentId: string | null;
+}) {
+  const query =
+    new URLSearchParams({
+      product: "academies",
+      subscription: "cancelled",
+    });
+
+  if (studentId) {
+    query.set(
+      "studentId",
+      studentId,
+    );
+  }
+
+  if (academyId) {
+    query.set(
+      "academy",
+      academyId,
+    );
+  }
+
+  if (programmeId) {
+    query.set(
+      "programme",
+      programmeId,
+    );
+  }
+
+  return `/pricing?${query.toString()}`;
+}
+
 async function authenticateRequest(
   req: Request,
 ) {
   const authorization =
-    req.headers.get("authorization");
+    req.headers.get(
+      "authorization",
+    );
 
   const accessToken =
-    authorization?.startsWith("Bearer ")
+    authorization?.startsWith(
+      "Bearer ",
+    )
       ? authorization
-          .slice("Bearer ".length)
+          .slice(
+            "Bearer ".length,
+          )
           .trim()
       : "";
 
@@ -276,11 +423,15 @@ async function authenticateRequest(
   const {
     data,
     error,
-  } = await supabaseAdmin.auth.getUser(
-    accessToken,
-  );
+  } =
+    await supabaseAdmin.auth.getUser(
+      accessToken,
+    );
 
-  if (error || !data.user) {
+  if (
+    error ||
+    !data.user
+  ) {
     return null;
   }
 
@@ -294,7 +445,9 @@ async function getPlan(
     data,
     error,
   } = await supabaseAdmin
-    .from("academy_subscription_plans")
+    .from(
+      "academy_subscription_plans",
+    )
     .select(
       `
         id,
@@ -311,7 +464,11 @@ async function getPlan(
     throw error;
   }
 
-  return (data ?? null) as PlanRow | null;
+  return (
+    (data ?? null) as
+      | PlanRow
+      | null
+  );
 }
 
 async function userOwnsLearner(
@@ -324,7 +481,10 @@ async function userOwnsLearner(
   } = await supabaseAdmin
     .from("parent_profiles")
     .select("id")
-    .eq("user_id", userId)
+    .eq(
+      "user_id",
+      userId,
+    )
     .maybeSingle();
 
   if (parentError) {
@@ -342,7 +502,10 @@ async function userOwnsLearner(
     .from("student_profiles")
     .select("id")
     .eq("id", studentId)
-    .eq("parent_id", parent.id)
+    .eq(
+      "parent_id",
+      parent.id,
+    )
     .maybeSingle();
 
   if (learnerError) {
@@ -359,9 +522,14 @@ async function getExistingSubscription(
     data,
     error,
   } = await supabaseAdmin
-    .from("academy_subscriptions")
+    .from(
+      "academy_subscriptions",
+    )
     .select("id")
-    .eq("user_id", userId)
+    .eq(
+      "user_id",
+      userId,
+    )
     .in("status", [
       "trialing",
       "active",
@@ -379,5 +547,68 @@ async function getExistingSubscription(
 }
 
 function normalisedAppUrl() {
-  return appUrl!.replace(/\/$/, "");
+  return appUrl!.replace(
+    /\/$/,
+    "",
+  );
+}
+
+function canonicalAcademyCode(
+  academyId: string | null,
+) {
+  if (!academyId) {
+    return null;
+  }
+
+  const normalised =
+    academyId.toLowerCase();
+
+  if (
+    normalised === "wealth" ||
+    normalised ===
+      "financial-literacy"
+  ) {
+    return "personal-finance";
+  }
+
+  return normalised;
+}
+
+function defaultProgrammeId(
+  academyId: string | null,
+) {
+  switch (academyId) {
+    case "personal-finance":
+      return "money-foundation";
+
+    case "ai":
+      return "ai-explorer";
+
+    case "coding":
+      return "coding-explorer";
+
+    case "ielts":
+      return "ielts-academic";
+
+    case "data-analytics":
+      return "data-analytics-foundation";
+
+    case "digital-skills":
+      return "digital-skills-foundation";
+
+    case "mathematics":
+      return "mathematics-foundation";
+
+    case "english":
+      return "english-foundation";
+
+    case "science":
+      return "science-foundation";
+
+    case "language":
+      return "language-foundation";
+
+    default:
+      return null;
+  }
 }

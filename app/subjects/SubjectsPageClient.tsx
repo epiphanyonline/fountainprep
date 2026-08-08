@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import {
+  academyPricingHref,
+  subjectAcademyRoute,
+} from "../data/academy-routing";
 
 type Student = {
   id: string;
@@ -16,7 +20,6 @@ type Student = {
 
 type LearningLevel = {
   id: string;
-  code: string;
   name: string;
   uk_equivalent: string | null;
   us_canada_equivalent: string | null;
@@ -122,26 +125,6 @@ const catalogueSubjects = [
     taught:
       "Greetings, numbers, basic vocabulary, pronunciation, simple sentences, songs, and cultural context.",
   },
-  {
-  name: "French",
-  category: "Language",
-  benefit:
-    "Builds practical communication skills in one of the world's most widely learned languages.",
-  childImprovement:
-    "Learners develop confidence understanding and using everyday French words, phrases and conversations.",
-  taught:
-    "Greetings, vocabulary, pronunciation, listening, grammar, simple sentences, conversation and cultural context.",
-},
-  {
-  name: "Mandarin",
-  category: "Language",
-  benefit:
-    "Builds confidence in one of the world's most widely spoken languages through practical communication.",
-  childImprovement:
-    "Learners develop confidence recognising Mandarin sounds, using everyday expressions, and communicating in simple situations.",
-  taught:
-    "Greetings, numbers, everyday vocabulary, tones, pronunciation, listening, simple sentences, characters, and cultural context.",
-},
 ];
 
 function toSubjectSlug(value: string) {
@@ -174,6 +157,26 @@ function startBookingLink(subjectName: string, category?: string | null) {
   if (category) params.set("category", category);
   params.set("subject", subjectName);
   return `/start?${params.toString()}`;
+}
+
+
+function academyLearningLink(
+  subjectName: string,
+  studentId?: string | null,
+) {
+  const academy = subjectAcademyRoute(subjectName);
+
+  if (!academy) return null;
+
+  if (studentId) {
+    return academyPricingHref({
+      studentId,
+      academy: academy.academyCode,
+      programme: academy.programmeId,
+    });
+  }
+
+  return `/academies/${academy.slug}`;
 }
 
 export default function SubjectsPageClient() {
@@ -241,95 +244,67 @@ export default function SubjectsPageClient() {
           return;
         }
 
-        selectedLearningLevelId = studentRow.learning_level_id ?? null;
+        if (!studentRow.learning_level_id) {
+          setMessage("This child has not been mapped to a learning level yet.");
+          setLoading(false);
+          return;
+        }
+
+        selectedLearningLevelId = studentRow.learning_level_id;
         setStudent(studentRow as Student);
 
-        if (studentRow.learning_level_id) {
-  const { data: levelRow } = await supabase
-    .from("learning_levels")
-    .select(
-      "id, code, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match",
-    )
-    .eq("id", studentRow.learning_level_id)
-    .maybeSingle();
+        const { data: levelRow } = await supabase
+          .from("learning_levels")
+          .select(
+            "id, name, uk_equivalent, us_canada_equivalent, nigeria_teacher_match",
+          )
+          .eq("id", studentRow.learning_level_id)
+          .maybeSingle();
 
-  setLevel((levelRow ?? null) as LearningLevel | null);
-} else {
-  setLevel(null);
-}
+        setLevel((levelRow ?? null) as LearningLevel | null);
       }
 
-      const { data: allProgramRows, error: programError } = await supabase
-  .from("subject_programs")
-  .select(
-    `
-      id,
-      title,
-      description,
-      what_will_be_taught,
-      learning_outcomes,
-      duration_minutes,
-      subject_id,
-      learning_level_id,
-      subjects (
-        id,
-        name,
-        category
-      ),
-      learning_levels (
-  id,
-  code,
-  name,
-  uk_equivalent,
-  us_canada_equivalent,
-  nigeria_teacher_match
-)
-    `,
-  )
-  .eq("is_active", true)
-  .order("title", { ascending: true });
+      let query = supabase
+        .from("subject_programs")
+        .select(
+          `
+          id,
+          title,
+          description,
+          what_will_be_taught,
+          learning_outcomes,
+          duration_minutes,
+          subject_id,
+          learning_level_id,
+          subjects (
+            id,
+            name,
+            category
+          ),
+          learning_levels (
+            id,
+            name,
+            uk_equivalent,
+            us_canada_equivalent,
+            nigeria_teacher_match
+          )
+        `,
+        )
+        .eq("is_active", true)
+        .order("title", { ascending: true });
 
-if (programError) {
-  setMessage(programError.message);
-  setLoading(false);
-  return;
-}
+      if (selectedLearningLevelId) {
+        query = query.eq("learning_level_id", selectedLearningLevelId);
+      }
 
-const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
-  const subject = Array.isArray(row.subjects)
-    ? row.subjects[0]
-    : row.subjects;
+      const { data: programRows, error: programError } = await query;
 
-  const learningLevel = Array.isArray(row.learning_levels)
-    ? row.learning_levels[0]
-    : row.learning_levels;
+      if (programError) {
+        setMessage(programError.message);
+        setLoading(false);
+        return;
+      }
 
-  const category = String(subject?.category ?? "").toLowerCase();
-  const levelCode = String(learningLevel?.code ?? "").toUpperCase();
-
-  const isLanguageProgramme = category === "language";
-  const isExamProgramme = category === "exam_prep";
-  const isDigitalProgramme = category === "skill";
-
-  if (isLanguageProgramme) {
-    return levelCode === "ALL_AGES";
-  }
-
-  if (isExamProgramme) {
-    return levelCode === "ALL_AGES";
-  }
-
-  if (isDigitalProgramme && levelCode === "ALL_AGES") {
-    return true;
-  }
-
-  if (!selectedLearningLevelId) {
-    return false;
-  }
-
-  return row.learning_level_id === selectedLearningLevelId;
-});
-      
       const cleanPrograms = ((programRows ?? []) as any[]).map((row) => ({
         ...row,
         subjects: Array.isArray(row.subjects)
@@ -400,11 +375,11 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
 
   function categoryLabel(category?: string | null) {
     if (category === "academic") return "Core Academic";
-    if (category === "Language") return "Language Academy";
+    if (category === "language") return "African Language";
     if (category === "skill") return "Creative Skill";
 
     if (category === "Academic") return "Core Academic";
-    if (category === "Language") return "Language Academy";
+    if (category === "Language") return "African Language";
     if (category === "Skill") return "Creative Skill";
 
     return category || "Learning Area";
@@ -416,7 +391,7 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
     if (normalised === "all") return "All Learning Areas";
     if (normalised === "academic") return "Core Academics";
     if (normalised === "skill") return "Creative Skills";
-    if (normalised === "language") return "Language Academy";
+    if (normalised === "language") return "African Languages";
 
     return category;
   }
@@ -431,7 +406,7 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
     if (normalised === "skill")
       return "Coding, Music and confidence-building skills";
     if (normalised === "language")
-      return "Yoruba, Igbo, Hausa, French, Mandarin and global communication";
+      return "Yoruba, Igbo, Hausa and cultural connection";
 
     return "Explore this learning pathway";
   }
@@ -468,12 +443,12 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
             <h1 className="page-title hero-title">
               {personalised
                 ? `Choose a learning area for ${student?.full_name}`
-                : "Learning pathways designed for every stage of growth"}
+                : "Learning areas designed to help children grow"}
             </h1>
 
             <p className="page-subtitle hero-copy">
               {personalised
-                ? `We’ll use ${student?.full_name}’s age, class level, and learning stage to guide the next step in their FountainPrep learning plan.`
+                ? `Weâ€™ll use ${student?.full_name}â€™s age, class level, and learning stage to guide the next step in their FountainPrep learning plan.`
                 : "Explore structured learning areas across core academics, creative skills, and African languages. Each subject is designed to build confidence, consistency, and measurable progress."}
             </p>
 
@@ -500,8 +475,8 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
               <div className="level-panel">
                 <p>Learning level: {level.name}</p>
                 <span>
-                  UK: {level.uk_equivalent || "-"} • US/Canada:{" "}
-                  {level.us_canada_equivalent || "-"} • Nigeria teacher match:{" "}
+                  UK: {level.uk_equivalent || "-"} â€¢ US/Canada:{" "}
+                  {level.us_canada_equivalent || "-"} â€¢ Nigeria teacher match:{" "}
                   {level.nigeria_teacher_match || "-"}
                 </span>
               </div>
@@ -579,7 +554,7 @@ const programRows = ((allProgramRows ?? []) as any[]).filter((row) => {
             <div>
               <p className="hero-kicker">Learning pathways</p>
               <h2 className="section-heading">
-                Choose a learning pathway
+                Choose the type of support your child needs
               </h2>
             </div>
 
@@ -1040,6 +1015,7 @@ function CatalogueGrid({
       {subjects.map((subject) => {
         const subjectSlug = toSubjectSlug(subject.name);
         const viewCurriculumHref = curriculumLink(subject.name, studentId);
+        const academyHref = academyLearningLink(subject.name, studentId);
 
         return (
           <div key={subject.name} className="subject-card">
@@ -1058,7 +1034,7 @@ function CatalogueGrid({
               </div>
 
               <div className="subject-panel">
-                <p>Expected progress</p>
+                <p>Skills they can build</p>
                 <span>{subject.childImprovement}</span>
               </div>
             </div>
@@ -1068,30 +1044,29 @@ function CatalogueGrid({
                 See What They’ll Learn
               </Link>
 
-              {!isLoggedIn ? (
+              {academyHref ? (
                 <Link
-                  href={startBookingLink(subject.name, subject.category)}
+                  href={academyHref}
                   className="btn-primary"
                 >
-                  Start Booking This Subject
+                  Start Interactive Lessons
                 </Link>
-              ) : personalised && studentId ? (
-                <Link
-                  href={`/pricing?studentId=${studentId}&subjectId=${subjectSlug}`}
-                  className="btn-primary"
-                >
-                  Choose This Subject
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/parent/students?mode=booking"
-                    className="btn-primary"
-                  >
-                    Choose a Child to Continue
-                  </Link>
-                </>
-              )}
+              ) : null}
+
+              <Link
+                href={
+                  personalised && studentId
+                    ? `/pricing?studentId=${studentId}&subjectId=${subjectSlug}`
+                    : startBookingLink(subject.name, subject.category)
+                }
+                className={
+                  academyHref
+                    ? "btn-live-tutor"
+                    : "btn-primary"
+                }
+              >
+                Book a Live 1-to-1 Tutor
+              </Link>
             </div>
           </div>
         );
@@ -1266,6 +1241,7 @@ function ProgramGrid({
       {programs.map((program) => {
         const subjectName = program.subjects?.name || program.title;
         const viewCurriculumHref = curriculumLink(subjectName, studentId);
+        const academyHref = academyLearningLink(subjectName, studentId);
 
         return (
           <div key={program.id} className="program-card">
@@ -1293,7 +1269,7 @@ function ProgramGrid({
               </div>
 
               <div className="program-panel">
-                <p>Expected progress</p>
+                <p>Skills they can build</p>
                 <span>
                   {program.learning_outcomes ||
                     "Improved confidence, stronger understanding, better study habits, and clearer progress over time."}
@@ -1306,31 +1282,32 @@ function ProgramGrid({
                 See What They’ll Learn
               </Link>
 
-              {!isLoggedIn ? (
+              {academyHref ? (
                 <Link
-                  href={startBookingLink(
-                    subjectName,
-                    program.subjects?.category,
-                  )}
+                  href={academyHref}
                   className="btn-primary"
                 >
-                  Start Booking This Subject
+                  Start Interactive Lessons
                 </Link>
-              ) : personalised && studentId ? (
-                <Link
-                  href={`/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`}
-                  className="btn-primary"
-                >
-                  Choose This Subject
-                </Link>
-              ) : (
-                <Link
-                  href="/parent/students?mode=booking"
-                  className="btn-primary"
-                >
-                  Choose a Child to Continue
-                </Link>
-              )}
+              ) : null}
+
+              <Link
+                href={
+                  personalised && studentId
+                    ? `/pricing?studentId=${studentId}&subjectId=${program.subject_id}&programId=${program.id}`
+                    : startBookingLink(
+                        subjectName,
+                        program.subjects?.category,
+                      )
+                }
+                className={
+                  academyHref
+                    ? "btn-live-tutor"
+                    : "btn-primary"
+                }
+              >
+                Book a Live 1-to-1 Tutor
+              </Link>
             </div>
           </div>
         );
@@ -1492,9 +1469,9 @@ function ProgramGrid({
 function getCategoryIcon(category: string) {
   const normalised = category.toLowerCase();
 
-  if (normalised === "academic") return "📚";
-  if (normalised === "skill") return "🎨";
-  if (normalised === "language") return "🌍";
+  if (normalised === "academic") return "ðŸ“š";
+  if (normalised === "skill") return "ðŸŽ¨";
+  if (normalised === "language") return "ðŸŒ";
 
-  return "✨";
-}
+  return "âœ¨";
+} 

@@ -3,8 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+import {
+  Menu,
+  X,
+} from "lucide-react";
+
 import { supabase } from "../lib/supabase";
 import NotificationBell from "./ui/NotificationBell";
 
@@ -12,7 +19,10 @@ type UserProfile = {
   id: string;
   role: string;
   full_name: string | null;
-  account_type?: "PARENT" | "ADULT_LEARNER" | null;
+  account_type?:
+    | "PARENT"
+    | "ADULT_LEARNER"
+    | null;
 };
 
 export default function Navbar() {
@@ -20,9 +30,14 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  const [profile, setProfile] =
+    useState<UserProfile | null>(null);
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+  const [
+    notificationCount,
+    setNotificationCount,
+  ] = useState(0);
 
   useEffect(() => {
     async function loadProfile() {
@@ -38,11 +53,12 @@ export default function Navbar() {
         return;
       }
 
-      const { data: userProfile } = await supabase
-        .from("user_profiles")
-        .select("id, role, full_name")
-        .eq("id", user.id)
-        .maybeSingle();
+      const { data: userProfile } =
+        await supabase
+          .from("user_profiles")
+          .select("id, role, full_name")
+          .eq("id", user.id)
+          .maybeSingle();
 
       if (!userProfile) {
         setProfile(null);
@@ -50,52 +66,54 @@ export default function Navbar() {
         return;
       }
 
-      let accountType: "PARENT" | "ADULT_LEARNER" | null = null;
+      let accountType:
+        | "PARENT"
+        | "ADULT_LEARNER"
+        | null = null;
 
       if (userProfile.role === "PARENT") {
-        const { data: parentProfile } = await supabase
-          .from("parent_profiles")
-          .select("account_type")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const { data: parentProfile } =
+          await supabase
+            .from("parent_profiles")
+            .select("account_type")
+            .eq("user_id", user.id)
+            .maybeSingle();
 
         accountType =
-          parentProfile?.account_type === "ADULT_LEARNER"
+          parentProfile?.account_type ===
+          "ADULT_LEARNER"
             ? "ADULT_LEARNER"
             : "PARENT";
       }
 
-      const completeProfile: UserProfile = {
+      setProfile({
         ...userProfile,
         account_type: accountType,
-      };
+      });
 
-      setProfile(completeProfile);
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
 
-      if (userProfile) {
-        const { count } = await supabase
-          .from("notifications")
-          .select("*", {
-            count: "exact",
-            head: true,
-          })
-          .eq("user_id", user.id)
-          .eq("is_read", false);
-
-        setNotificationCount(count ?? 0);
-      }
-
+      setNotificationCount(count ?? 0);
       setLoading(false);
     }
 
-    loadProfile();
+    void loadProfile();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      loadProfile();
-      router.refresh();
-    });
+    } = supabase.auth.onAuthStateChange(
+      () => {
+        void loadProfile();
+        router.refresh();
+      },
+    );
 
     return () => {
       subscription.unsubscribe();
@@ -116,77 +134,136 @@ export default function Navbar() {
 
   function dashboardHref() {
     if (!profile) return "/login";
-
-    if (profile.role === "ADMIN") {
+    if (profile.role === "ADMIN")
       return "/admin";
-    }
-
-    if (profile.role === "TUTOR") {
+    if (profile.role === "TUTOR")
       return "/tutor/dashboard";
-    }
 
-    if (profile.role === "PARENT" && profile.account_type === "ADULT_LEARNER") {
+    if (
+      profile.role === "PARENT" &&
+      profile.account_type ===
+        "ADULT_LEARNER"
+    ) {
       return "/learner/dashboard";
     }
 
-    if (profile.role === "PARENT") {
+    if (profile.role === "PARENT")
       return "/parent/dashboard";
-    }
 
     return "/account";
   }
 
   const publicLinks = [
-  { label: "Home", href: "/" },
-  { label: "AI Academies", href: "/fountaintalk" },
-  { label: "Live Tutors", href: "/subjects" },
-  { label: "Pricing", href: "/pricing?product=academies" },
-  { label: "Become a Tutor", href: "/signup/tutor" },
-  { label: "Login", href: "/login" },
-];
+    { label: "Home", href: "/" },
+    {
+      label: "AI Academies",
+      href: "/academies",
+    },
+    {
+      label: "Live Tutors",
+      href: "/subjects",
+    },
+    {
+      label: "Pricing",
+      href: "/pricing?product=academies",
+    },
+    {
+      label: "Become a Tutor",
+      href: "/signup/tutor",
+    },
+    { label: "Login", href: "/login" },
+  ];
 
   const isAdultLearner =
-    profile?.role === "PARENT" && profile.account_type === "ADULT_LEARNER";
+    profile?.role === "PARENT" &&
+    profile.account_type ===
+      "ADULT_LEARNER";
 
   const isParentAccount =
-    profile?.role === "PARENT" && profile.account_type !== "ADULT_LEARNER";
+    profile?.role === "PARENT" &&
+    profile.account_type !==
+      "ADULT_LEARNER";
 
   const authedLinks = isAdultLearner
-  ? [
-      { label: "AI Academies", href: "/fountaintalk" },
-      { label: "Live Tutors", href: "/subjects" },
-      { label: "My Learning", href: "/learner/dashboard" },
-      { label: "Account", href: "/account" },
-    ]
-  : [
-      { label: "AI Academies", href: "/fountaintalk" },
-      { label: "Live Tutors", href: "/subjects" },
+    ? [
+        {
+          label: "AI Academies",
+          href: "/academies",
+        },
+        {
+          label: "Live Tutors",
+          href: "/subjects",
+        },
+        {
+          label: "My Learning",
+          href: "/learner/dashboard",
+        },
+        {
+          label: "Account",
+          href: "/account",
+        },
+      ]
+    : [
+        {
+          label: "AI Academies",
+          href: "/academies",
+        },
+        {
+          label: "Live Tutors",
+          href: "/subjects",
+        },
 
-      ...(profile?.role === "PARENT"
-        ? [{ label: "My Children", href: "/parent/students" }]
-        : []),
+        ...(profile?.role === "PARENT"
+          ? [
+              {
+                label: "My Children",
+                href: "/parent/students",
+              },
+            ]
+          : []),
 
-      ...(profile?.role === "TUTOR"
-        ? [{ label: "Availability", href: "/tutor/availability" }]
-        : []),
+        ...(profile?.role === "TUTOR"
+          ? [
+              {
+                label: "Availability",
+                href: "/tutor/availability",
+              },
+            ]
+          : []),
 
-      { label: "Dashboard", href: dashboardHref() },
-      { label: "Account", href: "/account" },
-    ];
+        {
+          label: "Dashboard",
+          href: dashboardHref(),
+        },
+        {
+          label: "Account",
+          href: "/account",
+        },
+      ];
 
-  const links = loading ? [] : profile ? authedLinks : publicLinks;
+  const links = loading
+    ? []
+    : profile
+      ? authedLinks
+      : publicLinks;
 
   const isBookingRoute =
     pathname === "/pricing" ||
     pathname === "/schedule" ||
     pathname === "/payment" ||
-    pathname.startsWith("/payment/success");
+    pathname.startsWith(
+      "/payment/success",
+    );
 
   if (isBookingRoute) {
     return (
       <header className="booking-header">
         <div className="booking-nav container">
-          <Link href="/" className="brand-link" aria-label="Fountain Prep home">
+          <Link
+            href="/"
+            className="brand-link"
+            aria-label="Fountain Prep home"
+          >
             <Image
               src="/icons/icon-192.png"
               alt="Fountain Prep"
@@ -196,12 +273,18 @@ export default function Navbar() {
               className="brand-logo"
             />
             <span className="brand-text">
-              <span className="brand-main">Fountain</span>
-              <span className="brand-accent">Prep</span>
+              <span className="brand-main">
+                Fountain
+              </span>
+              <span className="brand-accent">
+                Prep
+              </span>
             </span>
           </Link>
 
-          <span className="booking-status">Booking in progress</span>
+          <span className="booking-status">
+            Booking in progress
+          </span>
         </div>
 
         <style jsx>{`
@@ -209,8 +292,14 @@ export default function Navbar() {
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.94);
-            border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+            background: rgba(
+              255,
+              255,
+              255,
+              0.94
+            );
+            border-bottom: 1px solid
+              rgba(124, 58, 237, 0.12);
             backdrop-filter: blur(18px);
           }
 
@@ -226,7 +315,6 @@ export default function Navbar() {
             display: inline-flex;
             align-items: center;
             gap: 9px;
-            min-width: 0;
             text-decoration: none;
           }
 
@@ -239,16 +327,15 @@ export default function Navbar() {
           .brand-text {
             display: inline-flex;
             align-items: baseline;
-            letter-spacing: -0.055em;
-            line-height: 1;
-            white-space: nowrap;
             font-size: 29px;
             font-weight: 950;
+            letter-spacing: -0.055em;
           }
 
           .brand-main {
             color: #1f1230;
           }
+
           .brand-accent {
             color: #7c3aed;
           }
@@ -266,10 +353,12 @@ export default function Navbar() {
             .brand-text {
               font-size: 24px;
             }
+
             .brand-logo {
               width: 38px;
               height: 38px;
             }
+
             .booking-status {
               font-size: 11px;
             }
@@ -282,7 +371,11 @@ export default function Navbar() {
   return (
     <header className="site-header">
       <div className="site-nav container">
-        <Link href="/" className="brand-link" aria-label="Fountain Prep home">
+        <Link
+          href="/"
+          className="brand-link"
+          aria-label="Fountain Prep home"
+        >
           <Image
             src="/icons/icon-192.png"
             alt="Fountain Prep"
@@ -293,25 +386,41 @@ export default function Navbar() {
           />
 
           <span className="brand-text">
-            <span className="brand-main">Fountain</span>
-            <span className="brand-accent">Prep</span>
+            <span className="brand-main">
+              Fountain
+            </span>
+            <span className="brand-accent">
+              Prep
+            </span>
           </span>
         </Link>
 
-        <nav className="desktop-nav" aria-label="Main navigation">
-          {links.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={
-                pathname === item.href
-                  ? "nav-btn nav-btn-light active"
-                  : "nav-btn nav-btn-light"
-              }
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav
+          className="desktop-nav"
+          aria-label="Main navigation"
+        >
+          {links.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(
+                    item.href.split("?")[0],
+                  );
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  active
+                    ? "nav-btn nav-btn-light active"
+                    : "nav-btn nav-btn-light"
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          })}
 
           {!loading && profile ? (
             <button
@@ -327,8 +436,12 @@ export default function Navbar() {
             </button>
           ) : null}
 
-          {!loading && (!profile || isParentAccount) ? (
-            <Link href="/start" className="nav-btn nav-btn-primary">
+          {!loading &&
+          (!profile || isParentAccount) ? (
+            <Link
+              href="/start"
+              className="nav-btn nav-btn-primary"
+            >
               Book a Live Tutor
             </Link>
           ) : null}
@@ -337,11 +450,17 @@ export default function Navbar() {
         <button
           type="button"
           className="mobile-menu-btn"
-          onClick={() => setMenuOpen((value) => !value)}
+          onClick={() =>
+            setMenuOpen((value) => !value)
+          }
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
         >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          {menuOpen ? (
+            <X size={22} />
+          ) : (
+            <Menu size={22} />
+          )}
         </button>
       </div>
 
@@ -353,25 +472,29 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={
-                  pathname === item.href ? "mobile-link active" : "mobile-link"
+                  pathname === item.href
+                    ? "mobile-link active"
+                    : "mobile-link"
                 }
               >
                 {item.label}
               </Link>
             ))}
 
-            {profile && (
+            {profile ? (
               <NotificationBell
                 count={notificationCount}
                 href="/notifications"
               />
-            )}
+            ) : null}
 
             {!loading && profile ? (
               <button
                 type="button"
                 className={
-                  isParentAccount ? "mobile-link" : "mobile-link primary"
+                  isParentAccount
+                    ? "mobile-link"
+                    : "mobile-link primary"
                 }
                 onClick={handleLogout}
               >
@@ -379,8 +502,12 @@ export default function Navbar() {
               </button>
             ) : null}
 
-            {!loading && (!profile || isParentAccount) ? (
-              <Link href="/start" className="mobile-link primary">
+            {!loading &&
+            (!profile || isParentAccount) ? (
+              <Link
+                href="/start"
+                className="mobile-link primary"
+              >
                 Book a Live Tutor
               </Link>
             ) : null}
@@ -393,8 +520,14 @@ export default function Navbar() {
           position: sticky;
           top: 0;
           z-index: 100;
-          background: rgba(255, 255, 255, 0.88);
-          border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.9
+          );
+          border-bottom: 1px solid
+            rgba(124, 58, 237, 0.1);
           backdrop-filter: blur(18px);
         }
 
@@ -424,11 +557,11 @@ export default function Navbar() {
         .brand-text {
           display: inline-flex;
           align-items: baseline;
+          font-size: 34px;
+          font-weight: 950;
           letter-spacing: -0.055em;
           line-height: 1;
           white-space: nowrap;
-          font-size: 34px;
-          font-weight: 950;
         }
 
         .brand-main {
@@ -442,109 +575,113 @@ export default function Navbar() {
         .desktop-nav {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 9px;
         }
 
         .nav-btn {
-          min-height: 46px;
-          padding: 0 17px;
-          border-radius: 999px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          text-decoration: none;
+          padding: 0 15px;
+          border-radius: 999px;
+          font-size: 14px;
           font-weight: 850;
-          transition: all 0.2s ease;
+          white-space: nowrap;
+          text-decoration: none;
           border: none;
           cursor: pointer;
-          font-size: 15px;
-          white-space: nowrap;
+          transition: all 160ms ease;
         }
 
         .nav-btn-light {
-          background: rgba(255, 255, 255, 0.86);
-          border: 1px solid rgba(124, 58, 237, 0.12);
           color: #251634;
+          background: transparent;
         }
 
         .nav-btn-light:hover,
         .nav-btn-light.active {
-          background: #f4edff;
           color: #6d28d9;
-          border-color: rgba(124, 58, 237, 0.2);
+          background: #f4edff;
         }
 
         .nav-btn-primary {
-          background: linear-gradient(135deg, #7c3aed, #6d28d9);
           color: white;
-          box-shadow: 0 12px 28px rgba(109, 40, 217, 0.2);
-        }
-
-        .nav-btn-primary:hover {
-          transform: translateY(-1px);
+          background: linear-gradient(
+            135deg,
+            #7c3aed,
+            #6d28d9
+          );
+          box-shadow: 0 12px 28px
+            rgba(109, 40, 217, 0.2);
         }
 
         .mobile-menu-btn {
           display: none;
           width: 46px;
           height: 46px;
-          border-radius: 18px;
-          border: 1px solid rgba(124, 58, 237, 0.14);
-          background: #ffffff;
-          color: #1f1230;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 10px 24px rgba(55, 35, 95, 0.08);
+          border-radius: 18px;
+          border: 1px solid
+            rgba(124, 58, 237, 0.14);
+          color: #1f1230;
+          background: #fff;
         }
 
         .mobile-panel {
           display: none;
-          border-top: 1px solid rgba(124, 58, 237, 0.1);
-          background: rgba(255, 255, 255, 0.96);
+          border-top: 1px solid
+            rgba(124, 58, 237, 0.1);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.97
+          );
         }
 
         .mobile-panel-inner {
+          display: grid;
+          grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+          gap: 10px;
           padding-top: 12px;
           padding-bottom: 16px;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
         }
 
         .mobile-link {
           min-height: 50px;
-          border-radius: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
-          text-decoration: none;
+          border: 1px solid
+            rgba(124, 58, 237, 0.12);
+          border-radius: 18px;
+          color: #251634;
+          background: #fff;
           font-size: 15px;
           font-weight: 900;
-          color: #251634;
-          background: #ffffff;
-          border: 1px solid rgba(124, 58, 237, 0.12);
-          box-shadow: 0 10px 24px rgba(55, 35, 95, 0.06);
+          text-decoration: none;
         }
 
         .mobile-link.active {
-          background: #f4edff;
           color: #6d28d9;
+          background: #f4edff;
         }
 
         .mobile-link.primary {
           grid-column: 1 / -1;
-          border: none;
-          color: #ffffff;
-          background: linear-gradient(135deg, #7c3aed, #6d28d9);
-          box-shadow: 0 14px 30px rgba(109, 40, 217, 0.22);
-          cursor: pointer;
+          color: white;
+          border: 0;
+          background: linear-gradient(
+            135deg,
+            #7c3aed,
+            #6d28d9
+          );
         }
 
-        @media (max-width: 900px) {
-          .site-nav {
-            min-height: 68px;
-          }
-
+        @media (max-width: 1000px) {
           .desktop-nav {
             display: none;
           }
@@ -562,11 +699,7 @@ export default function Navbar() {
           }
         }
 
-        @media (max-width: 420px) {
-          .site-nav {
-            min-height: 64px;
-          }
-
+        @media (max-width: 480px) {
           .brand-logo {
             width: 40px;
             height: 40px;
@@ -574,12 +707,6 @@ export default function Navbar() {
 
           .brand-text {
             font-size: 25px;
-          }
-
-          .mobile-menu-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 16px;
           }
 
           .mobile-panel-inner {

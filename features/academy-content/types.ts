@@ -8,7 +8,9 @@ export type AcademyCode =
   | "digital-skills"
   | "mathematics"
   | "english"
-  | "science";
+  | "science"
+  | "biography"
+  | "bible";
 
 export type DeliveryMode =
   | "ai-classroom"
@@ -61,6 +63,33 @@ export type LessonActivity = {
   type: ActivityType;
   title: string;
   teacherPrompt: string;
+
+  /**
+   * Optional natural narration. When omitted the classroom
+   * narrates teacherPrompt + explanation + learnerInstruction.
+   */
+  narrationText?: string;
+
+  /**
+   * Optional story/case shown as part of the teaching slide.
+   */
+  story?: string;
+
+  /**
+   * Short visual heading used by the universal presentation panel.
+   */
+  visualTitle?: string;
+
+  /**
+   * Supporting visual description or key idea.
+   */
+  visualDescription?: string;
+
+  /**
+   * If false, the activity will not automatically narrate on entry.
+   * The learner can still use "Hear again".
+   */
+  autoNarrate?: boolean;
   learnerInstruction?: string;
   explanation?: string;
   expectedAnswer?: string;
