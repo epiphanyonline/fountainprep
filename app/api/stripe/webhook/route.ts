@@ -861,12 +861,10 @@ async function ensureGoogleMeetLinks(
       bookingStartIso(booking);
 
     const endIso =
-      new Date(
-        new Date(
-          startIso,
-        ).getTime() +
-          60 * 60 * 1000,
-      ).toISOString();
+  new Date(
+    new Date(startIso).getTime() +
+      70 * 60 * 1000,
+  ).toISOString();
 
     const created =
       await createGoogleMeetEvent({
@@ -985,7 +983,7 @@ async function ensureLessonSessions(bookings: BookingRow[]) {
       const startsAt = slot?.starts_at || bookingStartIso(booking);
       const endsAt =
         slot?.ends_at ||
-        new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString();
+        new Date(new Date(startsAt).getTime() + 70 * 60 * 1000).toISOString();
 
       return {
         booking_id: booking.id,
