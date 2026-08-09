@@ -358,7 +358,7 @@ export async function createGoogleMeetEvent(
   };
 }
 
-async function configureGoogleMeetSpace(
+export async function configureGoogleMeetSpace(
   meetUrl: string,
   accessToken: string,
 ) {
