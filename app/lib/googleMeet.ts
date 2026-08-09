@@ -28,6 +28,19 @@ type GoogleCalendarEvent = {
   };
 };
 
+type GoogleMeetSpace = {
+  name?: string;
+  meetingUri?: string;
+  meetingCode?: string;
+  config?: {
+    accessType?: string;
+    moderation?: string;
+  };
+  error?: {
+    message?: string;
+  };
+};
+
 export type CreateGoogleMeetEventInput = {
   summary: string;
   description?: string;
@@ -44,6 +57,9 @@ const tokenEndpoint =
 const calendarApiBase =
   "https://www.googleapis.com/calendar/v3";
 
+const meetApiBase =
+  "https://meet.googleapis.com/v2";
+
 export function isGoogleMeetUrl(
   value?: string | null,
 ) {
@@ -57,8 +73,10 @@ export function isGoogleMeetUrl(
 export async function getGoogleAccessToken() {
   const clientId =
     process.env.GOOGLE_CLIENT_ID;
+
   const clientSecret =
     process.env.GOOGLE_CLIENT_SECRET;
+
   const refreshToken =
     process.env.GOOGLE_REFRESH_TOKEN;
 
@@ -76,22 +94,26 @@ export async function getGoogleAccessToken() {
     tokenEndpoint,
     {
       method: "POST",
+
       headers: {
         "Content-Type":
           "application/x-www-form-urlencoded",
       },
+
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         refresh_token: refreshToken,
         grant_type: "refresh_token",
       }),
+
       cache: "no-store",
     },
   );
 
   const payload =
-    (await response.json()) as GoogleTokenResponse;
+    (await response.json()) as
+      GoogleTokenResponse;
 
   if (
     !response.ok ||
@@ -124,11 +146,13 @@ export async function verifyGoogleCalendarConnection() {
         Authorization:
           `Bearer ${accessToken}`,
       },
+
       cache: "no-store",
     },
   );
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   if (!response.ok) {
     throw new Error(
@@ -141,8 +165,10 @@ export async function verifyGoogleCalendarConnection() {
     id:
       process.env.GOOGLE_CALENDAR_ID ||
       "primary",
+
     summary:
       "Google Calendar connected",
+
     timeZone:
       data.timeZone || null,
   };
@@ -160,15 +186,18 @@ export async function createGoogleMeetEvent(
         "primary",
     );
 
-  const attendeeEmails = Array.from(
-    new Set(
-      (input.attendees || [])
-        .map((email) =>
-          email.trim().toLowerCase(),
-        )
-        .filter(Boolean),
-    ),
-  );
+  const attendeeEmails =
+    Array.from(
+      new Set(
+        (input.attendees || [])
+          .map((email) =>
+            email
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    );
 
   const requestId =
     normaliseRequestId(
@@ -179,40 +208,59 @@ export async function createGoogleMeetEvent(
     `${calendarApiBase}/calendars/${calendarId}/events?conferenceDataVersion=1&sendUpdates=all`,
     {
       method: "POST",
+
       headers: {
         Authorization:
           `Bearer ${accessToken}`,
+
         "Content-Type":
           "application/json",
       },
+
       body: JSON.stringify({
-        summary: input.summary,
+        summary:
+          input.summary,
+
         description:
           input.description ||
           "Fountain Prep online session.",
+
         start: {
-          dateTime: input.startIso,
+          dateTime:
+            input.startIso,
+
           timeZone:
             input.timeZone ||
             "Europe/London",
         },
+
         end: {
-          dateTime: input.endIso,
+          dateTime:
+            input.endIso,
+
           timeZone:
             input.timeZone ||
             "Europe/London",
         },
-        attendees: attendeeEmails.map(
-          (email) => ({ email }),
-        ),
+
+        attendees:
+          attendeeEmails.map(
+            (email) => ({
+              email,
+            }),
+          ),
+
         conferenceData: {
           createRequest: {
             requestId,
+
             conferenceSolutionKey: {
-              type: "hangoutsMeet",
+              type:
+                "hangoutsMeet",
             },
           },
         },
+
         extendedProperties: {
           private: {
             fountainprep_request_key:
@@ -220,6 +268,7 @@ export async function createGoogleMeetEvent(
           },
         },
       }),
+
       cache: "no-store",
     },
   );
@@ -242,12 +291,14 @@ export async function createGoogleMeetEvent(
   const meetUrl =
     extractMeetUrl(event);
 
+  /*
+   * Google Calendar normally returns
+   * the conference immediately.
+   *
+   * If it doesn't, briefly poll the
+   * event until the Meet URL appears.
+   */
   if (!meetUrl) {
-    /*
-     * Conference generation is normally returned immediately,
-     * but Google documents that it can be asynchronous.
-     * Poll the event briefly before treating it as a failure.
-     */
     if (event.id) {
       const polled =
         await pollEventForMeetLink(
@@ -257,11 +308,27 @@ export async function createGoogleMeetEvent(
         );
 
       if (polled) {
+        /*
+         * Configure the Meet so the
+         * tutor and learner can enter
+         * without the FountainPrep
+         * organizer joining first.
+         */
+        await configureGoogleMeetSpace(
+          polled,
+          accessToken,
+        );
+
         return {
-          eventId: event.id,
+          eventId:
+            event.id,
+
           eventUrl:
-            event.htmlLink || null,
-          meetUrl: polled,
+            event.htmlLink ||
+            null,
+
+          meetUrl:
+            polled,
         };
       }
     }
@@ -271,12 +338,139 @@ export async function createGoogleMeetEvent(
     );
   }
 
+  /*
+   * Configure the meeting space before
+   * returning the URL to FountainPrep.
+   */
+  await configureGoogleMeetSpace(
+    meetUrl,
+    accessToken,
+  );
+
   return {
-    eventId: event.id || null,
+    eventId:
+      event.id || null,
+
     eventUrl:
       event.htmlLink || null,
+
     meetUrl,
   };
+}
+
+async function configureGoogleMeetSpace(
+  meetUrl: string,
+  accessToken: string,
+) {
+  const meetingCode =
+    extractMeetingCode(
+      meetUrl,
+    );
+
+  if (!meetingCode) {
+    throw new Error(
+      "Could not determine Google Meet meeting code.",
+    );
+  }
+
+  /*
+   * Google permits spaces.get using
+   * either the resource ID or meeting
+   * code.
+   */
+  const getResponse =
+    await fetch(
+      `${meetApiBase}/spaces/${encodeURIComponent(
+        meetingCode,
+      )}`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`,
+        },
+
+        cache:
+          "no-store",
+      },
+    );
+
+  const space =
+    (await getResponse.json()) as
+      GoogleMeetSpace;
+
+  if (!getResponse.ok) {
+    throw new Error(
+      space.error?.message ||
+        `Unable to load Google Meet space. Status ${getResponse.status}.`,
+    );
+  }
+
+  if (!space.name) {
+    throw new Error(
+      "Google Meet space returned without a resource name.",
+    );
+  }
+
+  /*
+   * OPEN:
+   * Anyone with the meeting join
+   * information can enter without
+   * knocking.
+   *
+   * moderation OFF:
+   * Host-management moderation is not
+   * required for ordinary entry.
+   */
+  const updateMask =
+    encodeURIComponent(
+      "config.accessType,config.moderation",
+    );
+
+  const patchResponse =
+    await fetch(
+      `${meetApiBase}/${space.name}?updateMask=${updateMask}`,
+      {
+        method: "PATCH",
+
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            name:
+              space.name,
+
+            config: {
+              accessType:
+                "OPEN",
+
+              moderation:
+                "OFF",
+            },
+          }),
+
+        cache:
+          "no-store",
+      },
+    );
+
+  const updatedSpace =
+    (await patchResponse.json()) as
+      GoogleMeetSpace;
+
+  if (!patchResponse.ok) {
+    throw new Error(
+      updatedSpace.error?.message ||
+        `Unable to configure Google Meet space. Status ${patchResponse.status}.`,
+    );
+  }
+
+  return updatedSpace;
 }
 
 async function pollEventForMeetLink(
@@ -290,21 +484,25 @@ async function pollEventForMeetLink(
     attempt += 1
   ) {
     await delay(
-      450 * (attempt + 1),
+      450 *
+        (attempt + 1),
     );
 
-    const response = await fetch(
-      `${calendarApiBase}/calendars/${encodedCalendarId}/events/${encodeURIComponent(
-        eventId,
-      )}?conferenceDataVersion=1`,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`,
+    const response =
+      await fetch(
+        `${calendarApiBase}/calendars/${encodedCalendarId}/events/${encodeURIComponent(
+          eventId,
+        )}?conferenceDataVersion=1`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+
+          cache:
+            "no-store",
         },
-        cache: "no-store",
-      },
-    );
+      );
 
     if (!response.ok) {
       continue;
@@ -315,7 +513,9 @@ async function pollEventForMeetLink(
         GoogleCalendarEvent;
 
     const meetUrl =
-      extractMeetUrl(event);
+      extractMeetUrl(
+        event,
+      );
 
     if (meetUrl) {
       return meetUrl;
@@ -337,29 +537,65 @@ function extractMeetUrl(
   }
 
   const videoEntry =
-    event.conferenceData?.entryPoints?.find(
-      (entry) =>
-        entry.entryPointType ===
-          "video" &&
-        entry.uri?.startsWith(
-          "https://meet.google.com/",
-        ),
-    );
+    event.conferenceData
+      ?.entryPoints?.find(
+        (entry) =>
+          entry.entryPointType ===
+            "video" &&
+          entry.uri?.startsWith(
+            "https://meet.google.com/",
+          ),
+      );
 
-  return videoEntry?.uri || null;
+  return (
+    videoEntry?.uri ||
+    null
+  );
+}
+
+function extractMeetingCode(
+  meetUrl: string,
+) {
+  try {
+    const url =
+      new URL(meetUrl);
+
+    if (
+      url.hostname !==
+      "meet.google.com"
+    ) {
+      return null;
+    }
+
+    return (
+      url.pathname
+        .replace(/^\/+/, "")
+        .split("/")[0]
+        ?.trim() || null
+    );
+  } catch {
+    return null;
+  }
 }
 
 function normaliseRequestId(
   value: string,
 ) {
-  const safe = value
-    .toLowerCase()
-    .replace(
-      /[^a-z0-9_-]/g,
-      "-",
-    )
-    .replace(/-+/g, "-")
-    .slice(0, 100);
+  const safe =
+    value
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9_-]/g,
+        "-",
+      )
+      .replace(
+        /-+/g,
+        "-",
+      )
+      .slice(
+        0,
+        100,
+      );
 
   return (
     safe ||
@@ -367,9 +603,14 @@ function normaliseRequestId(
   );
 }
 
-function delay(ms: number) {
-  return new Promise<void>(
+function delay(
+  ms: number,
+) {
+  return new Promise(
     (resolve) =>
-      setTimeout(resolve, ms),
+      setTimeout(
+        resolve,
+        ms,
+      ),
   );
 }
