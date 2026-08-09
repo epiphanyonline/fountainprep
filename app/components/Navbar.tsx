@@ -154,25 +154,25 @@ export default function Navbar() {
   }
 
   const publicLinks = [
-    { label: "Home", href: "/" },
-    {
-      label: "Self-Paced Academies",
-      href: "/academies",
-    },
-    {
-      label: "Live Tutors",
-      href: "/subjects",
-    },
-    {
-      label: "Pricing",
-      href: "/pricing?product=academies",
-    },
-    {
-      label: "Become a Tutor",
-      href: "/signup/tutor",
-    },
-    { label: "Login", href: "/login" },
-  ];
+  { label: "Home", href: "/" },
+  {
+    label: "Self-Paced Academies",
+    href: "/academies",
+  },
+  {
+    label: "Live Tutors",
+    href: "/subjects",
+  },
+  {
+    label: "Plans",
+    href: "/plans",
+  },
+  {
+    label: "Become a Tutor",
+    href: "/signup/tutor",
+  },
+  { label: "Login", href: "/login" },
+];
 
   const isAdultLearner =
     profile?.role === "PARENT" &&
@@ -717,4 +717,5 @@ export default function Navbar() {
     </header>
   );
 }
+
 
