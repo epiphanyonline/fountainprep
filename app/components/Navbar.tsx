@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -156,7 +156,7 @@ export default function Navbar() {
   const publicLinks = [
     { label: "Home", href: "/" },
     {
-      label: "AI Academies",
+      label: "Self-Paced Academies",
       href: "/academies",
     },
     {
@@ -187,7 +187,7 @@ export default function Navbar() {
   const authedLinks = isAdultLearner
     ? [
         {
-          label: "AI Academies",
+          label: "Self-Paced Academies",
           href: "/academies",
         },
         {
@@ -205,7 +205,7 @@ export default function Navbar() {
       ]
     : [
         {
-          label: "AI Academies",
+          label: "Self-Paced Academies",
           href: "/academies",
         },
         {
@@ -717,3 +717,4 @@ export default function Navbar() {
     </header>
   );
 }
+
