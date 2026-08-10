@@ -31,8 +31,10 @@ export async function GET() {
       redirect_uri: redirectUri,
       response_type: "code",
 
-      scope:
-        "https://www.googleapis.com/auth/calendar.events",
+      scope: [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/meetings.space.settings",
+].join(" "),
 
       access_type: "offline",
 

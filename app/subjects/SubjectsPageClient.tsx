@@ -1065,7 +1065,7 @@ function CatalogueGrid({
                     : "btn-primary"
                 }
               >
-                Book a Live 1-to-1 Tutor
+                Book a Live Tutor
               </Link>
             </div>
           </div>
@@ -1187,6 +1187,53 @@ function CatalogueGrid({
           outline: 3px solid rgba(111, 66, 193, 0.25);
           outline-offset: 3px;
         }
+        
+        :global(.btn-live-tutor) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 18px;
+  box-sizing: border-box;
+
+  border: 2px solid #6f42c1;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    135deg,
+    #f8f4ff,
+    #ffffff
+  );
+
+  color: #5b21b6;
+
+  font-size: 15px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  box-shadow: 0 8px 22px rgba(111, 66, 193, 0.1);
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+:global(.btn-live-tutor:hover) {
+  background: #6f42c1;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+}
+
+:global(.btn-live-tutor:focus-visible) {
+  outline: 3px solid rgba(111, 66, 193, 0.25);
+  outline-offset: 3px;
+}
 
         @media (max-width: 1000px) {
           .subject-grid {
@@ -1435,6 +1482,53 @@ function ProgramGrid({
           outline-offset: 3px;
         }
 
+        :global(.btn-live-tutor) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 18px;
+  box-sizing: border-box;
+
+  border: 2px solid #6f42c1;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    135deg,
+    #f8f4ff,
+    #ffffff
+  );
+
+  color: #5b21b6;
+
+  font-size: 15px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  box-shadow: 0 8px 22px rgba(111, 66, 193, 0.1);
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+:global(.btn-live-tutor:hover) {
+  background: #6f42c1;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(111, 66, 193, 0.22);
+}
+
+:global(.btn-live-tutor:focus-visible) {
+  outline: 3px solid rgba(111, 66, 193, 0.25);
+  outline-offset: 3px;
+}
+
         @media (max-width: 1000px) {
           .program-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1469,9 +1563,10 @@ function ProgramGrid({
 function getCategoryIcon(category: string) {
   const normalised = category.toLowerCase();
 
-  if (normalised === "academic") return "ðŸ“š";
-  if (normalised === "skill") return "ðŸŽ¨";
-  if (normalised === "language") return "ðŸŒ";
+  if (normalised === "all") return "✨";
+  if (normalised === "academic") return "📚";
+  if (normalised === "skill") return "🎨";
+  if (normalised === "language") return "🌍";
 
-  return "âœ¨";
+  return "✨";
 } 

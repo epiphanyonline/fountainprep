@@ -229,9 +229,14 @@ function TutorLessonReportContent() {
   )
 
   const pendingReports = useMemo(
-    () => lessons.filter((lesson) => !notes[lesson.id]).length,
-    [lessons, notes]
-  )
+  () =>
+    lessons.filter(
+      (lesson) =>
+        lessonHasStarted(lesson) &&
+        !notes[lesson.id],
+    ).length,
+  [lessons, notes],
+)
 
   function updateForm(lessonId: string, field: keyof ReportForm, value: string) {
     setForms((prev) => ({
@@ -243,8 +248,38 @@ function TutorLessonReportContent() {
     }))
   }
 
-  async function saveLessonReport(lesson: LessonBooking) {
-    if (!tutor) return
+  function lessonHasStarted(
+  lesson: LessonBooking,
+) {
+  if (
+    !lesson.lesson_date ||
+    !lesson.lesson_time
+  ) {
+    return false
+  }
+
+  const lessonDateTime =
+    new Date(
+      `${lesson.lesson_date}T${lesson.lesson_time}`,
+    )
+
+  return (
+    lessonDateTime.getTime() <=
+    Date.now()
+  )
+}
+
+  async function saveLessonReport(
+  lesson: LessonBooking,
+) {
+  if (!tutor) return
+
+  if (!lessonHasStarted(lesson)) {
+    setMessage(
+      'This lesson has not started yet. The lesson report will become available after the scheduled class time.',
+    )
+    return
+  }
 
     const form = forms[lesson.id] ?? emptyForm()
 
@@ -392,8 +427,11 @@ function TutorLessonReportContent() {
           </div>
         ) : (
           <div className="lessonList">
-            {lessons.map((lesson) => (
-              <article key={lesson.id} className="lessonCard">
+            {lessons.map((lesson) => {
+  const canReport = lessonHasStarted(lesson)
+
+  return (
+    <article key={lesson.id} className="lessonCard">
                 <div className="lessonTop">
                   <div>
                     <p className="eyebrow">Private 1-to-1 Lesson</p>
@@ -422,98 +460,200 @@ function TutorLessonReportContent() {
                   <Info label="Payment" value={lesson.payment_status} />
                 </div>
 
-                <div className="reportBox">
-                  <div className="sectionHead small">
-                    <p className="eyebrow">Parent Progress Update</p>
-                    <h2>{notes[lesson.id] ? 'Update report' : 'New report'}</h2>
-                  </div>
+                {!canReport ? (
+  <div className="reportBox">
+    <div className="sectionHead small">
+      <p className="eyebrow">Upcoming Lesson</p>
+      <h2>Lesson report not available yet</h2>
+    </div>
 
-                  <div className="formGrid">
-                    <label>
-                      <span>Attendance</span>
-                      <select
-                        value={forms[lesson.id]?.attendance ?? 'present'}
-                        onChange={(e) =>
-                          updateForm(lesson.id, 'attendance', e.target.value)
-                        }
-                      >
-                        <option value="present">Present</option>
-                        <option value="late">Late</option>
-                        <option value="absent">Absent</option>
-                      </select>
-                    </label>
+    <p
+      style={{
+        margin: 0,
+        color: '#6f637e',
+        lineHeight: 1.7,
+      }}
+    >
+      This lesson has not taken place yet. You can complete the
+      lesson report after the scheduled class time.
+    </p>
 
-                    <label>
-                      <span>Lesson topic</span>
-                      <input
-                        value={forms[lesson.id]?.lesson_topic ?? ''}
-                        onChange={(e) =>
-                          updateForm(lesson.id, 'lesson_topic', e.target.value)
-                        }
-                        placeholder="e.g. Fractions, Yoruba greetings, Coding loops"
-                      />
-                    </label>
-                  </div>
+    <div
+      style={{
+        marginTop: 16,
+        padding: '14px 16px',
+        borderRadius: 16,
+        background: '#f5f0ff',
+        color: '#5b21b6',
+        fontWeight: 850,
+      }}
+    >
+      🔒 Report unlocks after{' '}
+      {formatDate(lesson.lesson_date)} at{' '}
+      {lesson.lesson_time || 'the scheduled time'}
+    </div>
+  </div>
+) : (
+  <div className="reportBox">
+    <div className="sectionHead small">
+      <p className="eyebrow">Parent Progress Update</p>
 
-                  <label>
-                    <span>Strengths</span>
-                    <textarea
-                      value={forms[lesson.id]?.strengths ?? ''}
-                      onChange={(e) =>
-                        updateForm(lesson.id, 'strengths', e.target.value)
-                      }
-                      placeholder="What did the child do well?"
-                    />
-                  </label>
+      <h2>
+        {notes[lesson.id]
+          ? 'Update report'
+          : 'New report'}
+      </h2>
+    </div>
 
-                  <label>
-                    <span>Area to improve</span>
-                    <textarea
-                      value={forms[lesson.id]?.improvement_area ?? ''}
-                      onChange={(e) =>
-                        updateForm(lesson.id, 'improvement_area', e.target.value)
-                      }
-                      placeholder="What should the child practise next?"
-                    />
-                  </label>
+    <div className="formGrid">
+      <label>
+        <span>Attendance</span>
 
-                  <label>
-                    <span>Homework / next task</span>
-                    <textarea
-                      value={forms[lesson.id]?.homework ?? ''}
-                      onChange={(e) =>
-                        updateForm(lesson.id, 'homework', e.target.value)
-                      }
-                      placeholder="Suggested homework or practice."
-                    />
-                  </label>
+        <select
+          value={
+            forms[lesson.id]?.attendance ??
+            'present'
+          }
+          onChange={(e) =>
+            updateForm(
+              lesson.id,
+              'attendance',
+              e.target.value,
+            )
+          }
+        >
+          <option value="present">
+            Present
+          </option>
 
-                  <label>
-                    <span>Tutor comment</span>
-                    <textarea
-                      value={forms[lesson.id]?.tutor_comment ?? ''}
-                      onChange={(e) =>
-                        updateForm(lesson.id, 'tutor_comment', e.target.value)
-                      }
-                      placeholder="Short parent-friendly summary."
-                    />
-                  </label>
+          <option value="late">
+            Late
+          </option>
 
-                  <button
-                    type="button"
-                    className="primaryBtn full"
-                    disabled={savingId === lesson.id}
-                    onClick={() => saveLessonReport(lesson)}
-                  >
-                    {savingId === lesson.id
-                      ? 'Saving...'
-                      : notes[lesson.id]
-                        ? 'Update Lesson Report'
-                        : 'Save Report & Complete Lesson'}
-                  </button>
-                </div>
-              </article>
-            ))}
+          <option value="absent">
+            Absent
+          </option>
+        </select>
+      </label>
+
+      <label>
+        <span>Lesson topic</span>
+
+        <input
+          value={
+            forms[lesson.id]?.lesson_topic ??
+            ''
+          }
+          onChange={(e) =>
+            updateForm(
+              lesson.id,
+              'lesson_topic',
+              e.target.value,
+            )
+          }
+          placeholder="e.g. Fractions, Yoruba greetings, Coding loops"
+        />
+      </label>
+    </div>
+
+    <label>
+      <span>Strengths</span>
+
+      <textarea
+        value={
+          forms[lesson.id]?.strengths ??
+          ''
+        }
+        onChange={(e) =>
+          updateForm(
+            lesson.id,
+            'strengths',
+            e.target.value,
+          )
+        }
+        placeholder="What did the child do well?"
+      />
+    </label>
+
+    <label>
+      <span>Area to improve</span>
+
+      <textarea
+        value={
+          forms[lesson.id]?.improvement_area ??
+          ''
+        }
+        onChange={(e) =>
+          updateForm(
+            lesson.id,
+            'improvement_area',
+            e.target.value,
+          )
+        }
+        placeholder="What should the child practise next?"
+      />
+    </label>
+
+    <label>
+      <span>Homework / next task</span>
+
+      <textarea
+        value={
+          forms[lesson.id]?.homework ??
+          ''
+        }
+        onChange={(e) =>
+          updateForm(
+            lesson.id,
+            'homework',
+            e.target.value,
+          )
+        }
+        placeholder="Suggested homework or practice."
+      />
+    </label>
+
+    <label>
+      <span>Tutor comment</span>
+
+      <textarea
+        value={
+          forms[lesson.id]?.tutor_comment ??
+          ''
+        }
+        onChange={(e) =>
+          updateForm(
+            lesson.id,
+            'tutor_comment',
+            e.target.value,
+          )
+        }
+        placeholder="Short parent-friendly summary."
+      />
+    </label>
+
+    <button
+      type="button"
+      className="primaryBtn full"
+      disabled={
+        savingId === lesson.id
+      }
+      onClick={() =>
+        saveLessonReport(lesson)
+      }
+    >
+      {savingId === lesson.id
+        ? 'Saving...'
+        : notes[lesson.id]
+          ? 'Update Lesson Report'
+          : 'Save Report & Complete Lesson'}
+    </button>
+  </div>
+)}
+
+</article>
+  )
+})}
           </div>
         )}
       </section>
