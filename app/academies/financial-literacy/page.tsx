@@ -1,16 +1,11 @@
-import AcademyLanding from "@/app/components/academy/AcademyLanding";
-import { academyMarketing } from "@/app/data/academies/marketing";
+import FinancialLiteracyExperience from "./FinancialLiteracyExperience";
 
 export const metadata = {
-  title: "Financial Literacy Academy",
+  title: "Financial Literacy Academy | FountainPrep",
   description:
-    "Equip children and young people with practical money skills for a brighter financial future.",
+    "Learn how to earn, manage, protect, invest and grow money across a lifetime — from everyday money decisions to assets, investing and financial freedom.",
 };
 
 export default function FinancialLiteracyPage() {
-  return (
-    <AcademyLanding
-      academy={academyMarketing["financial-literacy"]}
-    />
-  );
+  return <FinancialLiteracyExperience />;
 }

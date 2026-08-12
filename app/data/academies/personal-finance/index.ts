@@ -3,28 +3,51 @@ import {
   createProgramme,
 } from "@/features/academy-content";
 
-import { moneyFoundationCourse } from "./foundation";
+import {
+  moneyFoundationCourse,
+} from "./foundation";
+
+export {
+  financialLiteracyPremiumBlueprint,
+  financialLiteracyStages,
+  financialLiteracyFreeStage,
+  financialLiteracyPremiumStages,
+  financialLiteracySimulations,
+} from "./premiumBlueprint";
 
 export const personalFinanceAcademy =
   createAcademy({
     code: "personal-finance",
-    title: "Personal Finance Academy",
+
+    title:
+      "Financial Literacy Academy",
+
     description:
-      "Build practical money habits, financial confidence and productive-asset thinking.",
+      "Learn how to earn, manage, protect, invest and grow money across a lifetime — from everyday money decisions to investing and long-term financial freedom.",
+
     programmes: [
       createProgramme({
         id: "money-foundation",
-        academy: "personal-finance",
-        title: "Money Foundation",
+
+        academy:
+          "personal-finance",
+
+        title:
+          "Financial Foundations",
+
         description:
-          "Learn saving, budgeting, borrowing, interest, investing and responsible financial decision-making.",
+          "Start with money, saving, budgeting, borrowing, assets and investment foundations before progressing into wealth building and financial markets.",
+
         suitableAgeGroups: [
           "6-9",
           "10-13",
           "14-17",
           "adult",
         ],
-        courses: [moneyFoundationCourse],
+
+        courses: [
+          moneyFoundationCourse,
+        ],
       }),
     ],
   });

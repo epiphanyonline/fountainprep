@@ -1,12 +1,16 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+
 import type {
   AcademyMarketingConfig,
 } from "@/app/data/academies/marketing";
 
 export default function AcademyLanding({
   academy,
+  expandedCurriculum,
 }: {
   academy: AcademyMarketingConfig;
+  expandedCurriculum?: ReactNode;
 }) {
   const startHref = `/academies/${academy.slug}/start`;
 
@@ -146,10 +150,12 @@ export default function AcademyLanding({
             </div>
           </div>
         </div>
-      </section>
+            </section>
 
-      {/* OUTCOMES */}
-      <section className="outcomesSection">
+      {expandedCurriculum}
+
+      {/* ACCESS */}
+      <section className="accessSection">
         <div>
           <p className="sectionLabel">
             What they will be able to do
@@ -209,7 +215,9 @@ export default function AcademyLanding({
             )
           )}
         </div>
-      </section>
+            </section>
+
+      {expandedCurriculum}
 
       {/* ACCESS */}
       <section className="accessSection">
