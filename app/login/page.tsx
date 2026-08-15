@@ -271,19 +271,29 @@ function LoginForm() {
           </div>
 
           <div className="signupLinks">
-            <p>
-              New parent?{" "}
-              <Link
-                href={`/signup/parent?next=${encodeURIComponent(signupNext)}`}
-              >
-                Create parent account
-              </Link>
-            </p>
+  <p>
+    New parent?{" "}
+    <Link
+      href={`/signup/parent?next=${encodeURIComponent(signupNext)}`}
+    >
+      Create parent account
+    </Link>
+  </p>
 
-            <p>
-              New tutor? <Link href="/signup/tutor">Create tutor account</Link>
-            </p>
-          </div>
+  <p>
+    Adult learner?{" "}
+    <Link href="/signup/learner">
+      Create your account
+    </Link>
+  </p>
+
+  <p>
+    New tutor?{" "}
+    <Link href="/signup/tutor">
+      Create tutor account
+    </Link>
+  </p>
+</div>
         </div>
       </section>
 

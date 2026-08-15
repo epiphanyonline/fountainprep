@@ -162,9 +162,12 @@ export async function POST(req: Request) {
       throw new RequestError('First lessons require at least 72 hours notice.', 409)
     }
 
-    await validateSlotSubjects(seedSlots, subject.name)
-    await validateLearningLevels(seedSlots, student.learning_level_id, subject.category)
-
+    await validateTutorWeeklyEligibility(
+  seedSlots,
+  subject.id,
+  student.learning_level_id,
+  subject.category
+)
     const plan = plans[planId]
 const totalLessons = plan.weeks * requiredSlotCount
 
@@ -427,71 +430,154 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100
 }
 
-async function validateSlotSubjects(seedSlots: SlotRow[], requestedName: string) {
-  const subjectIds = Array.from(
-    new Set(seedSlots.map((slot) => slot.subject_id).filter(Boolean) as string[])
-  )
-
-  if (subjectIds.length === 0) {
-    throw new RequestError('The selected tutor time has no subject assigned.', 400)
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from('subjects')
-    .select('id, name')
-    .in('id', subjectIds)
-
-  if (error) throw error
-
-  const expected = canonicalSubject(requestedName)
-  const names = new Map((data ?? []).map((subject) => [subject.id, subject.name]))
-
-  if (
-    seedSlots.some(
-      (slot) => !slot.subject_id || canonicalSubject(names.get(slot.subject_id) || '') !== expected
-    )
-  ) {
-    throw new RequestError('The selected tutor time does not match this subject.', 400)
-  }
-}
-
-async function validateLearningLevels(
+async function validateTutorWeeklyEligibility(
   seedSlots: SlotRow[],
+  requestedSubjectId: string,
   studentLevelId: string | null,
   subjectCategory: string | null
 ) {
-  if (String(subjectCategory || '').toLowerCase() === 'language') return
+  if (seedSlots.length === 0) {
+    throw new RequestError(
+      'No tutor times were selected.',
+      400
+    )
+  }
 
-  const levelIds = Array.from(
-    new Set(seedSlots.map((slot) => slot.learning_level_id).filter(Boolean) as string[])
+  const tutorIds = Array.from(
+    new Set(seedSlots.map((slot) => slot.tutor_id))
   )
-  if (levelIds.length === 0 || !studentLevelId) return
 
-  const { data, error } = await supabaseAdmin
-    .from('learning_levels')
-    .select('id, code, name')
-    .in('id', levelIds)
+  if (tutorIds.length !== 1) {
+    throw new RequestError(
+      'Selected times must belong to one tutor.',
+      400
+    )
+  }
+
+  const tutorId = tutorIds[0]
+
+  const { data: weeklyRows, error } =
+    await supabaseAdmin
+      .from('tutor_weekly_availability')
+      .select(`
+        id,
+        tutor_id,
+        subject_id,
+        learning_level_id,
+        day_of_week,
+        start_time,
+        is_active
+      `)
+      .eq('tutor_id', tutorId)
+      .eq('subject_id', requestedSubjectId)
+      .eq('is_active', true)
 
   if (error) throw error
-  const allAgesIds = new Set(
-    (data ?? [])
-      .filter(
-        (level) =>
-          String(level.code || '').toUpperCase() === 'ALL_AGES' ||
-          String(level.name || '').toLowerCase() === 'all ages'
-      )
-      .map((level) => level.id)
-  )
+
+  const rows = (weeklyRows ?? []) as {
+    id: string
+    tutor_id: string
+    subject_id: string
+    learning_level_id: string | null
+    day_of_week: number
+    start_time: string
+    is_active: boolean
+  }[]
+
+  if (rows.length === 0) {
+    throw new RequestError(
+      'This tutor is not currently available for the selected subject.',
+      409
+    )
+  }
+
+  let allAgesIds = new Set<string>()
 
   if (
-    seedSlots.some(
-      (slot) =>
-        slot.learning_level_id &&
-        slot.learning_level_id !== studentLevelId &&
-        !allAgesIds.has(slot.learning_level_id)
-    )
+    String(subjectCategory || '').toLowerCase() !==
+    'language'
   ) {
-    throw new RequestError('This tutor time does not match the child’s learning level.', 400)
+    const levelIds = Array.from(
+      new Set(
+        rows
+          .map((row) => row.learning_level_id)
+          .filter(Boolean) as string[]
+      )
+    )
+
+    if (levelIds.length > 0) {
+      const { data: levelRows, error: levelError } =
+        await supabaseAdmin
+          .from('learning_levels')
+          .select('id, code, name')
+          .in('id', levelIds)
+
+      if (levelError) throw levelError
+
+      allAgesIds = new Set(
+        (levelRows ?? [])
+          .filter(
+            (level) =>
+              String(level.code || '').toUpperCase() ===
+                'ALL_AGES' ||
+              String(level.name || '').toLowerCase() ===
+                'all ages'
+          )
+          .map((level) => level.id)
+      )
+    }
+  }
+
+  const isLanguage =
+    String(subjectCategory || '').toLowerCase() ===
+    'language'
+
+  for (const slot of seedSlots) {
+    const slotDay =
+      new Date(
+        `${slot.slot_date}T12:00:00Z`
+      ).getUTCDay()
+
+    const slotTime =
+      normaliseTime(slot.start_time)
+
+    const matchingPattern = rows.some((row) => {
+      const sameDay =
+        row.day_of_week === slotDay
+
+      const sameTime =
+        normaliseTime(row.start_time) === slotTime
+
+      if (!sameDay || !sameTime) {
+        return false
+      }
+
+      if (isLanguage) {
+        return true
+      }
+
+      if (!row.learning_level_id) {
+        return true
+      }
+
+      if (!studentLevelId) {
+        return true
+      }
+
+      return (
+        row.learning_level_id === studentLevelId ||
+        allAgesIds.has(row.learning_level_id)
+      )
+    })
+
+    if (!matchingPattern) {
+      throw new RequestError(
+        isLanguage
+          ? 'This tutor is no longer available for the selected language at this time.'
+          : 'This tutor is no longer available for this subject and learning level at the selected time.',
+        409
+      )
+    }
   }
 }
 

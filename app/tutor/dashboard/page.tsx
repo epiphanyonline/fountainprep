@@ -618,9 +618,12 @@ function LessonCard({
           </button>
         ) : null}
 
-        <Link href="/tutor/lesson-report" className="secondaryButton">
-          Add Report
-        </Link>
+        <Link
+  href={`/tutor/lesson-report?bookingId=${lesson.id}`}
+  className="secondaryButton"
+>
+  Complete Lesson Report
+</Link>
       </div>
     </div>
   )

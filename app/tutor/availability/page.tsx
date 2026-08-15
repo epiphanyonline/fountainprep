@@ -377,41 +377,169 @@ export default function TutorAvailabilityPage() {
     return zonedDateTimeToUtc(calendarDate, time.slice(0, 5), timeZone).toISOString()
   }
 
-  async function generateSlotsForWeeklyRows(rows: WeeklyAvailability[]) {
-    const slotRows = rows.flatMap((row) => {
-      const matchingDay = days.find((day) => day.jsDay === row.day_of_week)
-      if (!matchingDay) return []
+  async function generateSlotsForWeeklyRows(
+  rows: WeeklyAvailability[]
+) {
+  const slotRows = rows.flatMap((row) => {
+    const matchingDay = days.find(
+      (day) => day.jsDay === row.day_of_week
+    )
 
-      const dates = getNextDatesForDay(row.day_of_week, row.timezone, 8)
+    if (!matchingDay) return []
 
-      return dates.map((date) => ({
-        tutor_id: tutor?.id,
-        subject_id: row.subject_id,
-        learning_level_id: row.learning_level_id,
-        weekly_availability_id: row.id,
-        slot_date: date,
-        start_time: row.start_time,
-        end_time: row.end_time,
-        starts_at: buildTimestamp(date, row.start_time, false, row.timezone),
-        ends_at: buildTimestamp(
-          date,
-          row.end_time,
-          row.ends_next_day,
-          row.timezone
-        ),
-        timezone: row.timezone,
-        is_available: true,
-        is_booked: false,
-      }))
+    const dates = getNextDatesForDay(
+      row.day_of_week,
+      row.timezone,
+      12
+    )
+
+    return dates.flatMap((date) => {
+      const startHour = Number(
+        String(row.start_time).slice(0, 2)
+      )
+
+      const endHour = Number(
+        String(row.end_time).slice(0, 2)
+      )
+
+      const startMinutes = Number(
+        String(row.start_time).slice(3, 5)
+      )
+
+      const endMinutes = Number(
+        String(row.end_time).slice(3, 5)
+      )
+
+      if (
+        Number.isNaN(startHour) ||
+        Number.isNaN(endHour)
+      ) {
+        return []
+      }
+
+      const startTotal =
+        startHour * 60 + startMinutes
+
+      let endTotal =
+        endHour * 60 + endMinutes
+
+      if (
+        row.ends_next_day ||
+        endTotal <= startTotal
+      ) {
+        endTotal += 24 * 60
+      }
+
+      const hourlySlots = []
+
+      for (
+        let minute = startTotal;
+        minute + 60 <= endTotal;
+        minute += 60
+      ) {
+        const slotStartDayOffset =
+          Math.floor(minute / 1440)
+
+        const slotEndMinute =
+          minute + 60
+
+        const slotEndDayOffset =
+          Math.floor(slotEndMinute / 1440)
+
+        const slotStartMinutes =
+          minute % 1440
+
+        const slotEndMinutes =
+          slotEndMinute % 1440
+
+        const slotStartHour =
+          Math.floor(slotStartMinutes / 60)
+
+        const slotStartMinute =
+          slotStartMinutes % 60
+
+        const slotEndHour =
+          Math.floor(slotEndMinutes / 60)
+
+        const slotEndMinuteValue =
+          slotEndMinutes % 60
+
+        const slotDate =
+          addCalendarDays(
+            date,
+            slotStartDayOffset
+          )
+
+        const endDate =
+          addCalendarDays(
+            date,
+            slotEndDayOffset
+          )
+
+        const slotStartTime =
+          `${String(slotStartHour).padStart(2, '0')}:${String(slotStartMinute).padStart(2, '0')}:00`
+
+        const slotEndTime =
+          `${String(slotEndHour).padStart(2, '0')}:${String(slotEndMinuteValue).padStart(2, '0')}:00`
+
+        hourlySlots.push({
+          tutor_id: tutor?.id,
+          subject_id: row.subject_id,
+          learning_level_id:
+            row.learning_level_id,
+          weekly_availability_id: row.id,
+
+          slot_date: slotDate,
+
+          start_time: slotStartTime,
+          end_time: slotEndTime,
+
+          starts_at: zonedDateTimeToUtc(
+            slotDate,
+            slotStartTime.slice(0, 5),
+            row.timezone
+          ).toISOString(),
+
+          ends_at: zonedDateTimeToUtc(
+            endDate,
+            slotEndTime.slice(0, 5),
+            row.timezone
+          ).toISOString(),
+
+          timezone: row.timezone,
+
+          is_available: true,
+          is_booked: false,
+        })
+      }
+
+      return hourlySlots
     })
+  })
 
-    if (slotRows.length === 0) return
+  if (slotRows.length === 0) {
+    return
+  }
 
-    await supabase.from('tutor_availability_slots').upsert(slotRows, {
-      onConflict: 'tutor_id,subject_id,learning_level_id,slot_date,start_time',
+  const { error } = await supabase
+    .from('tutor_availability_slots')
+    .upsert(slotRows, {
+      onConflict:
+        'tutor_id,slot_date,start_time',
       ignoreDuplicates: true,
     })
+
+  if (error) {
+    console.error(
+      'Availability slot generation failed:',
+      error
+    )
+
+    throw new Error(
+      `Could not generate future availability: ${error.message}`
+    )
   }
+}
 
   async function saveAvailability() {
     if (!tutor) return
@@ -513,8 +641,57 @@ export default function TutorAvailabilityPage() {
         : row.learning_levels ?? null,
     })) as WeeklyAvailability[]
 
-    await generateSlotsForWeeklyRows(cleanInsertedRows)
-    await loadWeeklyAvailability(tutor.id)
+    const { data: allActiveRows, error: activeRowsError } = await supabase
+  .from('tutor_weekly_availability')
+  .select(`
+    id,
+    subject_id,
+    learning_level_id,
+    day_of_week,
+    period_key,
+    start_time,
+    end_time,
+    ends_next_day,
+    timezone,
+    is_active,
+    subjects ( name ),
+    learning_levels ( name )
+  `)
+  .eq('tutor_id', tutor.id)
+  .eq('is_active', true)
+
+if (activeRowsError) {
+  setMessage(activeRowsError.message)
+  setSaving(false)
+  return
+}
+
+const cleanActiveRows = ((allActiveRows ?? []) as any[]).map((row) => ({
+  ...row,
+  subjects: Array.isArray(row.subjects)
+    ? row.subjects[0] ?? null
+    : row.subjects ?? null,
+  learning_levels: Array.isArray(row.learning_levels)
+    ? row.learning_levels[0] ?? null
+    : row.learning_levels ?? null,
+})) as WeeklyAvailability[]
+
+try {
+  await generateSlotsForWeeklyRows(
+    cleanInsertedRows
+  )
+} catch (error) {
+  setMessage(
+    error instanceof Error
+      ? error.message
+      : 'Availability was saved, but future slots could not be generated.'
+  )
+
+  setSaving(false)
+  return
+}
+
+await loadWeeklyAvailability(tutor.id)
 
     setSelection(emptySelection())
     setMessage(

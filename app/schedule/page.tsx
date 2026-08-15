@@ -315,28 +315,149 @@ if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]
         return
       }
 
-      const { data: availableSlotRows, error: availableSlotError } = await supabase
-        .from('tutor_availability_slots')
-        .select(
-          'id, tutor_id, subject_id, learning_level_id, slot_date, start_time, end_time, starts_at, ends_at, timezone, is_available, is_booked'
-        )
-        .in('subject_id', subjectIds)
-        .in('tutor_id', subjectTutorIds)
-        .in('learning_level_id', Array.from(allowedLevelIds))
-        .eq('is_available', true)
-        .eq('is_booked', false)
-        .gte('slot_date', earliestBookableDate)
-        .order('slot_date', { ascending: true })
-        .order('start_time', { ascending: true })
-        .limit(500)
+      const { data: matchingWeeklyRows, error: weeklyRowsError } = await supabase
+  .from('tutor_weekly_availability')
+  .select(`
+    id,
+    tutor_id,
+    subject_id,
+    learning_level_id,
+    day_of_week,
+    start_time,
+    end_time,
+    ends_next_day,
+    timezone,
+    is_active
+  `)
+  .in('tutor_id', subjectTutorIds)
+  .in('subject_id', subjectIds)
+  .eq('is_active', true)
 
-      if (availableSlotError) {
-        setMessage(availableSlotError.message)
-        setLoading(false)
-        return
-      }
+if (weeklyRowsError) {
+  setMessage(weeklyRowsError.message)
+  setLoading(false)
+  return
+}
 
-      const rows = (availableSlotRows ?? []) as any[]
+const eligibleWeeklyRows = ((matchingWeeklyRows ?? []) as any[]).filter(
+  (row) =>
+    !row.learning_level_id ||
+    allowedLevelIds.has(row.learning_level_id)
+)
+
+function timeToMinutes(
+  value: string
+) {
+  const [hours, minutes] =
+    String(value)
+      .slice(0, 5)
+      .split(':')
+      .map(Number)
+
+  return hours * 60 + minutes
+}
+
+function slotMatchesWeeklyPattern(
+  slot: any,
+  pattern: any
+) {
+  const slotTime =
+    timeToMinutes(slot.start_time)
+
+  const patternStart =
+    timeToMinutes(pattern.start_time)
+
+  let patternEnd =
+    timeToMinutes(pattern.end_time)
+
+  if (
+    pattern.ends_next_day ||
+    patternEnd <= patternStart
+  ) {
+    patternEnd += 24 * 60
+  }
+
+  const slotDay =
+    new Date(
+      `${slot.slot_date}T12:00:00Z`
+    ).getUTCDay()
+
+  if (
+    slotDay === pattern.day_of_week &&
+    slotTime >= patternStart &&
+    slotTime < Math.min(patternEnd, 1440)
+  ) {
+    return true
+  }
+
+  // Overnight portion after midnight.
+  if (patternEnd > 1440) {
+    const nextDay =
+      (pattern.day_of_week + 1) % 7
+
+    const overnightEnd =
+      patternEnd - 1440
+
+    if (
+      slotDay === nextDay &&
+      slotTime < overnightEnd
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const eligibleTutorIds = Array.from(
+  new Set(
+    eligibleWeeklyRows.map((row) => row.tutor_id)
+  )
+)
+
+if (eligibleTutorIds.length === 0) {
+  setMessage(
+    isLanguageSubject
+      ? 'No language tutors currently have matching availability for this learner.'
+      : 'No approved tutors currently have matching availability for this subject and level.'
+  )
+  setLoading(false)
+  return
+}
+
+const { data: availableSlotRows, error: availableSlotError } =
+  await supabase
+    .from('tutor_availability_slots')
+    .select(
+      'id, tutor_id, subject_id, learning_level_id, slot_date, start_time, end_time, starts_at, ends_at, timezone, is_available, is_booked'
+    )
+    .in('tutor_id', eligibleTutorIds)
+    .eq('is_available', true)
+    .eq('is_booked', false)
+    .gte('slot_date', earliestBookableDate)
+    .order('slot_date', { ascending: true })
+    .order('start_time', { ascending: true })
+    .limit(1000)
+
+if (availableSlotError) {
+  setMessage(availableSlotError.message)
+  setLoading(false)
+  return
+}
+
+const rows =
+  ((availableSlotRows ?? []) as any[])
+    .filter((slot) =>
+      eligibleWeeklyRows.some(
+        (pattern) =>
+          pattern.tutor_id ===
+            slot.tutor_id &&
+          slotMatchesWeeklyPattern(
+            slot,
+            pattern
+          )
+      )
+    )
 
       const cleanSlots = rows
         .map((row) => ({
