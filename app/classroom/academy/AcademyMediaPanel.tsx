@@ -21,40 +21,6 @@ type Props = {
   autoNarrate?: boolean;
 };
 
-function chooseVoice(
-  voices: SpeechSynthesisVoice[],
-): SpeechSynthesisVoice | null {
-  const english = voices.filter((voice) =>
-    voice.lang.toLowerCase().startsWith("en"),
-  );
-
-  const preferredTerms = [
-    "natural",
-    "neural",
-    "premium",
-    "enhanced",
-    "google uk english",
-    "microsoft sonia",
-    "microsoft ryan",
-    "microsoft aria",
-    "microsoft guy",
-  ];
-
-  for (const term of preferredTerms) {
-    const match = english.find((voice) =>
-      voice.name.toLowerCase().includes(term),
-    );
-    if (match) return match;
-  }
-
-  const gbVoice = english.find(
-    (voice) =>
-      voice.lang.toLowerCase() === "en-gb",
-  );
-
-  return gbVoice ?? english[0] ?? voices[0] ?? null;
-}
-
 export default function AcademyMediaPanel({
   activityId,
   title,
@@ -67,10 +33,21 @@ export default function AcademyMediaPanel({
   story,
   autoNarrate = true,
 }: Props) {
-  const [speaking, setSpeaking] = useState(false);
-  const [voices, setVoices] = useState<
-    SpeechSynthesisVoice[]
-  >([]);
+  const [speaking, setSpeaking] =
+    useState(false);
+
+  const [loadingAudio, setLoadingAudio] =
+    useState(false);
+
+  const [audioError, setAudioError] =
+    useState("");
+
+  const audioRef =
+    useRef<HTMLAudioElement | null>(null);
+
+  const audioUrlRef =
+    useRef<string | null>(null);
+
   const lastAutoNarrated =
     useRef<string | null>(null);
 
@@ -98,80 +75,151 @@ export default function AcademyMediaPanel({
   ]);
 
   const stop = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
 
-    window.speechSynthesis.cancel();
     setSpeaking(false);
   }, []);
 
-  const speak = useCallback(() => {
-    if (
-      typeof window === "undefined" ||
-      !speechText.trim()
-    ) {
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance =
-      new SpeechSynthesisUtterance(
-        speechText,
+  const clearAudioUrl = useCallback(() => {
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(
+        audioUrlRef.current,
       );
 
-    const selectedVoice =
-      chooseVoice(voices);
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      utterance.lang = selectedVoice.lang;
-    } else {
-      utterance.lang = "en-GB";
+      audioUrlRef.current = null;
     }
-
-    utterance.rate = 0.92;
-    utterance.pitch = 1.02;
-    utterance.volume = 1;
-
-    utterance.onstart = () =>
-      setSpeaking(true);
-    utterance.onend = () =>
-      setSpeaking(false);
-    utterance.onerror = () =>
-      setSpeaking(false);
-
-    window.speechSynthesis.speak(
-      utterance,
-    );
-  }, [speechText, voices]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const loadVoices = () => {
-      setVoices(
-        window.speechSynthesis.getVoices(),
-      );
-    };
-
-    loadVoices();
-    window.speechSynthesis.addEventListener(
-      "voiceschanged",
-      loadVoices,
-    );
-
-    return () => {
-      window.speechSynthesis.removeEventListener(
-        "voiceschanged",
-        loadVoices,
-      );
-    };
   }, []);
+
+  const generateAudio =
+    useCallback(async () => {
+      if (!speechText.trim()) {
+        return null;
+      }
+
+      const response = await fetch(
+        "/api/academy/speech",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            text: speechText,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const responseText =
+          await response.text();
+
+        let message =
+          "The natural teaching voice is temporarily unavailable.";
+
+        try {
+          const parsed =
+            responseText
+              ? JSON.parse(responseText)
+              : {};
+
+          if (parsed.error) {
+            message = parsed.error;
+          }
+        } catch {
+          // Keep default message.
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+
+      clearAudioUrl();
+
+      const url =
+        URL.createObjectURL(blob);
+
+      audioUrlRef.current = url;
+
+      return url;
+    }, [
+      clearAudioUrl,
+      speechText,
+    ]);
+
+  const speak =
+    useCallback(async () => {
+      if (!speechText.trim()) {
+        return;
+      }
+
+      stop();
+      setAudioError("");
+      setLoadingAudio(true);
+
+      try {
+        const audioUrl =
+          audioUrlRef.current ||
+          (await generateAudio());
+
+        if (!audioUrl) return;
+
+        const audio =
+          new Audio(audioUrl);
+
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setSpeaking(true);
+          setLoadingAudio(false);
+        };
+
+        audio.onended = () => {
+          setSpeaking(false);
+          audioRef.current = null;
+        };
+
+        audio.onerror = () => {
+          setSpeaking(false);
+          setLoadingAudio(false);
+          audioRef.current = null;
+
+          setAudioError(
+            "The lesson voice could not be played. Please try again.",
+          );
+        };
+
+        await audio.play();
+      } catch (error) {
+        console.error(
+          "Academy narration error:",
+          error,
+        );
+
+        setSpeaking(false);
+        setLoadingAudio(false);
+
+        setAudioError(
+          error instanceof Error
+            ? error.message
+            : "The natural teaching voice is temporarily unavailable.",
+        );
+      }
+    }, [
+      generateAudio,
+      speechText,
+      stop,
+    ]);
 
   useEffect(() => {
     stop();
+    clearAudioUrl();
+    setAudioError("");
 
     if (
       autoNarrate &&
@@ -183,20 +231,27 @@ export default function AcademyMediaPanel({
 
       const timer =
         window.setTimeout(
-          () => speak(),
-          450,
+          () => {
+            void speak();
+          },
+          500,
         );
 
       return () => {
         window.clearTimeout(timer);
         stop();
+        clearAudioUrl();
       };
     }
 
-    return stop;
+    return () => {
+      stop();
+      clearAudioUrl();
+    };
   }, [
     activityId,
     autoNarrate,
+    clearAudioUrl,
     speak,
     stop,
   ]);
@@ -215,13 +270,13 @@ export default function AcademyMediaPanel({
 
           <div>
             <strong>
-              {visualTitle ||
-                title}
+              {visualTitle || title}
             </strong>
+
             <p>
               {visualDescription ||
                 explanation ||
-                "Listen, look at the idea, then apply it in the activity."}
+                "Listen, explore the idea, then apply it in the activity."}
             </p>
           </div>
         </div>
@@ -230,6 +285,7 @@ export default function AcademyMediaPanel({
           className="visualRing ringOne"
           aria-hidden="true"
         />
+
         <div
           className="visualRing ringTwo"
           aria-hidden="true"
@@ -241,6 +297,7 @@ export default function AcademyMediaPanel({
           <small>
             REAL-LIFE STORY / CASE
           </small>
+
           <p>{story}</p>
         </div>
       ) : null}
@@ -249,12 +306,19 @@ export default function AcademyMediaPanel({
         <button
           type="button"
           className="primaryAudio"
-          onClick={speak}
-          disabled={speaking}
+          onClick={() =>
+            void speak()
+          }
+          disabled={
+            speaking ||
+            loadingAudio
+          }
         >
-          {speaking
-            ? "🔊 Playing lesson…"
-            : "🔊 Hear again"}
+          {loadingAudio
+            ? "Preparing tutor voice..."
+            : speaking
+              ? "🔊 Tutor speaking..."
+              : "🔊 Hear tutor again"}
         </button>
 
         {speaking ? (
@@ -267,10 +331,15 @@ export default function AcademyMediaPanel({
         ) : null}
 
         <span>
-          The lesson is read aloud
-          automatically.
+          Natural tutor narration
         </span>
       </div>
+
+      {audioError ? (
+        <div className="audioError">
+          {audioError}
+        </div>
+      ) : null}
 
       <style jsx>{`
         .mediaPanel {
@@ -326,10 +395,20 @@ export default function AcademyMediaPanel({
           padding: 20px;
           border-radius: 23px;
           background:
-            rgba(255, 255, 255, 0.94);
+            rgba(
+              255,
+              255,
+              255,
+              0.94
+            );
           box-shadow:
             0 16px 42px
-            rgba(57, 34, 84, 0.1);
+            rgba(
+              57,
+              34,
+              84,
+              0.1
+            );
         }
 
         .visualIcon {
@@ -357,7 +436,12 @@ export default function AcademyMediaPanel({
         .visualRing {
           position: absolute;
           border: 1px solid
-            rgba(124, 58, 237, 0.11);
+            rgba(
+              124,
+              58,
+              237,
+              0.11
+            );
           border-radius: 50%;
         }
 
@@ -378,7 +462,12 @@ export default function AcademyMediaPanel({
         .storyCard {
           padding: 19px;
           border: 1px solid
-            rgba(180, 125, 0, 0.16);
+            rgba(
+              180,
+              125,
+              0,
+              0.16
+            );
           border-radius: 21px;
           background:
             linear-gradient(
@@ -426,10 +515,18 @@ export default function AcademyMediaPanel({
               #7c3aed,
               #6d28d9
             );
+          box-shadow:
+            0 12px 28px
+            rgba(
+              109,
+              40,
+              217,
+              0.2
+            );
         }
 
         .audioBar button:disabled {
-          opacity: 0.72;
+          opacity: 0.78;
           cursor: wait;
         }
 
@@ -439,19 +536,41 @@ export default function AcademyMediaPanel({
           font-weight: 700;
         }
 
-        @media (max-width: 620px) {
+        .audioError {
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          color: #9a3412;
+          font-size: 13px;
+          font-weight: 750;
+        }
+
+        @media (
+          max-width: 620px
+        ) {
           .visualStage {
             min-height: 165px;
             padding: 22px 14px;
           }
 
           .visualCore {
-            grid-template-columns: 1fr;
+            grid-template-columns:
+              1fr;
             text-align: center;
           }
 
           .visualIcon {
             margin: 0 auto;
+          }
+
+          .audioBar {
+            align-items:
+              stretch;
+          }
+
+          .audioBar button {
+            width: 100%;
           }
         }
       `}</style>

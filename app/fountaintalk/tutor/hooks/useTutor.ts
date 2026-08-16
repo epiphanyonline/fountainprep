@@ -64,8 +64,24 @@ export function useTutor({
   const currentAudioRef =
     useRef<HTMLAudioElement | null>(null);
 
+    const mediaRecorderRef =
+  useRef<MediaRecorder | null>(
+    null,
+  );
+
+const microphoneStreamRef =
+  useRef<MediaStream | null>(
+    null,
+  );
+
+const recordedChunksRef =
+  useRef<Blob[]>([]);
+
   const hasSentFinalTranscriptRef =
     useRef(false);
+
+    const latestTranscriptRef =
+  useRef("");
 
   const languageCurriculum =
   getLanguageCurriculum(learner.language);
@@ -504,162 +520,135 @@ setProgress({
   }, []);
 
   const speakText = useCallback(
-    (
-      text: string,
-      statusAfterSpeaking: TutorStatus = "ready"
-    ) => {
-      if (
-        typeof window === "undefined" ||
-        !("speechSynthesis" in window)
-      ) {
-        setErrorMessage(
-          "Speech playback is not supported in this browser."
-        );
-        return;
-      }
+  async (
+    text: string,
+    statusAfterSpeaking: TutorStatus = "ready"
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
 
-      const cleanText = text
-        .replace(/\*\*/g, "")
-        .replace(/\*/g, "")
-        .replace(/#{1,6}\s?/g, "")
-        .replace(/`/g, "")
-        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-        .trim();
+    const cleanText = text
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/#{1,6}\s?/g, "")
+      .replace(/`/g, "")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .trim();
 
-      if (!cleanText) {
-        setErrorMessage(
-          "The tutor did not return anything to speak."
-        );
-        setTutorStatus("ready");
-        return;
-      }
+    if (!cleanText) {
+      setErrorMessage(
+        "The tutor did not return anything to speak."
+      );
+      setTutorStatus("ready");
+      return;
+    }
 
+    try {
       setErrorMessage("");
       stopAllAudio();
+      setTutorStatus("thinking");
 
-      const synthesis =
-        window.speechSynthesis;
+      const response = await fetch(
+        "/api/academy/speech",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: cleanText,
+          }),
+        }
+      );
 
-      const playSpeech = () => {
-        const speech =
-          new SpeechSynthesisUtterance(
-            cleanText
-          );
+      if (!response.ok) {
+        const responseText = await response.text();
 
-        const voices =
-          synthesis.getVoices();
+        let message =
+          "The tutor voice could not be generated.";
 
-        const preferredVoice =
-          voices.find((voice) =>
-            voice.lang
-              .toLowerCase()
-              .startsWith("en-gb")
-          ) ??
-          voices.find((voice) =>
-            voice.lang
-              .toLowerCase()
-              .startsWith("en")
-          ) ??
-          voices[0];
+        try {
+          const parsed = responseText
+            ? JSON.parse(responseText)
+            : {};
 
-        if (preferredVoice) {
-          speech.voice = preferredVoice;
-          speech.lang = preferredVoice.lang;
-        } else {
-          speech.lang = "en-GB";
+          if (parsed.error) {
+            message = parsed.error;
+          }
+        } catch {
+          // keep fallback
         }
 
-        speech.rate =
-          learner.ageGroup === "3-5"
-            ? 0.72
-            : learner.ageGroup === "6-9"
-              ? 0.8
-              : 0.88;
+        throw new Error(message);
+      }
 
-        speech.pitch =
-          learner.ageGroup === "3-5"
-            ? 1.08
-            : 1;
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
 
-        speech.volume = 1;
+      await new Promise<void>((resolve) => {
+        const audio = new Audio(audioUrl);
 
-        speech.onstart = () => {
+        currentAudioRef.current = audio;
+
+        audio.onplay = () => {
           setTutorStatus("speaking");
         };
 
-        speech.onend = () => {
-          currentSpeechRef.current = null;
-          setTutorStatus(
-            statusAfterSpeaking
-          );
+        audio.onended = () => {
+          currentAudioRef.current = null;
+          URL.revokeObjectURL(audioUrl);
+
+          setTutorStatus(statusAfterSpeaking);
           setAudioWorking(true);
+
+          resolve();
         };
 
-        speech.onerror = (event) => {
-          currentSpeechRef.current = null;
-
-          if (
-            event.error === "canceled" ||
-            event.error === "interrupted"
-          ) {
-            return;
-          }
-
-          console.error(
-            "FountainTalk speech error:",
-            event.error
-          );
+        audio.onerror = () => {
+          currentAudioRef.current = null;
+          URL.revokeObjectURL(audioUrl);
 
           setTutorStatus("ready");
 
           setErrorMessage(
-            `The audio could not be played: ${event.error}`
+            "The tutor audio could not be played."
           );
+
+          resolve();
         };
 
-        currentSpeechRef.current = speech;
-        synthesis.speak(speech);
-      };
+        void audio.play().catch((error) => {
+          currentAudioRef.current = null;
+          URL.revokeObjectURL(audioUrl);
 
-      window.setTimeout(() => {
-        if (
-          synthesis.getVoices().length > 0
-        ) {
-          playSpeech();
-          return;
-        }
-
-        const handleVoicesChanged = () => {
-          synthesis.removeEventListener(
-            "voiceschanged",
-            handleVoicesChanged
+          console.error(
+            "FountainTalk tutor audio playback error:",
+            error
           );
 
-          playSpeech();
-        };
+          setTutorStatus("ready");
 
-        synthesis.addEventListener(
-          "voiceschanged",
-          handleVoicesChanged
-        );
+          resolve();
+        });
+      });
+    } catch (error) {
+      console.error(
+        "FountainTalk tutor speech error:",
+        error
+      );
 
-        window.setTimeout(() => {
-          synthesis.removeEventListener(
-            "voiceschanged",
-            handleVoicesChanged
-          );
+      setTutorStatus("ready");
 
-          if (!synthesis.speaking) {
-            playSpeech();
-          }
-        }, 800);
-      }, 150);
-    },
-    [
-      learner.ageGroup,
-      stopAllAudio,
-    ]
-  );
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The tutor voice could not be played."
+      );
+    }
+  },
+  [stopAllAudio]
+);
 
   const playNativeAudio = useCallback(
     async (
@@ -844,49 +833,88 @@ setProgress({
     const expectedPhrase =
       activeLesson.step.expectedPhrase;
 
-    // No Yoruba recording
+    const cleanText = text
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/#{1,6}\s?/g, "")
+      .replace(/`/g, "")
+      .trim();
+
+    /*
+     * If there is no native Yoruba recording,
+     * Ayo simply teaches the whole step naturally.
+     */
     if (!nativeAudio) {
-      speakText(text, statusAfterSpeaking);
+      await speakText(
+        cleanText,
+        statusAfterSpeaking
+      );
       return;
     }
 
-    // Remove the Yoruba phrase from the English narration
-    const englishOnly =
-      expectedPhrase
-        ? text.replace(expectedPhrase, "").trim()
-        : text;
+    /*
+     * Break the tutor narration around the
+     * Yoruba phrase so Ayo explains first,
+     * the native recording models pronunciation,
+     * then Ayo continues naturally.
+     */
+    let beforeText = cleanText;
+    let afterText = "";
 
-    // Speak English instruction
-    await new Promise<void>((resolve) => {
-      if (
-        typeof window === "undefined" ||
-        !("speechSynthesis" in window)
-      ) {
-        resolve();
-        return;
-      }
+    if (
+      expectedPhrase &&
+      cleanText.includes(expectedPhrase)
+    ) {
+      const phraseIndex =
+        cleanText.indexOf(expectedPhrase);
 
-      const utterance =
-        new SpeechSynthesisUtterance(
-          englishOnly
-        );
+      beforeText = cleanText
+        .slice(0, phraseIndex)
+        .trim();
 
-      utterance.lang = "en-GB";
-      utterance.rate = 0.9;
+      afterText = cleanText
+        .slice(
+          phraseIndex +
+            expectedPhrase.length
+        )
+        .trim();
+    }
 
-      utterance.onend = () => resolve();
-
-      window.speechSynthesis.speak(
-        utterance
+    /*
+     * Step 1:
+     * Ayo introduces/explains the idea.
+     */
+    if (beforeText) {
+      await speakText(
+        beforeText,
+        "speaking"
       );
-    });
+    }
 
-    // Then play native Yoruba
+    /*
+     * Step 2:
+     * Authentic Yoruba pronunciation.
+     */
     await playNativeAudio(
       nativeAudio,
       expectedPhrase ?? "",
-      statusAfterSpeaking
+      "speaking"
     );
+
+    /*
+     * Step 3:
+     * Ayo continues the lesson naturally.
+     */
+    if (afterText) {
+      await speakText(
+        afterText,
+        statusAfterSpeaking
+      );
+    } else {
+      setTutorStatus(
+        statusAfterSpeaking
+      );
+    }
   },
   [
     activeLesson.step.nativeAudioUrl,
@@ -901,12 +929,119 @@ setProgress({
     setTutorStatus("ready");
   }, [stopAllAudio]);
 
-  const testAudio = useCallback(() => {
-    speakText(
-      "Welcome to FountainTalk. Your speaker is working correctly.",
+  const testAudio = useCallback(async () => {
+  try {
+    setErrorMessage("");
+    setTutorStatus("thinking");
+
+    const response = await fetch(
+      "/api/academy/speech",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text:
+            "Welcome to FountainTalk. Your speaker is working correctly. Let's begin your lesson.",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const responseText =
+        await response.text();
+
+      let message =
+        "The speaker test could not be played.";
+
+      try {
+        const parsed =
+          responseText
+            ? JSON.parse(responseText)
+            : {};
+
+        if (parsed.error) {
+          message =
+            parsed.error;
+        }
+      } catch {
+        // Keep fallback message.
+      }
+
+      throw new Error(message);
+    }
+
+    const blob =
+      await response.blob();
+
+    const audioUrl =
+      URL.createObjectURL(blob);
+
+    const audio =
+      new Audio(audioUrl);
+
+    currentAudioRef.current =
+      audio;
+
+    audio.onplay = () => {
+      setTutorStatus(
+        "speaking"
+      );
+    };
+
+    audio.onended = () => {
+      currentAudioRef.current =
+        null;
+
+      URL.revokeObjectURL(
+        audioUrl
+      );
+
+      setTutorStatus(
+        "ready"
+      );
+
+      setAudioWorking(
+        true
+      );
+    };
+
+    audio.onerror = () => {
+      currentAudioRef.current =
+        null;
+
+      URL.revokeObjectURL(
+        audioUrl
+      );
+
+      setTutorStatus(
+        "ready"
+      );
+
+      setErrorMessage(
+        "The speaker test audio could not be played."
+      );
+    };
+
+    await audio.play();
+  } catch (error) {
+    console.error(
+      "FountainTalk speaker test error:",
+      error
+    );
+
+    setTutorStatus(
       "ready"
     );
-  }, [speakText]);
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "The speaker test could not be played."
+    );
+  }
+}, []);
 
   const requestMicrophone =
     useCallback(async () => {
@@ -1235,180 +1370,396 @@ if (isPronunciationCorrection) {
   );
 
   const beginListening =
-    useCallback(() => {
-      if (!lessonStarted) {
-        setErrorMessage(
-          "Please start the lesson first."
-        );
-        return;
-      }
+  useCallback(async () => {
+    if (!lessonStarted) {
+      setErrorMessage(
+        "Please start the lesson first.",
+      );
+      return;
+    }
 
-      if (!microphoneGranted) {
-        setErrorMessage(
-          "Please allow microphone access first."
-        );
-        return;
-      }
+    if (!microphoneGranted) {
+      setErrorMessage(
+        "Please allow microphone access first.",
+      );
+      return;
+    }
 
-      if (isRequestPending) {
-        return;
-      }
+    if (isRequestPending) {
+      return;
+    }
 
-      const Recognition =
-        window.SpeechRecognition ??
-        window.webkitSpeechRecognition;
+    if (
+      typeof navigator ===
+        "undefined" ||
+      !navigator.mediaDevices
+        ?.getUserMedia
+    ) {
+      setErrorMessage(
+        "Microphone recording is not supported in this browser.",
+      );
+      return;
+    }
 
-      if (!Recognition) {
-        setErrorMessage(
-          "Speech recognition is not available in this browser. Please use Google Chrome."
-        );
-        return;
-      }
+    if (
+      typeof MediaRecorder ===
+      "undefined"
+    ) {
+      setErrorMessage(
+        "Audio recording is not supported in this browser.",
+      );
+      return;
+    }
 
+    try {
       setErrorMessage("");
       setLearnerTranscript("");
 
       hasSentFinalTranscriptRef.current =
         false;
 
-      const recognition =
-        new Recognition();
+      latestTranscriptRef.current =
+        "";
 
-      const expectsTargetPhrase =
-        Boolean(
-          activeLesson.step
-            .expectedPhrase
+      recordedChunksRef.current =
+        [];
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            audio: {
+              echoCancellation:
+                true,
+              noiseSuppression:
+                true,
+              autoGainControl:
+                true,
+            },
+          },
         );
 
-      recognition.lang =
-        conversationMode ===
-          "curriculum" &&
-        expectsTargetPhrase &&
-        learner.language === "yoruba"
-          ? "yo-NG"
-          : "en-GB";
+      microphoneStreamRef.current =
+        stream;
 
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 3;
+      let mimeType = "";
 
-      recognition.onstart = () => {
-        setTutorStatus("listening");
-      };
+      const preferredTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ];
 
-      recognition.onresult = (event) => {
-        let combinedTranscript = "";
-        let finalTranscript = "";
-
-        for (
-          let index = 0;
-          index < event.results.length;
-          index += 1
+      for (const type of preferredTypes) {
+        if (
+          MediaRecorder.isTypeSupported(
+            type,
+          )
         ) {
-          const result =
-            event.results[index];
+          mimeType = type;
+          break;
+        }
+      }
 
-          const text =
-            result[0]?.transcript ?? "";
+      const recorder =
+        mimeType
+          ? new MediaRecorder(
+              stream,
+              {
+                mimeType,
+              },
+            )
+          : new MediaRecorder(
+              stream,
+            );
 
-          combinedTranscript += text;
+      mediaRecorderRef.current =
+        recorder;
 
-          if (result.isFinal) {
-            finalTranscript += text;
+      recorder.ondataavailable =
+        (event) => {
+          if (
+            event.data &&
+            event.data.size > 0
+          ) {
+            recordedChunksRef.current.push(
+              event.data,
+            );
           }
-        }
+        };
 
-        const cleanedCombined =
-          combinedTranscript.trim();
+      recorder.onerror = (
+        event,
+      ) => {
+        console.error(
+          "FountainTalk recorder error:",
+          event,
+        );
 
-        if (cleanedCombined) {
-          setLearnerTranscript(
-            cleanedCombined
-          );
-        }
-
-        const cleanedFinal =
-          finalTranscript.trim();
-
-        if (
-          cleanedFinal &&
-          !hasSentFinalTranscriptRef.current
-        ) {
-          hasSentFinalTranscriptRef.current =
-            true;
-
-          recognition.stop();
-
-          void askTutor(cleanedFinal);
-        }
-      };
-
-      recognition.onerror = (event) => {
-        recognitionRef.current = null;
-        setTutorStatus("ready");
-
-        if (
-          event.error === "no-speech"
-        ) {
-          setErrorMessage(
-            "I did not hear anything. Please try again."
-          );
-          return;
-        }
-
-        if (
-          event.error === "not-allowed"
-        ) {
-          setErrorMessage(
-            "Microphone access was blocked by the browser."
-          );
-          return;
-        }
-
-        if (
-          event.error === "aborted"
-        ) {
-          return;
-        }
+        setTutorStatus(
+          "ready",
+        );
 
         setErrorMessage(
-          `Speech recognition error: ${event.error}`
+          "There was a problem recording your voice. Please try again.",
         );
       };
 
-      recognition.onend = () => {
-        recognitionRef.current = null;
-
-        setTutorStatus((current) =>
-          current === "thinking" ||
-          current === "speaking"
-            ? current
-            : "ready"
+      recorder.onstart = () => {
+        setTutorStatus(
+          "listening",
         );
       };
 
-      recognitionRef.current =
-        recognition;
+      recorder.start(250);
+    } catch (error) {
+      console.error(
+        "FountainTalk recording start error:",
+        error,
+      );
 
-      recognition.start();
-    }, [
-      activeLesson.step
-        .expectedPhrase,
-      askTutor,
-      conversationMode,
-      isRequestPending,
-      learner.language,
-      lessonStarted,
-      microphoneGranted,
-    ]);
+      mediaRecorderRef.current =
+        null;
+
+      microphoneStreamRef.current
+        ?.getTracks()
+        .forEach((track) =>
+          track.stop(),
+        );
+
+      microphoneStreamRef.current =
+        null;
+
+      setTutorStatus("ready");
+
+      setErrorMessage(
+        "I could not start the microphone. Please check your browser microphone settings.",
+      );
+    }
+  }, [
+    isRequestPending,
+    lessonStarted,
+    microphoneGranted,
+  ]);
 
   const stopListening =
-    useCallback(() => {
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
-      setTutorStatus("ready");
-    }, []);
+  useCallback(async () => {
+    const recorder =
+      mediaRecorderRef.current;
 
+    if (!recorder) {
+      setTutorStatus("ready");
+
+      setErrorMessage(
+        "No recording is currently active. Please press Start speaking and try again.",
+      );
+
+      return;
+    }
+
+    if (
+      recorder.state ===
+      "inactive"
+    ) {
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      setTutorStatus(
+        "thinking",
+      );
+
+      const finishedRecording =
+        new Promise<Blob>(
+          (resolve) => {
+            recorder.onstop =
+              () => {
+                const blob =
+                  new Blob(
+                    recordedChunksRef.current,
+                    {
+                      type:
+                        recorder.mimeType ||
+                        "audio/webm",
+                    },
+                  );
+
+                resolve(blob);
+              };
+          },
+        );
+
+      recorder.stop();
+
+      const audioBlob =
+        await finishedRecording;
+
+      microphoneStreamRef.current
+        ?.getTracks()
+        .forEach((track) =>
+          track.stop(),
+        );
+
+      microphoneStreamRef.current =
+        null;
+
+      mediaRecorderRef.current =
+        null;
+
+      recordedChunksRef.current =
+        [];
+
+      if (
+        !audioBlob ||
+        audioBlob.size < 500
+      ) {
+        setTutorStatus(
+          "ready",
+        );
+
+        setErrorMessage(
+          "I did not hear enough audio. Please try again and speak clearly.",
+        );
+
+        return;
+      }
+
+      const extension =
+        audioBlob.type.includes(
+          "mp4",
+        )
+          ? "m4a"
+          : "webm";
+
+      const audioFile =
+        new File(
+          [audioBlob],
+          `learner-recording.${extension}`,
+          {
+            type:
+              audioBlob.type ||
+              "audio/webm",
+          },
+        );
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "audio",
+        audioFile,
+      );
+
+      formData.append(
+        "language",
+        learner.language,
+      );
+
+      if (
+        activeLesson.step
+          .expectedPhrase
+      ) {
+        formData.append(
+          "expectedPhrase",
+          activeLesson.step
+            .expectedPhrase,
+        );
+      }
+
+      const response =
+        await fetch(
+          "/api/fountaintalk/transcribe",
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+      const responseText =
+        await response.text();
+
+      let result: {
+        transcript?: string;
+        error?: string;
+      } = {};
+
+      try {
+        result =
+          responseText
+            ? JSON.parse(
+                responseText,
+              )
+            : {};
+      } catch {
+        result = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "I could not understand the recording.",
+        );
+      }
+
+      const transcript =
+        result.transcript?.trim() ||
+        "";
+
+      if (!transcript) {
+        setTutorStatus(
+          "ready",
+        );
+
+        setErrorMessage(
+          "I did not hear enough speech to understand you. Please try again.",
+        );
+
+        return;
+      }
+
+      latestTranscriptRef.current =
+        transcript;
+
+      hasSentFinalTranscriptRef.current =
+        true;
+
+      setLearnerTranscript(
+        transcript,
+      );
+
+      await askTutor(
+        transcript,
+      );
+    } catch (error) {
+      console.error(
+        "FountainTalk recording submission error:",
+        error,
+      );
+
+      setTutorStatus("ready");
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "I could not process your recording. Please try again.",
+      );
+    } finally {
+      microphoneStreamRef.current
+        ?.getTracks()
+        .forEach((track) =>
+          track.stop(),
+        );
+
+      microphoneStreamRef.current =
+        null;
+    }
+  }, [
+    activeLesson.step
+      .expectedPhrase,
+    askTutor,
+    learner.language,
+  ]);
+  
   const goToPreviousStep =
     useCallback(() => {
       setProgress((current) =>
