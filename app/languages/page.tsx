@@ -6,19 +6,16 @@ import Link from 'next/link'
 const languages = [
   {
     name: 'Yoruba',
-    short: 'Y',
     text:
       'Build everyday speaking confidence, communicate with family and develop a deeper connection with Yoruba language and culture.',
   },
   {
     name: 'Igbo',
-    short: 'I',
     text:
-      'Develop practical vocabulary, listening skills and conversational confidence through structured private learning.',
+      'Develop practical vocabulary, listening skills and conversational confidence through structured language learning.',
   },
   {
     name: 'Hausa',
-    short: 'H',
     text:
       'Learn useful Hausa for real conversations through guided teaching, speaking practice and cultural context.',
   },
@@ -27,7 +24,6 @@ const languages = [
 export default function LanguagesPage() {
   return (
     <main className="page">
-      {/* HERO */}
       <section className="hero">
         <div className="heroCopy">
           <div className="pill">
@@ -35,15 +31,18 @@ export default function LanguagesPage() {
           </div>
 
           <h1>
-            Help them speak the language
-            <span> that connects them to home.</span>
+            Learn the Language.
+            <span> Stay connected.</span>
           </h1>
 
           <p className="lead">
-            Online Yoruba, Igbo and Hausa lessons for children,
-            teenagers and adults — with private 1-to-1 tutors,
-            AI-assisted practice and self-paced learning between
-            lessons.
+            Online Yoruba, Igbo and Hausa learning through
+            private 1-to-1 lessons, AI-assisted practice and
+            self-paced learning.
+          </p>
+
+          <p className="heroPromise">
+            Build real conversation skills — not just vocabulary.
           </p>
 
           <div className="heroActions">
@@ -66,7 +65,7 @@ export default function LanguagesPage() {
           <div className="trustRow">
             <span>
               <b>✓</b>
-              Private 1-to-1
+              Private 1-to-1 lessons
             </span>
 
             <span>
@@ -87,7 +86,7 @@ export default function LanguagesPage() {
             alt="Learner taking a private African language lesson online"
             fill
             priority
-            sizes="(max-width: 900px) 100vw, 56vw"
+            sizes="(max-width: 900px) 100vw, 58vw"
             className="heroImage"
           />
 
@@ -104,14 +103,13 @@ export default function LanguagesPage() {
               </small>
 
               <strong>
-                Learn live. Practise all week.
+                Learn live. Practise between lessons.
               </strong>
             </div>
           </div>
         </div>
       </section>
 
-      {/* LANGUAGES */}
       <section className="languageSection">
         <div className="sectionHeading centred">
           <p className="eyebrow">
@@ -119,14 +117,12 @@ export default function LanguagesPage() {
           </p>
 
           <h2>
-            Language learning designed for
-            real conversations.
+            Learn a language you can actually use.
           </h2>
 
           <p>
-            Our goal is not simply to help learners memorise
-            words. We want them to understand, respond and
-            confidently use the language.
+            Build the confidence to understand, respond and
+            hold real conversations in Yoruba, Igbo or Hausa.
           </p>
         </div>
 
@@ -138,18 +134,18 @@ export default function LanguagesPage() {
               className="languageCard"
             >
               <div className="languageTop">
-                <div className="languageInitial">
-                  {language.short}
-                </div>
+                <h3>
+                  {language.name}
+                </h3>
 
                 <div className="cardArrow">
                   →
                 </div>
               </div>
 
-              <h3>{language.name}</h3>
-
-              <p>{language.text}</p>
+              <p>
+                {language.text}
+              </p>
 
               <div className="languageAction">
                 Start learning {language.name}
@@ -160,7 +156,6 @@ export default function LanguagesPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
       <section
         className="learningModel"
         id="how-it-works"
@@ -189,7 +184,9 @@ export default function LanguagesPage() {
                 1
               </div>
 
-              <span>LIVE</span>
+              <span>
+                LIVE
+              </span>
             </div>
 
             <h3>
@@ -209,7 +206,9 @@ export default function LanguagesPage() {
                 2
               </div>
 
-              <span>PRACTISE</span>
+              <span>
+                PRACTISE
+              </span>
             </div>
 
             <h3>
@@ -229,7 +228,9 @@ export default function LanguagesPage() {
                 3
               </div>
 
-              <span>PROGRESS</span>
+              <span>
+                PROGRESS
+              </span>
             </div>
 
             <h3>
@@ -245,7 +246,6 @@ export default function LanguagesPage() {
         </div>
       </section>
 
-      {/* PREMIUM STORY */}
       <section className="premiumStory">
         <div className="premiumCopy">
           <div className="premiumKicker">
@@ -253,14 +253,14 @@ export default function LanguagesPage() {
           </div>
 
           <h2>
-            The live lesson is only
-            the beginning.
+            The live lesson is only the beginning.
           </h2>
 
           <p>
-            Premium gives the learner private 1-to-1 teaching
-            plus full access to AI-assisted, self-paced
-            language learning between lessons.
+            Premium combines private 1-to-1 teaching with
+            AI-assisted, self-paced learning between lessons.
+            The learner can practise, revise and reinforce what
+            was taught before the next live class.
           </p>
 
           <div className="premiumBenefits">
@@ -277,15 +277,23 @@ export default function LanguagesPage() {
             </span>
 
             <span>
-              ✓ Listening & pronunciation
+              ✓ Listening practice
             </span>
 
             <span>
-              ✓ Revision between classes
+              ✓ Pronunciation reinforcement
+            </span>
+
+            <span>
+              ✓ Revision between live lessons
             </span>
 
             <span>
               ✓ Progress tracking
+            </span>
+
+            <span>
+              ✓ Learn at any convenient time
             </span>
           </div>
 
@@ -305,15 +313,16 @@ export default function LanguagesPage() {
             </div>
 
             <div>
-              <small>LIVE LESSON</small>
+              <small>
+                LIVE LESSON
+              </small>
 
               <strong>
                 Learn 1-to-1
               </strong>
 
               <p>
-                Learn something new with a
-                dedicated tutor.
+                Learn something new with a dedicated tutor.
               </p>
             </div>
           </div>
@@ -328,15 +337,16 @@ export default function LanguagesPage() {
             </div>
 
             <div>
-              <small>BETWEEN LESSONS</small>
+              <small>
+                BETWEEN LESSONS
+              </small>
 
               <strong>
-                AI-Assisted Self-Paced Practice
+                AI-Assisted Practice
               </strong>
 
               <p>
-                Speak, listen, revise and
-                reinforce learning.
+                Speak, listen, revise and reinforce learning.
               </p>
             </div>
           </div>
@@ -351,22 +361,22 @@ export default function LanguagesPage() {
             </div>
 
             <div>
-              <small>NEXT LESSON</small>
+              <small>
+                NEXT LIVE LESSON
+              </small>
 
               <strong>
                 Return Stronger
               </strong>
 
               <p>
-                Continue from a stronger
-                foundation.
+                Continue from a stronger foundation.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* PLANS */}
       <section className="plansSection">
         <div className="sectionHeading centred">
           <p className="eyebrow">
@@ -374,220 +384,250 @@ export default function LanguagesPage() {
           </p>
 
           <h2>
-            Choose your learning experience.
+            Choose how you want to learn.
           </h2>
 
           <p>
-            Select one option below. The whole card is
-            clickable.
+            Learn with a private tutor, learn independently,
+            or combine both for continuous practice between
+            lessons.
           </p>
         </div>
 
         <div className="planGrid">
-          {/* LIVE */}
           <Link
             href="/parent/students"
-            className="planCard"
+            className="planCard livePlan"
           >
-            <div className="planCardTop">
-              <div className="planLabel">
-                1-TO-1 LIVE
+            <div className="planCardHeader">
+              <div>
+                <div className="planLabel">
+                  1-TO-1 LIVE
+                </div>
+
+                <h3>
+                  1-to-1 Live Lessons
+                </h3>
+
+                <p>
+                  Learn directly with a dedicated private tutor.
+                </p>
               </div>
 
-              <div className="planSelectIcon">
+              <div className="planArrow">
                 →
               </div>
             </div>
 
-            <h3>
-              1-to-1 Live Lessons
-            </h3>
+            <div className="planFeatureBlock">
+              <span className="featureTitle">
+                What&apos;s included
+              </span>
 
-            <p className="planIntro">
-              Private language teaching with a
-              dedicated tutor.
-            </p>
+              <div className="featureList">
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Private 1-to-1 lessons
+                </div>
 
-            <div className="planDivider" />
+                <div>
+                  <span className="featureCheck">✓</span>
+                  1 or 2 lessons per week
+                </div>
 
-            <ul>
-              <li>
-                <span>✓</span>
-                Private 1-to-1 lessons
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Monthly or 3-month plans
+                </div>
 
-              <li>
-                <span>✓</span>
-                1 or 2 lessons per week
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Structured curriculum
+                </div>
 
-              <li>
-                <span>✓</span>
-                Monthly or 3-month plans
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Progress updates
+                </div>
+              </div>
+            </div>
 
-              <li>
-                <span>✓</span>
-                Structured curriculum
-              </li>
+            <div className="planFooter">
+              <span>
+                Choose Live Lessons
+              </span>
 
-              <li>
-                <span>✓</span>
-                Progress updates
-              </li>
-            </ul>
-
-            <div className="cardCta">
-              Choose Live Lessons
-              <span>→</span>
+              <strong>→</strong>
             </div>
           </Link>
 
-          {/* PREMIUM */}
           <Link
             href="/parent/students"
             className="planCard premiumPlan"
           >
             <div className="recommended">
-              RECOMMENDED
+              MOST COMPLETE
             </div>
 
-            <div className="planCardTop">
-              <div className="planLabel premiumLabel">
-                PREMIUM BUNDLE
+            <div className="premiumGlow" />
+
+            <div className="planCardHeader">
+              <div>
+                <div className="planLabel premiumLabel">
+                  PREMIUM BUNDLE
+                </div>
+
+                <h3>
+                  1-to-1 Live + AI-Assisted
+                  Self-Paced Learning
+                </h3>
+
+                <p>
+                  Live teaching plus structured practice
+                  throughout the week.
+                </p>
               </div>
 
-              <div className="planSelectIcon premiumArrow">
+              <div className="planArrow premiumArrow">
                 →
               </div>
             </div>
 
-            <h3>
-              1-to-1 Live + AI-Assisted
-              Self-Paced Learning
-            </h3>
-
-            <p className="planIntro">
-              The complete language-learning experience:
-              live teaching plus structured practice
-              throughout the week.
-            </p>
-
             <div className="premiumValue">
+              <span className="premiumValueEyebrow">
+                ONE CONNECTED EXPERIENCE
+              </span>
+
               <strong>
-                Live + Self-Paced
+                Learn live. Practise between lessons.
               </strong>
 
-              <span>
-                One connected learning experience
-              </span>
+              <p>
+                Your tutor teaches. AI-assisted practice helps
+                reinforce what was learned before the next class.
+              </p>
             </div>
 
-            <ul>
-              <li>
-                <span>✓</span>
-                Everything in 1-to-1 Live
-              </li>
+            <div className="planFeatureBlock premiumFeatureBlock">
+              <span className="featureTitle">
+                Premium includes
+              </span>
 
-              <li>
-                <span>✓</span>
-                Full self-paced Language Academy
-              </li>
+              <div className="featureList">
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Everything in 1-to-1 Live
+                </div>
 
-              <li>
-                <span>✓</span>
-                AI-assisted speaking practice
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Full self-paced Language Academy
+                </div>
 
-              <li>
-                <span>✓</span>
-                Listening & pronunciation practice
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  AI-assisted speaking practice
+                </div>
 
-              <li>
-                <span>✓</span>
-                Revision between live lessons
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Listening & pronunciation practice
+                </div>
 
-              <li>
-                <span>✓</span>
-                Learn any time between classes
-              </li>
-            </ul>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Revision between live lessons
+                </div>
 
-            <div className="cardCta premiumCta">
-              Choose Premium
-              <span>→</span>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Learn any time between classes
+                </div>
+              </div>
+            </div>
+
+            <div className="planFooter premiumFooter">
+              <span>
+                Choose Premium
+              </span>
+
+              <strong>→</strong>
             </div>
           </Link>
 
-          {/* AI */}
           <Link
             href="/academies"
-            className="planCard"
+            className="planCard aiPlan"
           >
-            <div className="planCardTop">
-              <div className="planLabel">
-                AI SELF-PACED
+            <div className="planCardHeader">
+              <div>
+                <div className="planLabel">
+                  AI SELF-PACED
+                </div>
+
+                <h3>
+                  AI Self-Paced Learning
+                </h3>
+
+                <p>
+                  Learn independently, whenever it suits you.
+                </p>
               </div>
 
-              <div className="planSelectIcon">
+              <div className="planArrow">
                 →
               </div>
             </div>
 
-            <h3>
-              AI Self-Paced Learning
-            </h3>
+            <div className="planFeatureBlock">
+              <span className="featureTitle">
+                What&apos;s included
+              </span>
 
-            <p className="planIntro">
-              Independent language learning with
-              AI assistance.
-            </p>
+              <div className="featureList">
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Full self-paced Language Academy
+                </div>
 
-            <div className="planDivider" />
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Guided interactive lessons
+                </div>
 
-            <ul>
-              <li>
-                <span>✓</span>
-                Full self-paced Language Academy
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Speaking practice
+                </div>
 
-              <li>
-                <span>✓</span>
-                Guided interactive lessons
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Listening practice
+                </div>
 
-              <li>
-                <span>✓</span>
-                Speaking practice
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Pronunciation practice
+                </div>
 
-              <li>
-                <span>✓</span>
-                Listening practice
-              </li>
+                <div>
+                  <span className="featureCheck">✓</span>
+                  Progress tracking
+                </div>
+              </div>
+            </div>
 
-              <li>
-                <span>✓</span>
-                Pronunciation practice
-              </li>
+            <div className="planFooter">
+              <span>
+                Choose Self-Paced Learning
+              </span>
 
-              <li>
-                <span>✓</span>
-                Progress tracking
-              </li>
-            </ul>
-
-            <div className="cardCta">
-              Choose Self-Paced Learning
-              <span>→</span>
+              <strong>→</strong>
             </div>
           </Link>
         </div>
       </section>
 
-      {/* FINAL CTA */}
       <section className="finalCta">
         <div className="finalIcon">
           ✦
@@ -631,7 +671,7 @@ export default function LanguagesPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          padding: 30px 20px 90px;
+          padding: 28px 20px 90px;
 
           background:
             radial-gradient(
@@ -641,13 +681,13 @@ export default function LanguagesPage() {
             ),
             radial-gradient(
               circle at 8% 75%,
-              rgba(139, 92, 246, 0.07),
+              rgba(139, 92, 246, 0.06),
               transparent 30%
             ),
             linear-gradient(
               180deg,
               #ffffff 0%,
-              #fbf9ff 48%,
+              #fbf9ff 50%,
               #f5f0ff 100%
             );
 
@@ -664,8 +704,6 @@ export default function LanguagesPage() {
           margin-left: auto;
           margin-right: auto;
         }
-
-        /* HERO */
 
         .hero {
           min-height: 500px;
@@ -725,12 +763,12 @@ export default function LanguagesPage() {
         }
 
         h1 {
-          max-width: 520px;
+          max-width: 510px;
 
           margin: 20px 0 0;
 
           font-size:
-            clamp(44px, 4.4vw, 64px);
+            clamp(46px, 4.5vw, 66px);
 
           line-height: 0.98;
 
@@ -744,15 +782,25 @@ export default function LanguagesPage() {
         }
 
         .lead {
-          max-width: 560px;
+          max-width: 550px;
 
           margin: 22px 0 0;
 
           color: #6f637b;
 
-          font-size: 16px;
+          font-size: 17px;
 
           line-height: 1.7;
+        }
+
+        .heroPromise {
+          margin: 12px 0 0;
+
+          color: #4f3f5d;
+
+          font-size: 14px;
+
+          font-weight: 850;
         }
 
         .heroActions {
@@ -884,7 +932,7 @@ export default function LanguagesPage() {
           background:
             linear-gradient(
               90deg,
-              rgba(255,255,255,0.04),
+              rgba(255,255,255,0.05),
               transparent 25%
             );
 
@@ -961,12 +1009,10 @@ export default function LanguagesPage() {
           font-size: 15px;
         }
 
-        /* SHARED SECTION HEADINGS */
-
         .languageSection,
         .learningModel,
         .plansSection {
-          padding-top: 90px;
+          padding-top: 88px;
         }
 
         .sectionHeading {
@@ -999,7 +1045,7 @@ export default function LanguagesPage() {
           margin: 12px 0 0;
 
           font-size:
-            clamp(36px, 4.3vw, 56px);
+            clamp(36px, 4.2vw, 56px);
 
           line-height: 1.03;
 
@@ -1024,8 +1070,6 @@ export default function LanguagesPage() {
           line-height: 1.7;
         }
 
-        /* LANGUAGE CARDS */
-
         .languageGrid {
           display: grid;
 
@@ -1040,7 +1084,7 @@ export default function LanguagesPage() {
         .languageCard {
           display: block;
 
-          padding: 26px;
+          padding: 27px;
 
           border-radius: 25px;
 
@@ -1082,45 +1126,32 @@ export default function LanguagesPage() {
           align-items: center;
 
           justify-content: space-between;
+
+          gap: 16px;
         }
 
-        .languageInitial {
-          width: 52px;
+        .languageTop h3 {
+          margin: 0;
 
-          height: 52px;
-
-          display: grid;
-
-          place-items: center;
-
-          border-radius: 16px;
-
-          background:
-            linear-gradient(
-              135deg,
-              #ede9fe,
-              #f7f2ff
-            );
-
-          color: #6d28d9;
-
-          font-size: 20px;
+          font-size: 27px;
 
           font-weight: 950;
         }
 
         .cardArrow {
-          width: 36px;
+          width: 38px;
 
-          height: 36px;
+          height: 38px;
 
           display: grid;
 
           place-items: center;
 
+          flex: 0 0 auto;
+
           border-radius: 50%;
 
-          background: #faf7ff;
+          background: #f8f3ff;
 
           color: #6d28d9;
 
@@ -1137,16 +1168,8 @@ export default function LanguagesPage() {
           background: #ede9fe;
         }
 
-        .languageCard h3 {
-          margin: 22px 0 0;
-
-          font-size: 24px;
-
-          font-weight: 950;
-        }
-
         .languageCard p {
-          margin: 9px 0 0;
+          margin: 15px 0 0;
 
           color: #73667d;
 
@@ -1160,9 +1183,9 @@ export default function LanguagesPage() {
 
           justify-content: space-between;
 
-          margin-top: 20px;
+          margin-top: 21px;
 
-          padding-top: 16px;
+          padding-top: 17px;
 
           border-top:
             1px solid rgba(124, 58, 237, 0.1);
@@ -1173,8 +1196,6 @@ export default function LanguagesPage() {
 
           font-weight: 950;
         }
-
-        /* STEPS */
 
         .steps {
           display: grid;
@@ -1256,8 +1277,6 @@ export default function LanguagesPage() {
 
           line-height: 1.66;
         }
-
-        /* PREMIUM STORY */
 
         .premiumStory {
           margin-top: 90px;
@@ -1465,51 +1484,51 @@ export default function LanguagesPage() {
           font-weight: 950;
         }
 
-        /* PRODUCT / PLAN CARDS */
-
         .planGrid {
           display: grid;
 
           grid-template-columns:
             repeat(3, minmax(0, 1fr));
 
-          gap: 22px;
+          gap: 24px;
 
-          margin-top: 38px;
+          margin-top: 42px;
+
+          align-items: stretch;
         }
 
         .planCard {
           position: relative;
 
-          min-height: 560px;
+          min-height: 590px;
 
           display: flex;
 
           flex-direction: column;
 
-          padding: 28px;
+          overflow: hidden;
 
-          border-radius: 28px;
+          padding: 30px;
+
+          border-radius: 30px;
 
           background:
             linear-gradient(
               180deg,
-              #ffffff,
-              #fdfcff
+              #ffffff 0%,
+              #fcfaff 100%
             );
 
           border:
-            1px solid rgba(124, 58, 237, 0.14);
+            1px solid rgba(124, 58, 237, 0.13);
 
           box-shadow:
-            0 20px 58px
-            rgba(71, 43, 117, 0.08);
+            0 20px 55px
+            rgba(56, 31, 92, 0.08);
 
           color: #20122f;
 
           text-decoration: none;
-
-          cursor: pointer;
 
           transition:
             transform 0.24s ease,
@@ -1518,30 +1537,31 @@ export default function LanguagesPage() {
         }
 
         .planCard:hover {
-          transform: translateY(-7px);
+          transform: translateY(-8px);
 
           border-color:
-            rgba(124, 58, 237, 0.5);
+            rgba(124, 58, 237, 0.38);
 
           box-shadow:
-            0 32px 75px
-            rgba(90, 45, 160, 0.16);
+            0 34px 85px
+            rgba(74, 37, 128, 0.14);
         }
 
-        .planCardTop {
-          display: flex;
+        .planCardHeader {
+          display: grid;
 
-          align-items: center;
+          grid-template-columns:
+            minmax(0, 1fr) auto;
 
-          justify-content: space-between;
+          gap: 18px;
 
-          gap: 12px;
+          align-items: start;
         }
 
         .planLabel {
           width: fit-content;
 
-          padding: 7px 10px;
+          padding: 7px 11px;
 
           border-radius: 999px;
 
@@ -1556,22 +1576,46 @@ export default function LanguagesPage() {
           letter-spacing: 0.07em;
         }
 
-        .planSelectIcon {
-          width: 38px;
+        .planCard h3 {
+          margin: 22px 0 0;
 
-          height: 38px;
+          font-size: 27px;
+
+          line-height: 1.15;
+
+          font-weight: 950;
+
+          letter-spacing: -0.025em;
+        }
+
+        .planCardHeader p {
+          margin: 10px 0 0;
+
+          color: #73667d;
+
+          font-size: 15px;
+
+          line-height: 1.6;
+        }
+
+        .planArrow {
+          width: 44px;
+
+          height: 44px;
 
           display: grid;
 
           place-items: center;
 
+          flex: 0 0 auto;
+
           border-radius: 50%;
 
-          background: #f7f2ff;
+          background: #f6f0ff;
 
           color: #6d28d9;
 
-          font-size: 17px;
+          font-size: 18px;
 
           font-weight: 950;
 
@@ -1580,70 +1624,68 @@ export default function LanguagesPage() {
             background 0.2s ease;
         }
 
-        .planCard:hover .planSelectIcon {
+        .planCard:hover .planArrow {
           transform: translateX(4px);
 
-          background: #ede9fe;
+          background: #ede4ff;
         }
 
-        .planCard h3 {
-          margin: 24px 0 0;
+        .planFeatureBlock {
+          margin-top: 28px;
 
-          font-size: 25px;
+          padding: 21px;
 
-          line-height: 1.15;
+          border-radius: 21px;
+
+          background: #faf7ff;
+
+          border:
+            1px solid rgba(124, 58, 237, 0.08);
+        }
+
+        .featureTitle {
+          display: block;
+
+          margin-bottom: 16px;
+
+          color: #7b6f85;
+
+          font-size: 11px;
 
           font-weight: 950;
+
+          letter-spacing: 0.07em;
+
+          text-transform: uppercase;
         }
 
-        .planIntro {
-          margin: 8px 0 0;
-
-          color: #73667d;
-
-          line-height: 1.65;
-        }
-
-        .planDivider {
-          height: 1px;
-
-          margin: 22px 0 0;
-
-          background:
-            rgba(124, 58, 237, 0.1);
-        }
-
-        .planCard ul {
+        .featureList {
           display: grid;
 
-          gap: 11px;
-
-          margin: 24px 0 30px;
-
-          padding: 0;
-
-          list-style: none;
+          gap: 13px;
         }
 
-        .planCard li {
+        .featureList > div {
           display: grid;
 
           grid-template-columns:
-            auto 1fr;
+            22px 1fr;
 
-          gap: 9px;
+          gap: 10px;
 
           align-items: start;
 
-          color: #61546b;
+          color: #554a5f;
 
-          line-height: 1.5;
+          font-size: 14px;
+
+          line-height: 1.45;
         }
 
-        .planCard li span {
-          width: 20px;
+        .featureCheck {
+          width: 22px;
 
-          height: 20px;
+          height: 22px;
 
           display: grid;
 
@@ -1651,7 +1693,7 @@ export default function LanguagesPage() {
 
           border-radius: 50%;
 
-          background: #ede9fe;
+          background: #ede5ff;
 
           color: #6d28d9;
 
@@ -1660,8 +1702,8 @@ export default function LanguagesPage() {
           font-weight: 950;
         }
 
-        .cardCta {
-          min-height: 52px;
+        .planFooter {
+          min-height: 58px;
 
           margin-top: auto;
 
@@ -1671,71 +1713,70 @@ export default function LanguagesPage() {
 
           justify-content: space-between;
 
-          padding: 0 17px;
+          gap: 18px;
 
-          border-radius: 15px;
+          padding: 0 19px;
+
+          border-radius: 17px;
+
+          background: #f1e8ff;
 
           color: #5b21b6;
 
-          background: #f3eaff;
+          font-size: 15px;
 
           font-weight: 950;
-
-          transition:
-            background 0.2s ease,
-            color 0.2s ease;
         }
 
-        .planCard:hover .cardCta {
-          background: #ede2ff;
+        .planFooter strong {
+          font-size: 18px;
         }
-
-        /* PREMIUM PRODUCT CARD */
 
         .premiumPlan {
-          transform: translateY(-10px);
+          z-index: 2;
+
+          transform: translateY(-14px);
 
           border: 2px solid #7c3aed;
 
           background:
             radial-gradient(
-              circle at top right,
-              rgba(124,58,237,0.11),
+              circle at 80% 5%,
+              rgba(139, 92, 246, 0.15),
               transparent 30%
             ),
             linear-gradient(
               180deg,
-              #ffffff,
-              #faf6ff
+              #ffffff 0%,
+              #faf6ff 100%
             );
 
           box-shadow:
-            0 30px 85px
+            0 34px 90px
             rgba(124, 58, 237, 0.2);
         }
 
         .premiumPlan:hover {
-          transform: translateY(-17px);
+          transform: translateY(-20px);
 
           box-shadow:
-            0 38px 95px
-            rgba(124, 58, 237, 0.27);
+            0 42px 105px
+            rgba(124, 58, 237, 0.28);
         }
 
         .recommended {
           position: absolute;
 
-          top: -14px;
+          top: 0;
 
           left: 50%;
 
           transform: translateX(-50%);
 
-          padding: 7px 14px;
+          padding: 8px 16px;
 
-          border-radius: 999px;
-
-          color: #ffffff;
+          border-radius:
+            0 0 14px 14px;
 
           background:
             linear-gradient(
@@ -1744,15 +1785,38 @@ export default function LanguagesPage() {
               #8b5cf6
             );
 
-          box-shadow:
-            0 8px 22px
-            rgba(124,58,237,0.3);
+          color: #ffffff;
 
           font-size: 9px;
 
           font-weight: 950;
 
           letter-spacing: 0.08em;
+
+          box-shadow:
+            0 9px 24px
+            rgba(124, 58, 237, 0.24);
+        }
+
+        .premiumGlow {
+          position: absolute;
+
+          width: 180px;
+
+          height: 180px;
+
+          top: -70px;
+
+          right: -60px;
+
+          border-radius: 50%;
+
+          background:
+            rgba(139, 92, 246, 0.1);
+
+          filter: blur(15px);
+
+          pointer-events: none;
         }
 
         .premiumLabel {
@@ -1775,47 +1839,74 @@ export default function LanguagesPage() {
               #6d28d9,
               #8b5cf6
             );
+
+          box-shadow:
+            0 10px 25px
+            rgba(124, 58, 237, 0.22);
         }
 
         .premiumValue {
-          display: flex;
+          position: relative;
 
-          flex-direction: column;
+          z-index: 1;
 
-          gap: 4px;
+          margin-top: 26px;
 
-          margin-top: 20px;
+          padding: 19px;
 
-          padding: 14px;
-
-          border-radius: 15px;
+          border-radius: 20px;
 
           background:
             linear-gradient(
               135deg,
-              #f0e7ff,
+              #efe5ff,
               #faf7ff
             );
 
           border:
-            1px solid rgba(124,58,237,0.13);
+            1px solid rgba(124, 58, 237, 0.15);
+        }
+
+        .premiumValueEyebrow {
+          display: block;
+
+          color: #7c3aed;
+
+          font-size: 9px;
+
+          font-weight: 950;
+
+          letter-spacing: 0.08em;
         }
 
         .premiumValue strong {
-          color: #5521a5;
+          display: block;
 
-          font-size: 14px;
+          margin-top: 7px;
+
+          color: #4f1d96;
+
+          font-size: 16px;
+
+          line-height: 1.35;
         }
 
-        .premiumValue span {
-          color: #786a82;
+        .premiumValue p {
+          margin: 7px 0 0;
 
-          font-size: 11px;
+          color: #71627d;
 
-          font-weight: 700;
+          font-size: 12px;
+
+          line-height: 1.55;
         }
 
-        .premiumCta {
+        .premiumFeatureBlock {
+          background:
+            rgba(255,255,255,0.78);
+        }
+
+        .premiumFooter {
           color: #ffffff;
 
           background:
@@ -1826,20 +1917,9 @@ export default function LanguagesPage() {
             );
 
           box-shadow:
-            0 14px 30px
-            rgba(124,58,237,0.22);
+            0 15px 35px
+            rgba(124, 58, 237, 0.24);
         }
-
-        .premiumPlan:hover .premiumCta {
-          background:
-            linear-gradient(
-              135deg,
-              #5b21b6,
-              #7c3aed
-            );
-        }
-
-        /* FINAL CTA */
 
         .finalCta {
           margin-top: 94px;
@@ -1952,8 +2032,6 @@ export default function LanguagesPage() {
             rgba(255,255,255,0.05);
         }
 
-        /* TABLET */
-
         @media (max-width: 900px) {
           .hero,
           .premiumStory,
@@ -1982,12 +2060,9 @@ export default function LanguagesPage() {
 
           .finalActions {
             width: 100%;
-
             min-width: 0;
           }
         }
-
-        /* MOBILE */
 
         @media (max-width: 640px) {
           .page {
@@ -1996,7 +2071,6 @@ export default function LanguagesPage() {
 
           .hero {
             min-height: auto;
-
             border-radius: 26px;
           }
 
@@ -2011,6 +2085,10 @@ export default function LanguagesPage() {
 
           .lead {
             font-size: 15px;
+          }
+
+          .heroPromise {
+            font-size: 13px;
           }
 
           .heroVisual {
@@ -2031,9 +2109,7 @@ export default function LanguagesPage() {
 
           .imageBadge {
             left: 14px;
-
             right: 14px;
-
             bottom: 14px;
           }
 
@@ -2043,10 +2119,27 @@ export default function LanguagesPage() {
             padding-top: 70px;
           }
 
+          .sectionHeading h2 {
+            font-size:
+              clamp(34px, 10vw, 47px);
+          }
+
+          .languageGrid {
+            gap: 16px;
+          }
+
+          .languageCard {
+            padding: 24px 22px;
+            border-radius: 24px;
+          }
+
+          .languageTop h3 {
+            font-size: 27px;
+          }
+
           .premiumStory,
           .finalCta {
             padding: 26px 20px;
-
             border-radius: 26px;
           }
 
@@ -2058,10 +2151,72 @@ export default function LanguagesPage() {
             width: 100%;
           }
 
-          .planCard {
-            padding: 24px;
+          .planGrid {
+            gap: 22px;
+            margin-top: 34px;
+          }
 
-            border-radius: 24px;
+          .planCard {
+            min-height: 0;
+
+            padding: 24px 21px;
+
+            border-radius: 27px;
+
+            background: #ffffff;
+
+            box-shadow:
+              0 16px 40px
+              rgba(64, 33, 105, 0.09);
+          }
+
+          .planCardHeader {
+            grid-template-columns:
+              minmax(0, 1fr) auto;
+
+            gap: 14px;
+          }
+
+          .planCard h3 {
+            margin-top: 18px;
+
+            font-size: 25px;
+          }
+
+          .planFeatureBlock {
+            margin-top: 22px;
+
+            padding: 18px;
+
+            border-radius: 18px;
+          }
+
+          .featureList > div {
+            font-size: 15px;
+          }
+
+          .planFooter {
+            min-height: 58px;
+
+            margin-top: 22px;
+
+            font-size: 16px;
+          }
+
+          .premiumPlan {
+            border: 2px solid #7c3aed;
+
+            box-shadow:
+              0 24px 58px
+              rgba(124, 58, 237, 0.17);
+          }
+
+          .premiumValue {
+            margin-top: 22px;
+          }
+
+          .recommended {
+            top: 0;
           }
         }
       `}</style>
