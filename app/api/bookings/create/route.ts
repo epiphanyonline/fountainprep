@@ -14,12 +14,17 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 type BookingFrequency = 'WEEKLY_SAME_TIME' | 'TWO_DAYS_WEEKLY'
 
+type BookingProduct =
+  | 'LIVE'
+  | 'PREMIUM'
+
 type RequestBody = {
   studentId?: string
   subjectId?: string
   programId?: string | null
   planId?: string
   frequency?: BookingFrequency
+  productType?: BookingProduct
   selectedSlotIds?: string[]
 }
 
@@ -55,6 +60,18 @@ const plans = {
   three_month: { weeks: 12, pricePerLesson: 9 },
 } as const
 
+const premiumBundleTotals = {
+  monthly: {
+    WEEKLY_SAME_TIME: 49.99,
+    TWO_DAYS_WEEKLY: 89.99,
+  },
+
+  three_month: {
+    WEEKLY_SAME_TIME: 134.99,
+    TWO_DAYS_WEEKLY: 239.99,
+  },
+} as const
+
 class RequestError extends Error {
   constructor(
     message: string,
@@ -77,6 +94,10 @@ export async function POST(req: Request) {
       body.frequency === 'TWO_DAYS_WEEKLY'
         ? 'TWO_DAYS_WEEKLY'
         : 'WEEKLY_SAME_TIME'
+        const productType: BookingProduct =
+  body.productType === 'PREMIUM'
+    ? 'PREMIUM'
+    : 'LIVE'
     const selectedSlotIds = Array.from(
       new Set((body.selectedSlotIds ?? []).map((value) => value.trim()).filter(Boolean))
     )
@@ -169,21 +190,41 @@ export async function POST(req: Request) {
   subject.category
 )
     const plan = plans[planId]
-const totalLessons = plan.weeks * requiredSlotCount
+const totalLessons =
+  plan.weeks *
+  requiredSlotCount
+
+const liveStandardTotal =
+  totalLessons *
+  plan.pricePerLesson
 
 const standardTotal =
-  totalLessons * plan.pricePerLesson
+  productType === 'PREMIUM'
+    ? premiumBundleTotals[planId][frequency]
+    : liveStandardTotal
 
+/*
+ * Premium already contains a bundle saving,
+ * so do not apply an additional Academy
+ * marketplace discount to Premium.
+ */
 const marketplaceDiscountPercent =
-  await getMarketplaceDiscountPercent(
-    user.id,
-    studentId
-  )
+  productType === 'PREMIUM'
+    ? 0
+    : await getMarketplaceDiscountPercent(
+        user.id,
+        studentId
+      )
 
-const totalAmount = roundMoney(
-  standardTotal *
-    (1 - marketplaceDiscountPercent / 100)
-)
+const totalAmount =
+  roundMoney(
+    standardTotal *
+      (
+        1 -
+        marketplaceDiscountPercent /
+          100
+      )
+  )
 
 const tutorId = seedSlots[0].tutor_id
 
@@ -254,6 +295,7 @@ const tutorId = seedSlots[0].tutor_id
         subject_id: subjectId,
         program_id: body.programId || null,
         plan_id: planId,
+        product_type: productType,
         tutor_id: tutorId,
         availability_slot_id: matchingSlot?.id || (occurrence.weekIndex === 0 ? occurrence.seed.id : null),
         lesson_date: occurrence.lessonDate,

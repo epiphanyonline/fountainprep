@@ -60,6 +60,23 @@ function ScheduleContent() {
   const subjectIdParam = searchParams.get('subjectId')
   const programId = searchParams.get('programId')
   const planIdParam = searchParams.get('planId') || 'monthly'
+  const productTypeParam =
+  searchParams.get(
+    'productType',
+  )
+
+const productType:
+  'LIVE' | 'PREMIUM' =
+  productTypeParam ===
+  'PREMIUM'
+    ? 'PREMIUM'
+    : 'LIVE'
+  const frequencyParam = searchParams.get('frequency')
+
+const initialFrequency: BookingFrequency =
+  frequencyParam === 'TWO_DAYS_WEEKLY'
+    ? 'TWO_DAYS_WEEKLY'
+    : 'WEEKLY_SAME_TIME'
   const planId = planIdParam === 'three_month' ? 'three_month' : 'monthly'
   const [currency, setCurrency] = useState({
   symbol: '£',
@@ -73,7 +90,8 @@ function ScheduleContent() {
   const [resolvedSubjectId, setResolvedSubjectId] = useState<string | null>(null)
   const [slots, setSlots] = useState<Slot[]>([])
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([])
-  const [frequency, setFrequency] = useState<BookingFrequency>('WEEKLY_SAME_TIME')
+  const [frequency, setFrequency] =
+  useState<BookingFrequency>(initialFrequency)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('Loading available tutor slots...')
@@ -545,12 +563,44 @@ const rows =
   }
 
   function goBackToPricing() {
-    const params = new URLSearchParams()
-    if (studentId) params.set('studentId', studentId)
-    if (subjectIdParam) params.set('subjectId', subjectIdParam)
-    if (programId) params.set('programId', programId)
-    router.push(`/pricing?${params.toString()}`)
+  const params =
+    new URLSearchParams()
+
+  if (studentId) {
+    params.set(
+      'studentId',
+      studentId,
+    )
   }
+
+  if (subjectIdParam) {
+    params.set(
+      'subjectId',
+      subjectIdParam,
+    )
+  }
+
+  if (programId) {
+    params.set(
+      'programId',
+      programId,
+    )
+  }
+
+  params.set(
+    'frequency',
+    frequency,
+  )
+
+  params.set(
+    'productType',
+    productType,
+  )
+
+  router.push(
+    `/pricing?${params.toString()}`,
+  )
+}
 
   async function continueToPayment() {
     if (!studentId || !student || !resolvedSubjectId) {
@@ -588,13 +638,25 @@ const rows =
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          studentId,
-          subjectId: resolvedSubjectId,
-          programId: programId || null,
-          planId,
-          frequency,
-          selectedSlotIds: seedSlots.map((slot) => slot.id),
-        }),
+  studentId,
+
+  subjectId:
+    resolvedSubjectId,
+
+  programId:
+    programId || null,
+
+  planId,
+
+  frequency,
+
+  productType,
+
+  selectedSlotIds:
+    seedSlots.map(
+      (slot) => slot.id,
+    ),
+}),
       })
 
       const result = await response.json().catch(() => null)

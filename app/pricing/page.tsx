@@ -107,9 +107,17 @@ function PricingContent() {
   const subjectId = searchParams.get('subjectId')
   const programId = searchParams.get('programId')
   const product = searchParams.get('product')
-  const academyId = searchParams.get('academy')
-  const academyProgrammeId = searchParams.get('programme')
-  const isAcademyPricing = product === 'academies'
+const academyId = searchParams.get('academy')
+const academyProgrammeId = searchParams.get('programme')
+
+const productTypeParam =
+  searchParams.get('productType')
+
+const frequencyParam =
+  searchParams.get('frequency')
+
+const isAcademyPricing =
+  product === 'academies'
 
   const [student, setStudent] = useState<Student | null>(null)
   const [currency, setCurrency] = useState<CurrencyDisplay>(
@@ -118,6 +126,26 @@ function PricingContent() {
   const [loadingStudent, setLoadingStudent] = useState(true)
   const [resolvedSubjectName, setResolvedSubjectName] = useState('')
   const [selectingPlan, setSelectingPlan] = useState('')
+  const [selectedProduct, setSelectedProduct] =
+  useState<'LIVE' | 'PREMIUM'>(
+    productTypeParam ===
+      'PREMIUM'
+      ? 'PREMIUM'
+      : 'LIVE',
+  )
+
+const [
+  selectedFrequency,
+  setSelectedFrequency,
+] = useState<
+  | 'WEEKLY_SAME_TIME'
+  | 'TWO_DAYS_WEEKLY'
+>(
+  frequencyParam ===
+    'TWO_DAYS_WEEKLY'
+    ? 'TWO_DAYS_WEEKLY'
+    : 'WEEKLY_SAME_TIME',
+)
   const [academyPlans, setAcademyPlans] = useState<
   AcademySubscriptionPlan[]
 >([])
@@ -134,6 +162,17 @@ const [academyPlanError, setAcademyPlanError] =
     if (!subjectId) return 'Subject not selected'
     return subjectLabels[subjectId.toLowerCase()] || resolvedSubjectName || 'Selected subject'
   }, [subjectId, resolvedSubjectName])
+
+  const isLanguageBooking = useMemo(() => {
+  const name = subjectName.trim().toLowerCase()
+
+  return [
+    'yoruba',
+    'igbo',
+    'hausa',
+    'language',
+  ].includes(name)
+}, [subjectName])
 
   useEffect(() => {
   let cancelled = false
@@ -257,6 +296,38 @@ setLoadingStudent(false)
   return `${currency.symbol}${converted}`
 }
 
+function getSelectedTotal(
+  planId: string,
+  frequency:
+    | 'WEEKLY_SAME_TIME'
+    | 'TWO_DAYS_WEEKLY',
+  productType:
+    | 'LIVE'
+    | 'PREMIUM',
+) {
+  if (productType === 'PREMIUM') {
+    if (planId === 'three_month') {
+      return frequency === 'TWO_DAYS_WEEKLY'
+        ? 239.99
+        : 134.99
+    }
+
+    return frequency === 'TWO_DAYS_WEEKLY'
+      ? 89.99
+      : 49.99
+  }
+
+  if (planId === 'three_month') {
+    return frequency === 'TWO_DAYS_WEEKLY'
+      ? 216
+      : 108
+  }
+
+  return frequency === 'TWO_DAYS_WEEKLY'
+    ? 80
+    : 40
+}
+
 async function handleChooseAcademyPlan(
   planId: string,
 ) {
@@ -342,23 +413,58 @@ async function handleChooseAcademyPlan(
   }
 }
 
-  function handleChoosePlan(planId: string) {
-    if (!studentId || !subjectId) {
-      router.push('/parent/students')
-      return
-    }
-
-    setSelectingPlan(planId)
-
-    const params = new URLSearchParams()
-    params.set('studentId', studentId)
-    params.set('subjectId', subjectId)
-    params.set('planId', planId)
-
-    if (programId) params.set('programId', programId)
-
-    router.push(`/schedule?${params.toString()}`)
+  function handleChoosePlan(
+  planId: string,
+  productType: 'LIVE' | 'PREMIUM' = selectedProduct,
+) {
+  if (!studentId || !subjectId) {
+    router.push('/parent/students')
+    return
   }
+
+  setSelectingPlan(
+    `${productType}-${planId}`,
+  )
+
+  const params =
+    new URLSearchParams()
+
+  params.set(
+    'studentId',
+    studentId,
+  )
+
+  params.set(
+    'subjectId',
+    subjectId,
+  )
+
+  params.set(
+    'planId',
+    planId,
+  )
+
+  params.set(
+    'frequency',
+    selectedFrequency,
+  )
+
+  params.set(
+    'productType',
+    productType,
+  )
+
+  if (programId) {
+    params.set(
+      'programId',
+      programId,
+    )
+  }
+
+  router.push(
+    `/schedule?${params.toString()}`,
+  )
+}
 
   function handleChangeSubject() {
   if (!studentId) {
@@ -593,7 +699,70 @@ return (
       </section>
 
       <section className="plansSection">
-        <div className="plansGrid">
+  {isLanguageBooking ? (
+    <div className="productSelector">
+      <div className="productSelectorHeading">
+        <p className="eyebrow">Choose how you want to learn</p>
+
+        <h2>
+          Live teaching, or combine it with AI practice.
+        </h2>
+
+        <p>
+          Premium lets the learner meet a real tutor each week
+          and continue practising with Ayo between lessons.
+        </p>
+      </div>
+
+      <div className="productChoices">
+        <button
+          type="button"
+          className={
+            selectedProduct === 'LIVE'
+              ? 'productChoice productChoiceActive'
+              : 'productChoice'
+          }
+          onClick={() =>
+            setSelectedProduct('LIVE')
+          }
+        >
+          <span className="productChoiceTitle">
+            Live Tutor
+          </span>
+
+          <span className="productChoiceText">
+            Private 1-to-1 teaching
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={
+            selectedProduct === 'PREMIUM'
+              ? 'productChoice productChoiceActive premiumChoice'
+              : 'productChoice premiumChoice'
+          }
+          onClick={() =>
+            setSelectedProduct('PREMIUM')
+          }
+        >
+          <span className="recommendedBadge">
+            Recommended
+          </span>
+
+          <span className="productChoiceTitle">
+            Premium Bundle
+          </span>
+
+          <span className="productChoiceText">
+            Live Tutor + Full AI Academy
+          </span>
+        </button>
+      </div>
+    </div>
+  ) : null}
+
+  <div className="plansGrid">
           {plans.map((plan) => (
             <article
               key={plan.id}
@@ -604,39 +773,207 @@ return (
               <h2>{plan.title}</h2>
 
               <div className="priceBlock">
-                <p className="price">
-  {plan.id === 'monthly' ? convertPrice(10) : convertPrice(9)}
-</p>
-                <p className="priceSub">{plan.sub}</p>
-              </div>
+  {selectedProduct === 'PREMIUM' &&
+  isLanguageBooking ? (
+    <>
+      <p className="price">
+        {convertPrice(
+          getSelectedTotal(
+            plan.id,
+            selectedFrequency,
+            'PREMIUM',
+          ),
+        )}
+      </p>
+
+      <p className="priceSub">
+        {plan.id === 'monthly'
+          ? 'per month • Live + Full AI'
+          : 'for 3 months • Live + Full AI'}
+      </p>
+    </>
+  ) : (
+    <>
+      <p className="price">
+        {plan.id === 'monthly'
+          ? convertPrice(10)
+          : convertPrice(9)}
+      </p>
+
+      <p className="priceSub">
+        {plan.sub}
+      </p>
+    </>
+  )}
+</div>
 
               <p className="planDesc">{plan.desc}</p>
 
+              {selectedProduct === 'PREMIUM' &&
+isLanguageBooking ? (
+  <div className="premiumBenefits">
+    <span>✓ Private live tutor</span>
+    <span>✓ Full AI Language Academy</span>
+    <span>✓ Practise between live lessons</span>
+    <span>✓ Reinforce what was taught in class</span>
+  </div>
+) : null}
+
               <div className="planDetails">
-                <p>
-                  <strong>Sessions:</strong> {plan.sessions}
-                </p>
-                <p>
-                  <strong>Total:</strong>{' '}
-{plan.id === 'monthly'
-  ? `From ${convertPrice(40)}/month`
-  : `From ${convertPrice(108)} per 3 months`}
-                </p>
-                <p>
-                  <strong>Best for:</strong> {plan.outcome}
-                </p>
-              </div>
+  <p>
+    <strong>Choose your learning pace</strong>
+  </p>
+
+  <div className="frequencyChoices">
+    <button
+      type="button"
+      className={`frequencyChoice ${
+        selectedFrequency === 'WEEKLY_SAME_TIME'
+          ? 'frequencyChoiceActive'
+          : ''
+      }`}
+      onClick={() =>
+        setSelectedFrequency('WEEKLY_SAME_TIME')
+      }
+    >
+      <span className="frequencyTitle">
+        1 class per week
+      </span>
+
+      <span className="frequencyMeta">
+  {plan.id === 'monthly'
+    ? `4 private classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'WEEKLY_SAME_TIME',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${selectedProduct === 'PREMIUM' && isLanguageBooking ? ' • Full AI included' : '/month'}`
+    : `12 private classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'WEEKLY_SAME_TIME',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${selectedProduct === 'PREMIUM' && isLanguageBooking ? ' • Full AI included' : ' / 3 months'}`}
+</span>      
+    </button>
+
+    <button
+      type="button"
+      className={`frequencyChoice ${
+        selectedFrequency === 'TWO_DAYS_WEEKLY'
+          ? 'frequencyChoiceActive'
+          : ''
+      }`}
+      onClick={() =>
+        setSelectedFrequency('TWO_DAYS_WEEKLY')
+      }
+    >
+      <span className="frequencyPopular">
+        Faster progress
+      </span>
+
+      <span className="frequencyTitle">
+        2 classes per week
+      </span>
+
+      <span className="frequencyMeta">
+  {plan.id === 'monthly'
+    ? `8 private classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'TWO_DAYS_WEEKLY',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${selectedProduct === 'PREMIUM' && isLanguageBooking ? ' • Full AI included' : '/month'}`
+    : `24 private classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'TWO_DAYS_WEEKLY',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${selectedProduct === 'PREMIUM' && isLanguageBooking ? ' • Full AI included' : ' / 3 months'}`}
+</span>      
+    </button>
+  </div>
+
+  <p className="selectedPlanSummary">
+  <strong>Your plan:</strong>{' '}
+
+  {selectedFrequency === 'TWO_DAYS_WEEKLY'
+    ? `${plan.id === 'monthly' ? 8 : 24} classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'TWO_DAYS_WEEKLY',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${
+        selectedProduct === 'PREMIUM' &&
+        isLanguageBooking
+          ? ' • Full AI included'
+          : plan.id === 'monthly'
+            ? '/month'
+            : ' / 3 months'
+      }`
+    : `${plan.id === 'monthly' ? 4 : 12} classes • ${convertPrice(
+        getSelectedTotal(
+          plan.id,
+          'WEEKLY_SAME_TIME',
+          selectedProduct === 'PREMIUM' &&
+            isLanguageBooking
+            ? 'PREMIUM'
+            : 'LIVE',
+        ),
+      )}${
+        selectedProduct === 'PREMIUM' &&
+        isLanguageBooking
+          ? ' • Full AI included'
+          : plan.id === 'monthly'
+            ? '/month'
+            : ' / 3 months'
+      }`}
+</p>
+
+  <p>
+    <strong>Best for:</strong> {plan.outcome}
+  </p>
+</div>
 
               <button
-                type="button"
-                onClick={() => handleChoosePlan(plan.id)}
-                className="chooseButton"
-                disabled={Boolean(selectingPlan)}
-              >
-                {selectingPlan === plan.id
-                  ? 'Opening Tutor Schedule...'
-                  : `Choose ${plan.title} → Pick Tutor & Time`}
-              </button>
+  type="button"
+  onClick={() =>
+    handleChoosePlan(
+      plan.id,
+      selectedProduct,
+    )
+  }
+  className="chooseButton"
+  disabled={Boolean(selectingPlan)}
+>
+  {selectingPlan ===
+  `${selectedProduct}-${plan.id}`
+    ? 'Opening Tutor Schedule...'
+    : selectedProduct === 'PREMIUM' &&
+        isLanguageBooking
+      ? `Choose Premium ${plan.title} →`
+      : `Choose ${plan.title} → Pick Tutor & Time`}
+</button>
             </article>
           ))}
         </div>
@@ -1032,7 +1369,177 @@ const pricingStyles = `
     }
 
     .trustCard {
-      padding: 28px 22px;
-    }
+  padding: 28px 22px;
+}
+}
+
+/* Live / Premium plan controls */
+
+.frequencyChoices {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.frequencyChoice {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 17px 18px;
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  border-radius: 18px;
+  background: #ffffff;
+  color: #2d183f;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.frequencyChoice:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 58, 237, 0.35);
+}
+
+.frequencyChoiceActive {
+  border: 2px solid #7c3aed;
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff,
+      #f7f1ff
+    );
+  box-shadow:
+    0 12px 30px
+    rgba(124, 58, 237, 0.12);
+}
+
+.frequencyTitle {
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.frequencyMeta {
+  color: #75677f;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.frequencyPopular {
+  display: inline-flex;
+  margin-bottom: 3px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.selectedPlanSummary {
+  margin-top: 15px !important;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7f2ff;
+  color: #4c2875;
+}
+
+.productSelector {
+  margin-bottom: 24px;
+  padding: 26px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  box-shadow: 0 20px 55px rgba(71, 43, 117, 0.08);
+}
+
+.productSelectorHeading h2 {
+  margin: 8px 0 0;
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 950;
+}
+
+.productSelectorHeading > p:last-child {
+  margin: 10px 0 0;
+  color: #70647d;
+  line-height: 1.6;
+}
+
+.productChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.productChoice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  background: #fff;
+  color: #2d183f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.productChoiceActive {
+  border: 2px solid #7c3aed;
+  background: linear-gradient(135deg, #fff, #f4edff);
+  box-shadow: 0 16px 38px rgba(124, 58, 237, 0.14);
+}
+
+.productChoiceTitle {
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.productChoiceText {
+  color: #766981;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.recommendedBadge {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #6d28d9;
+  color: white;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.premiumBenefits {
+  display: grid;
+  gap: 7px;
+  margin-top: 15px;
+  padding: 15px;
+  border-radius: 17px;
+  background: #f7f2ff;
+  color: #4b2872;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .productChoices {
+    grid-template-columns: 1fr;
   }
+}
 `

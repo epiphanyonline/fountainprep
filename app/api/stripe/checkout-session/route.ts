@@ -29,6 +29,7 @@ type BookingRow = {
   program_id: string | null
   plan_id: string
   tutor_id: string | null
+  product_type: string
   lesson_date: string | null
   lesson_time: string | null
   timezone: string | null
@@ -56,6 +57,18 @@ const planRules: Record<string, { weeks: number; pricePerLesson: number }> = {
   monthly: { weeks: 4, pricePerLesson: 10 },
   three_month: { weeks: 12, pricePerLesson: 9 },
 }
+
+const premiumBundleTotals = {
+  monthly: {
+    WEEKLY_SAME_TIME: 49.99,
+    TWO_DAYS_WEEKLY: 89.99,
+  },
+
+  three_month: {
+    WEEKLY_SAME_TIME: 134.99,
+    TWO_DAYS_WEEKLY: 239.99,
+  },
+} as const
 
 export async function POST(req: Request) {
   try {
@@ -143,6 +156,14 @@ export async function POST(req: Request) {
     const learnerName = student?.full_name || 'Learner'
     const subjectName = subject?.name || 'Private lesson'
     const planName = planLabels[anchorBooking.plan_id] || 'Learning Plan'
+    const isPremium =
+  anchorBooking.product_type ===
+  'PREMIUM'
+
+const checkoutProductName =
+  isPremium
+    ? `${subjectName} Premium Bundle`
+    : `${subjectName} — ${planName}`
     const lessonCount = groupBookings.length
     const bookingGroupReference =
       anchorBooking.parent_booking_group_id || anchorBooking.id
@@ -164,8 +185,14 @@ export async function POST(req: Request) {
             price_data: {
               currency: currency.toLowerCase(),
               product_data: {
-                name: `${subjectName} — ${planName}`,
-                description: `${lessonCount} private 1-to-1 lesson${lessonCount === 1 ? '' : 's'} for ${learnerName}`,
+                name: checkoutProductName,
+                description: isPremium
+  ? `${lessonCount} private 1-to-1 lesson${
+      lessonCount === 1 ? '' : 's'
+    } for ${learnerName}, plus full AI Language Academy access`
+  : `${lessonCount} private 1-to-1 lesson${
+      lessonCount === 1 ? '' : 's'
+    } for ${learnerName}`,
               },
               unit_amount: Math.round(amount * 100),
             },
@@ -180,6 +207,8 @@ export async function POST(req: Request) {
           subject_id: anchorBooking.subject_id,
           program_id: anchorBooking.program_id || '',
           plan_id: anchorBooking.plan_id,
+          product_type:
+  anchorBooking.product_type || 'LIVE',
           booking_table: 'lesson_bookings',
         },
       },
@@ -252,7 +281,7 @@ async function getOwnedBooking(bookingId: string, userId: string) {
   const { data, error } = await supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
     )
     .eq('id', bookingId)
     .eq('parent_id', userId)
@@ -266,7 +295,7 @@ async function getOwnedBookingGroup(anchor: BookingRow, userId: string) {
   let query = supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
     )
     .eq('parent_id', userId)
 
@@ -339,8 +368,26 @@ function validateCheckoutGroup(
     return { ok: false, error: 'This booking has an invalid weekly frequency.' }
   }
 
-  const expectedLessonCount = rule.weeks * lessonsPerWeek
-  const expectedAmount = expectedLessonCount * rule.pricePerLesson
+  const expectedLessonCount =
+  rule.weeks *
+  lessonsPerWeek
+
+const liveExpectedAmount =
+  expectedLessonCount *
+  rule.pricePerLesson
+
+const expectedAmount =
+  first.product_type === 'PREMIUM'
+    ? premiumBundleTotals[
+        first.plan_id as
+          | 'monthly'
+          | 'three_month'
+      ][
+        frequency as
+          | 'WEEKLY_SAME_TIME'
+          | 'TWO_DAYS_WEEKLY'
+      ]
+    : liveExpectedAmount
 
   if (bookings.length !== expectedLessonCount) {
     return {
@@ -358,6 +405,8 @@ function validateCheckoutGroup(
       booking.student_id !== first.student_id ||
       booking.subject_id !== first.subject_id ||
       booking.plan_id !== first.plan_id ||
+      booking.product_type !==
+  first.product_type ||
       booking.tutor_id !== first.tutor_id ||
       booking.booking_frequency !== frequency
     ) {

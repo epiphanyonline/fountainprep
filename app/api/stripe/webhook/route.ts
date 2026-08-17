@@ -27,6 +27,7 @@ type BookingRow = {
   student_id: string;
   subject_id: string;
   program_id: string | null;
+  product_type: 'LIVE' | 'PREMIUM';
   plan_id: string;
   tutor_id: string | null;
   lesson_date: string | null;
@@ -608,6 +609,10 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
 
   if (bookingUpdateError) throw bookingUpdateError;
 
+  await ensurePremiumLanguageAccess(
+  groupBookings,
+);
+
   if (availabilitySlotIds.length > 0) {
     const { error: slotUpdateError } = await supabaseAdmin
       .from("tutor_availability_slots")
@@ -629,6 +634,199 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
   await ensureLessonSessions(groupBookings);
   await ensureLessonReminders(groupBookings);
   await sendBookingConfirmationEmails(session, payment, groupBookings);
+}
+
+async function ensurePremiumLanguageAccess(
+  bookings: BookingRow[],
+) {
+  const first = bookings[0];
+
+  if (!first) {
+    return;
+  }
+
+  if (
+    first.product_type !==
+    "PREMIUM"
+  ) {
+    return;
+  }
+
+  /*
+   * Premium is currently intended for
+   * Language Academy subjects only.
+   *
+   * Confirm the selected subject really
+   * belongs to the language category.
+   */
+  const {
+    data: subject,
+    error: subjectError,
+  } = await supabaseAdmin
+    .from("subjects")
+    .select("id, name, category")
+    .eq("id", first.subject_id)
+    .maybeSingle();
+
+  if (subjectError) {
+    throw subjectError;
+  }
+
+  if (!subject) {
+    throw new Error(
+      "Premium booking subject was not found.",
+    );
+  }
+
+  const subjectCategory =
+    String(
+      subject.category || "",
+    ).toLowerCase();
+
+  if (
+    subjectCategory !== "language"
+  ) {
+    throw new Error(
+      "Premium AI access can only be granted for language bookings.",
+    );
+  }
+
+  const language =
+    String(subject.name || "")
+      .trim()
+      .toLowerCase();
+
+  if (!language) {
+    throw new Error(
+      "Premium booking language could not be determined.",
+    );
+  }
+
+  /*
+   * The entitlement lasts for the same
+   * commercial period as the live plan.
+   *
+   * monthly     = 4 weeks
+   * three_month = 12 weeks
+   */
+  const entitlementWeeks =
+    first.plan_id ===
+    "three_month"
+      ? 12
+      : 4;
+
+  const startsAt =
+    new Date();
+
+  const endsAt =
+    new Date(
+      startsAt.getTime() +
+        entitlementWeeks *
+          7 *
+          24 *
+          60 *
+          60 *
+          1000,
+    );
+
+  /*
+   * Determine whether the live plan is
+   * once or twice per week from the
+   * number of paid lessons.
+   */
+  const expectedOneWeeklyCount =
+    entitlementWeeks;
+
+  const lessonsPerWeek =
+    bookings.length >
+    expectedOneWeeklyCount
+      ? 2
+      : 1;
+
+  /*
+   * Expire any previous active Premium
+   * entitlement for this same learner
+   * and language before inserting the
+   * fresh paid entitlement.
+   */
+  const {
+    error: expireError,
+  } = await supabaseAdmin
+    .from(
+      "language_access_entitlements",
+    )
+    .update({
+      status: "EXPIRED",
+      ends_at:
+        startsAt.toISOString(),
+      updated_at:
+        startsAt.toISOString(),
+    })
+    .eq(
+      "student_id",
+      first.student_id,
+    )
+    .eq(
+      "language",
+      language,
+    )
+    .eq(
+      "access_source",
+      "PREMIUM_BUNDLE",
+    )
+    .eq(
+      "status",
+      "ACTIVE",
+    );
+
+  if (expireError) {
+    throw expireError;
+  }
+
+  const {
+    error: entitlementError,
+  } = await supabaseAdmin
+    .from(
+      "language_access_entitlements",
+    )
+    .insert({
+      user_id:
+        first.parent_id,
+
+      student_id:
+        first.student_id,
+
+      language,
+
+      access_source:
+        "PREMIUM_BUNDLE",
+
+      ai_full_access: true,
+
+      live_access: true,
+
+      live_lessons_per_week:
+        lessonsPerWeek,
+
+      live_plan_id:
+        first.plan_id,
+
+      starts_at:
+        startsAt.toISOString(),
+
+      ends_at:
+        endsAt.toISOString(),
+
+      status:
+        "ACTIVE",
+
+      updated_at:
+        startsAt.toISOString(),
+    });
+
+  if (entitlementError) {
+    throw entitlementError;
+  }
 }
 
 async function failAcademySubscriptionCheckout(
@@ -732,7 +930,7 @@ async function getBooking(bookingId: string): Promise<BookingRow> {
   const { data, error } = await supabaseAdmin
     .from("lesson_bookings")
     .select(
-      "id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, availability_slot_id, parent_booking_group_id, meeting_link",
+      "id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, availability_slot_id, parent_booking_group_id, meeting_link"
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -748,7 +946,7 @@ async function getBookingGroup(anchor: BookingRow): Promise<BookingRow[]> {
   let query = supabaseAdmin
     .from("lesson_bookings")
     .select(
-      "id, parent_id, student_id, subject_id, program_id, plan_id, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, availability_slot_id, parent_booking_group_id, meeting_link",
+      "id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, availability_slot_id, parent_booking_group_id, meeting_link"
     );
 
   if (anchor.parent_booking_group_id) {
@@ -811,11 +1009,12 @@ function validateBookingGroup(bookings: BookingRow[]) {
     }
 
     if (
-      booking.parent_id !== first.parent_id ||
-      booking.student_id !== first.student_id ||
-      booking.subject_id !== first.subject_id ||
-      booking.plan_id !== first.plan_id
-    ) {
+  booking.parent_id !== first.parent_id ||
+  booking.student_id !== first.student_id ||
+  booking.subject_id !== first.subject_id ||
+  booking.plan_id !== first.plan_id ||
+  booking.product_type !== first.product_type
+) {
       throw new Error(
         `Booking group ${first.parent_booking_group_id || first.id} is inconsistent.`,
       );
