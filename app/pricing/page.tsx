@@ -11,6 +11,12 @@ import {
   getAcademyPlans,
   type AcademySubscriptionPlan,
 } from '../fountaintalk/services/subscriptionAccess'
+import {
+  currencyTable,
+  getCurrencyForCountrySystem,
+  convertGbpPrice,
+  type CurrencyDisplay,
+} from '../lib/pricing/currency'
 
 type Student = {
   id: string
@@ -57,38 +63,6 @@ const subjectLabels: Record<string, string> = {
   igbo: 'Igbo',
   hausa: 'Hausa',
   language: 'Language',
-}
-
-type CurrencyDisplay = {
-  symbol: string
-  code: string
-  rate: number
-}
-
-const currencyTable: Record<string, CurrencyDisplay> = {
-  UK: {
-    symbol: '£',
-    code: 'GBP',
-    rate: 1,
-  },
-
-  USA: {
-    symbol: '$',
-    code: 'USD',
-    rate: 1.27,
-  },
-
-  Canada: {
-    symbol: 'CA$',
-    code: 'CAD',
-    rate: 1.72,
-  },
-
-  Australia: {
-    symbol: 'A$',
-    code: 'AUD',
-    rate: 1.93,
-  },
 }
 
 export default function PricingPage() {
@@ -280,9 +254,11 @@ useEffect(() => {
 
       setStudent(data as Student)
 
-if (data.country_system && currencyTable[data.country_system]) {
-  setCurrency(currencyTable[data.country_system])
-}
+setCurrency(
+  getCurrencyForCountrySystem(
+    data.country_system,
+  ),
+)
 
 setLoadingStudent(false)
     }
@@ -290,10 +266,13 @@ setLoadingStudent(false)
     loadStudent()
   }, [studentId, router])
 
-  function convertPrice(gbp: number) {
-  const converted = Math.round(gbp * currency.rate)
-
-  return `${currency.symbol}${converted}`
+  function convertPrice(
+  gbp: number,
+) {
+  return convertGbpPrice(
+    gbp,
+    currency,
+  )
 }
 
 function getSelectedTotal(

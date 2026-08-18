@@ -12,6 +12,10 @@ import { SummaryCard } from './components/SummaryCard'
 import { TutorCard } from './components/TutorCard'
 import { TutorProfileModal } from './components/TutorProfileModal'
 import { WeeklyTimetableDrawer } from './components/WeeklyTimetableDrawer'
+import {
+  defaultCurrency,
+  getCurrencyForCountrySystem,
+} from '../lib/pricing/currency'
 
 import type {
   BookingFrequency,
@@ -78,11 +82,8 @@ const initialFrequency: BookingFrequency =
     ? 'TWO_DAYS_WEEKLY'
     : 'WEEKLY_SAME_TIME'
   const planId = planIdParam === 'three_month' ? 'three_month' : 'monthly'
-  const [currency, setCurrency] = useState({
-  symbol: '£',
-  code: 'GBP',
-  rate: 1,
-})
+  const [currency, setCurrency] =
+  useState(defaultCurrency)
   const [parentTimezone, setParentTimezone] = useState(DEFAULT_TIMEZONE)
 
   const [student, setStudent] = useState<Student | null>(null)
@@ -239,9 +240,11 @@ const initialFrequency: BookingFrequency =
   Australia: { symbol: 'A$', code: 'AUD', rate: 1.93 },
 }
 
-if (studentRow.country_system && countryCurrencyTable[studentRow.country_system]) {
-  setCurrency(countryCurrencyTable[studentRow.country_system])
-}
+setCurrency(
+  getCurrencyForCountrySystem(
+    studentRow.country_system,
+  ),
+)
 
       const { data: levelRows } = await supabase
         .from('learning_levels')

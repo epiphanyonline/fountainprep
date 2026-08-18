@@ -2,6 +2,15 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+
+import {
+  currencyTable,
+  defaultCurrency,
+  getCurrencyForCountryCode,
+  convertGbpPrice,
+  type CurrencyDisplay,
+} from '../lib/pricing/currency'
 
 const languages = [
   {
@@ -22,6 +31,151 @@ const languages = [
 ]
 
 export default function LanguagesPage() {
+  const [currency, setCurrency] =
+  useState<CurrencyDisplay>(
+    defaultCurrency,
+  )
+
+const [pricingCountry, setPricingCountry] =
+  useState('UK')
+
+useEffect(() => {
+  let cancelled = false
+
+  async function detectCountry() {
+    try {
+      const response =
+        await fetch(
+          '/api/location/country',
+          {
+            cache: 'no-store',
+          },
+        )
+
+      if (!response.ok) {
+        return
+      }
+
+      const data =
+        (await response.json()) as {
+          countryCode?:
+            | string
+            | null
+        }
+
+      const resolved =
+        getCurrencyForCountryCode(
+          data.countryCode,
+        )
+
+      if (cancelled) {
+        return
+      }
+
+      setCurrency(resolved)
+
+      const matchedCountry =
+        Object.entries(
+          currencyTable,
+        ).find(
+          ([, item]) =>
+            item.code ===
+            resolved.code,
+        )
+
+      if (matchedCountry) {
+        setPricingCountry(
+          matchedCountry[0],
+        )
+      }
+    } catch (error) {
+      console.warn(
+        'Unable to detect pricing country:',
+        error,
+      )
+    }
+  }
+
+  void detectCountry()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
+const localPrices =
+  useMemo(
+    () => ({
+      aiMonthly:
+        convertGbpPrice(
+          19.99,
+          currency,
+          true,
+        ),
+
+      liveMonthly:
+        convertGbpPrice(
+          10,
+          currency,
+          false,
+        ),
+
+      liveThreeMonth:
+        convertGbpPrice(
+          9,
+          currency,
+          false,
+        ),
+
+      premiumMonthlyOne:
+        convertGbpPrice(
+          49.99,
+          currency,
+          true,
+        ),
+
+      premiumMonthlyTwo:
+        convertGbpPrice(
+          89.99,
+          currency,
+          true,
+        ),
+
+      premiumThreeMonthOne:
+        convertGbpPrice(
+          134.99,
+          currency,
+          true,
+        ),
+
+      premiumThreeMonthTwo:
+        convertGbpPrice(
+          239.99,
+          currency,
+          true,
+        ),
+    }),
+    [currency],
+  )
+
+function changePricingCountry(
+  countryKey: string,
+) {
+  const nextCurrency =
+    currencyTable[countryKey]
+
+  if (!nextCurrency) {
+    return
+  }
+
+  setPricingCountry(
+    countryKey,
+  )
+
+  setCurrency(
+    nextCurrency,
+  )
+}
   return (
     <main className="page">
       <section className="hero">
@@ -628,6 +782,345 @@ export default function LanguagesPage() {
         </div>
       </section>
 
+      <section
+        className="pricingSnapshot"
+        id="language-pricing"
+      >
+        <div className="pricingHeading">
+          <div className="pricingCountryBar">
+  <div>
+    <span className="countryLabel">
+      Pricing for
+    </span>
+
+    <strong>
+      {currency.country}
+    </strong>
+  </div>
+
+  <select
+    value={pricingCountry}
+    onChange={(event) =>
+      changePricingCountry(
+        event.target.value,
+      )
+    }
+    aria-label="Choose pricing country"
+  >
+    <option value="UK">
+      United Kingdom — GBP
+    </option>
+
+    <option value="USA">
+      United States — USD
+    </option>
+
+    <option value="Canada">
+      Canada — CAD
+    </option>
+
+    <option value="Australia">
+      Australia — AUD
+    </option>
+  </select>
+</div>
+          <div>
+            <p className="eyebrow">
+              Language plans at a glance
+            </p>
+
+            <h2>
+              Clear options.
+              <span> Choose what fits.</span>
+            </h2>
+
+            <p>
+              Start independently, learn live with a tutor,
+              or combine both with Premium.
+            </p>
+          </div>
+
+          <Link
+            href="/parent/students"
+            className="pricingTopLink"
+          >
+            Start choosing
+            <span>→</span>
+          </Link>
+        </div>
+
+        <div className="pricingGrid">
+  <article className="pricingCard">
+    <div className="pricingCardTop">
+      <div>
+        <div className="pricePill">
+          1-TO-1 LIVE
+        </div>
+
+        <h3>
+          Private tutor lessons
+        </h3>
+      </div>
+
+      <span className="pricingIcon">
+        1:1
+      </span>
+    </div>
+
+    <div className="priceDisplay">
+      <span className="priceFrom">
+        From
+      </span>
+
+      <strong>
+        {localPrices.liveThreeMonth}
+      </strong>
+
+      <span>
+        / class
+      </span>
+    </div>
+
+    <p className="priceDescription">
+      Private structured language lessons with
+      a dedicated Fountain Prep tutor.
+    </p>
+
+    <div className="miniPriceRows">
+      <div>
+        <span>
+          Monthly plan
+        </span>
+
+        <strong>
+          {localPrices.liveMonthly}/class
+        </strong>
+      </div>
+
+      <div>
+        <span>
+          3-month plan
+        </span>
+
+        <strong>
+          {localPrices.liveThreeMonth}/class
+        </strong>
+      </div>
+    </div>
+
+    <div className="miniBenefits">
+      <span>
+        ✓ 1 or 2 classes/week
+      </span>
+
+      <span>
+        ✓ Private tutor
+      </span>
+
+      <span>
+        ✓ Structured curriculum
+      </span>
+    </div>
+
+    <Link
+      href="/parent/students"
+      className="priceButton softPriceButton"
+    >
+      View Live Plans
+      <span>→</span>
+    </Link>
+  </article>
+
+  <article className="pricingCard">
+    <div className="pricingCardTop">
+      <div>
+        <div className="pricePill">
+          AI SELF-PACED
+        </div>
+
+        <h3>
+          Learn independently
+        </h3>
+      </div>
+
+      <span className="pricingIcon">
+        ✦
+      </span>
+    </div>
+
+    <div className="priceDisplay">
+      <span className="priceFrom">
+        Full access
+      </span>
+
+      <strong>
+        {localPrices.aiMonthly}
+      </strong>
+
+      <span>
+        / month
+      </span>
+    </div>
+
+    <p className="priceDescription">
+      Learn at your own pace with guided AI-assisted
+      speaking, listening and pronunciation practice.
+    </p>
+
+    <div className="miniBenefits">
+      <span>
+        ✓ Self-paced lessons
+      </span>
+
+      <span>
+        ✓ Speaking & listening
+      </span>
+
+      <span>
+        ✓ Pronunciation practice
+      </span>
+
+      <span>
+        ✓ Progress tracking
+      </span>
+    </div>
+
+    <Link
+      href="/academies"
+      className="priceButton softPriceButton"
+    >
+      Explore Self-Paced
+      <span>→</span>
+    </Link>
+  </article>
+
+  <article className="pricingCard premiumPricingCard">
+    <div className="premiumPricingBadge">
+      RECOMMENDED
+    </div>
+
+    <div className="pricingCardTop">
+      <div>
+        <div className="pricePill premiumPricePill">
+          PREMIUM BUNDLE
+        </div>
+
+        <h3>
+          Live + Full AI Academy
+        </h3>
+      </div>
+
+      <span className="pricingIcon premiumPricingIcon">
+        ✦
+      </span>
+    </div>
+
+    <div className="priceDisplay premiumPriceDisplay">
+      <span className="priceFrom">
+        From
+      </span>
+
+      <strong>
+        {localPrices.premiumMonthlyOne}
+      </strong>
+
+      <span>
+        / month
+      </span>
+    </div>
+
+    <p className="priceDescription">
+      Combine private live teaching with full
+      AI-assisted self-paced learning between lessons.
+    </p>
+
+    <div className="premiumPriceTable">
+      <div className="priceTableHeader">
+        <span>
+          Live pace
+        </span>
+
+        <span>
+          Monthly
+        </span>
+
+        <span>
+          3 months
+        </span>
+      </div>
+
+      <div className="priceTableRow">
+        <strong>
+          1 live lesson / week
+        </strong>
+
+        <span>
+          {localPrices.premiumMonthlyOne}
+        </span>
+
+        <span>
+          {localPrices.premiumThreeMonthOne}
+        </span>
+      </div>
+
+      <div className="priceTableRow">
+        <strong>
+          2 live lessons / week
+        </strong>
+
+        <span>
+          {localPrices.premiumMonthlyTwo}
+        </span>
+
+        <span>
+          {localPrices.premiumThreeMonthTwo}
+        </span>
+      </div>
+    </div>
+
+    <div className="miniBenefits premiumMiniBenefits">
+      <span>
+        ✓ Live tutor included
+      </span>
+
+      <span>
+        ✓ Full AI Academy
+      </span>
+
+      <span>
+        ✓ Practise between lessons
+      </span>
+    </div>
+
+    <Link
+      href="/parent/students"
+      className="priceButton premiumPriceButton"
+    >
+      Choose Premium
+      <span>→</span>
+    </Link>
+  </article>
+</div>
+
+        <div className="pricingNote">
+          <div className="pricingNoteIcon">
+            £
+          </div>
+
+          <div>
+            <strong>
+              International family?
+            </strong>
+
+            <p>
+  Prices are displayed in your selected local currency.
+  You can change the pricing country above, and your
+  final booking total will be confirmed before payment.
+</p>
+          </div>
+        </div>
+      </section>
+
       <section className="finalCta">
         <div className="finalIcon">
           ✦
@@ -699,6 +1192,7 @@ export default function LanguagesPage() {
         .learningModel,
         .premiumStory,
         .plansSection,
+        .pricingSnapshot,
         .finalCta {
           width: min(1240px, 100%);
           margin-left: auto;
@@ -707,22 +1201,15 @@ export default function LanguagesPage() {
 
         .hero {
           min-height: 500px;
-
           display: grid;
-
           grid-template-columns:
             minmax(0, 0.84fr)
             minmax(0, 1.16fr);
-
           overflow: hidden;
-
           border-radius: 36px;
-
           background: #ffffff;
-
           border:
             1px solid rgba(124, 58, 237, 0.12);
-
           box-shadow:
             0 30px 90px
             rgba(59, 31, 98, 0.12);
@@ -730,50 +1217,32 @@ export default function LanguagesPage() {
 
         .heroCopy {
           padding: 48px 42px;
-
           display: flex;
-
           flex-direction: column;
-
           justify-content: center;
-
           position: relative;
-
           z-index: 2;
         }
 
         .pill {
           width: fit-content;
-
           padding: 8px 12px;
-
           border-radius: 999px;
-
           background: #f0e7ff;
-
           color: #6d28d9;
-
           font-size: 11px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
-
           text-transform: uppercase;
         }
 
         h1 {
           max-width: 510px;
-
           margin: 20px 0 0;
-
           font-size:
             clamp(46px, 4.5vw, 66px);
-
           line-height: 0.98;
-
           letter-spacing: -0.05em;
-
           font-weight: 950;
         }
 
@@ -783,33 +1252,23 @@ export default function LanguagesPage() {
 
         .lead {
           max-width: 550px;
-
           margin: 22px 0 0;
-
           color: #6f637b;
-
           font-size: 17px;
-
           line-height: 1.7;
         }
 
         .heroPromise {
           margin: 12px 0 0;
-
           color: #4f3f5d;
-
           font-size: 14px;
-
           font-weight: 850;
         }
 
         .heroActions {
           display: flex;
-
           gap: 12px;
-
           flex-wrap: wrap;
-
           margin-top: 28px;
         }
 
@@ -819,23 +1278,14 @@ export default function LanguagesPage() {
         .whiteButton,
         .outlineButton {
           min-height: 50px;
-
           display: inline-flex;
-
           align-items: center;
-
           justify-content: center;
-
           gap: 10px;
-
           padding: 0 20px;
-
           border-radius: 15px;
-
           font-weight: 950;
-
           text-decoration: none;
-
           transition:
             transform 0.2s ease,
             box-shadow 0.2s ease,
@@ -844,14 +1294,12 @@ export default function LanguagesPage() {
 
         .primary {
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #8b5cf6
             );
-
           box-shadow:
             0 15px 35px
             rgba(124, 58, 237, 0.24);
@@ -859,9 +1307,7 @@ export default function LanguagesPage() {
 
         .secondary {
           color: #4d286f;
-
           background: #ffffff;
-
           border:
             1px solid rgba(124, 58, 237, 0.18);
         }
@@ -876,31 +1322,20 @@ export default function LanguagesPage() {
 
         .trustRow {
           display: flex;
-
           flex-wrap: wrap;
-
           gap: 8px;
-
           margin-top: 24px;
         }
 
         .trustRow span {
           display: inline-flex;
-
           align-items: center;
-
           gap: 5px;
-
           padding: 7px 10px;
-
           border-radius: 999px;
-
           background: #faf7ff;
-
           color: #665b70;
-
           font-size: 11px;
-
           font-weight: 800;
         }
 
@@ -910,57 +1345,40 @@ export default function LanguagesPage() {
 
         .heroVisual {
           position: relative;
-
           min-height: 500px;
-
           overflow: hidden;
-
           background: #f5efff;
         }
 
         .heroImage {
           object-fit: cover;
-
           object-position: center center;
         }
 
         .imageShade {
           position: absolute;
-
           inset: 0;
-
           background:
             linear-gradient(
               90deg,
               rgba(255,255,255,0.05),
               transparent 25%
             );
-
           pointer-events: none;
         }
 
         .imageBadge {
           position: absolute;
-
           left: 24px;
-
           bottom: 24px;
-
           display: flex;
-
           align-items: center;
-
           gap: 12px;
-
           padding: 15px 17px;
-
           border-radius: 18px;
-
           background:
             rgba(255, 255, 255, 0.95);
-
           backdrop-filter: blur(14px);
-
           box-shadow:
             0 16px 40px
             rgba(26, 13, 42, 0.2);
@@ -968,50 +1386,38 @@ export default function LanguagesPage() {
 
         .badgeIcon {
           width: 40px;
-
           height: 40px;
-
           display: grid;
-
           place-items: center;
-
           border-radius: 13px;
-
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #9f67ff
             );
-
           font-size: 18px;
         }
 
         .imageBadge small {
           display: block;
-
           color: #7c3aed;
-
           font-size: 9px;
-
           font-weight: 950;
-
           letter-spacing: 0.07em;
         }
 
         .imageBadge strong {
           display: block;
-
           margin-top: 4px;
-
           font-size: 15px;
         }
 
         .languageSection,
         .learningModel,
-        .plansSection {
+        .plansSection,
+        .pricingSnapshot {
           padding-top: 88px;
         }
 
@@ -1021,88 +1427,63 @@ export default function LanguagesPage() {
 
         .sectionHeading.centred {
           margin-left: auto;
-
           margin-right: auto;
-
           text-align: center;
         }
 
         .eyebrow {
           margin: 0;
-
           color: #7c3aed;
-
           font-size: 12px;
-
           font-weight: 950;
-
           letter-spacing: 0.07em;
-
           text-transform: uppercase;
         }
 
-        .sectionHeading h2 {
+        .sectionHeading h2,
+        .pricingHeading h2 {
           margin: 12px 0 0;
-
           font-size:
             clamp(36px, 4.2vw, 56px);
-
           line-height: 1.03;
-
           letter-spacing: -0.045em;
-
           font-weight: 950;
         }
 
-        .sectionHeading h2 span {
+        .sectionHeading h2 span,
+        .pricingHeading h2 span {
           color: #7c3aed;
         }
 
         .sectionHeading > p:last-child {
           max-width: 680px;
-
           margin: 16px auto 0;
-
           color: #71657b;
-
           font-size: 16px;
-
           line-height: 1.7;
         }
 
         .languageGrid {
           display: grid;
-
           grid-template-columns:
             repeat(3, minmax(0, 1fr));
-
           gap: 18px;
-
           margin-top: 34px;
         }
 
         .languageCard {
           display: block;
-
           padding: 27px;
-
           border-radius: 25px;
-
           background: #ffffff;
-
           border:
             1px solid rgba(124, 58, 237, 0.12);
-
           box-shadow:
             0 18px 48px
             rgba(71, 43, 117, 0.07);
-
           color: inherit;
-
           text-decoration: none;
-
           cursor: pointer;
-
           transition:
             transform 0.22s ease,
             border-color 0.22s ease,
@@ -1111,10 +1492,8 @@ export default function LanguagesPage() {
 
         .languageCard:hover {
           transform: translateY(-5px);
-
           border-color:
             rgba(124, 58, 237, 0.42);
-
           box-shadow:
             0 26px 60px
             rgba(94, 48, 170, 0.14);
@@ -1122,41 +1501,27 @@ export default function LanguagesPage() {
 
         .languageTop {
           display: flex;
-
           align-items: center;
-
           justify-content: space-between;
-
           gap: 16px;
         }
 
         .languageTop h3 {
           margin: 0;
-
           font-size: 27px;
-
           font-weight: 950;
         }
 
         .cardArrow {
           width: 38px;
-
           height: 38px;
-
           display: grid;
-
           place-items: center;
-
           flex: 0 0 auto;
-
           border-radius: 50%;
-
           background: #f8f3ff;
-
           color: #6d28d9;
-
           font-weight: 950;
-
           transition:
             transform 0.2s ease,
             background 0.2s ease;
@@ -1164,60 +1529,42 @@ export default function LanguagesPage() {
 
         .languageCard:hover .cardArrow {
           transform: translateX(3px);
-
           background: #ede9fe;
         }
 
         .languageCard p {
           margin: 15px 0 0;
-
           color: #73667d;
-
           line-height: 1.66;
         }
 
         .languageAction {
           display: flex;
-
           align-items: center;
-
           justify-content: space-between;
-
           margin-top: 21px;
-
           padding-top: 17px;
-
           border-top:
             1px solid rgba(124, 58, 237, 0.1);
-
           color: #6d28d9;
-
           font-size: 13px;
-
           font-weight: 950;
         }
 
         .steps {
           display: grid;
-
           grid-template-columns:
             repeat(3, minmax(0, 1fr));
-
           gap: 18px;
-
           margin-top: 34px;
         }
 
         .steps article {
           padding: 28px;
-
           border-radius: 25px;
-
           background: #ffffff;
-
           border:
             1px solid rgba(124, 58, 237, 0.11);
-
           box-shadow:
             0 16px 42px
             rgba(71, 43, 117, 0.06);
@@ -1225,76 +1572,54 @@ export default function LanguagesPage() {
 
         .stepTop {
           display: flex;
-
           align-items: center;
-
           justify-content: space-between;
         }
 
         .stepIcon {
           width: 44px;
-
           height: 44px;
-
           display: grid;
-
           place-items: center;
-
           border-radius: 14px;
-
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #9a65f5
             );
-
           font-weight: 950;
         }
 
         .stepTop > span {
           color: #8b5cf6;
-
           font-size: 10px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
         }
 
         .steps h3 {
           margin: 20px 0 0;
-
           font-size: 23px;
-
           font-weight: 950;
         }
 
         .steps p {
           color: #73667d;
-
           line-height: 1.66;
         }
 
         .premiumStory {
           margin-top: 90px;
-
           display: grid;
-
           grid-template-columns:
             minmax(0, 1fr)
             minmax(0, 0.9fr);
-
           gap: 38px;
-
           padding: 48px;
-
           border-radius: 36px;
-
           color: #ffffff;
-
           background:
             radial-gradient(
               circle at 85% 10%,
@@ -1307,7 +1632,6 @@ export default function LanguagesPage() {
               #4f1da6 58%,
               #7139d5
             );
-
           box-shadow:
             0 32px 90px
             rgba(76, 29, 149, 0.26);
@@ -1315,106 +1639,73 @@ export default function LanguagesPage() {
 
         .premiumKicker {
           width: fit-content;
-
           padding: 7px 10px;
-
           border-radius: 999px;
-
           background:
             rgba(255,255,255,0.13);
-
           color: #e7dcff;
-
           font-size: 10px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
         }
 
         .premiumCopy h2 {
           margin: 16px 0 0;
-
           font-size:
             clamp(38px, 4.6vw, 60px);
-
           line-height: 1.03;
-
           letter-spacing: -0.045em;
-
           font-weight: 950;
         }
 
         .premiumCopy > p {
           max-width: 600px;
-
           color: #e7ddf2;
-
           line-height: 1.7;
         }
 
         .premiumBenefits {
           display: grid;
-
           grid-template-columns:
             repeat(2, minmax(0, 1fr));
-
           gap: 9px;
-
           margin-top: 22px;
         }
 
         .premiumBenefits span {
           padding: 11px 12px;
-
           border-radius: 12px;
-
           background:
             rgba(255, 255, 255, 0.09);
-
           border:
             1px solid rgba(255,255,255,0.08);
-
           font-size: 12px;
-
           font-weight: 800;
         }
 
         .premiumButton {
           width: fit-content;
-
           margin-top: 26px;
-
           color: #52209d;
-
           background: #ffffff;
         }
 
         .premiumJourney {
           display: grid;
-
           align-content: center;
-
           gap: 6px;
         }
 
         .journeyCard {
           display: grid;
-
           grid-template-columns:
             auto 1fr;
-
           gap: 14px;
-
           align-items: center;
-
           padding: 19px;
-
           border-radius: 18px;
-
           background:
             rgba(255,255,255,0.09);
-
           border:
             1px solid rgba(255,255,255,0.11);
         }
@@ -1422,114 +1713,79 @@ export default function LanguagesPage() {
         .highlightedJourney {
           background:
             rgba(255,255,255,0.15);
-
           border-color:
             rgba(255,255,255,0.22);
         }
 
         .journeyNumber {
           width: 44px;
-
           height: 44px;
-
           display: grid;
-
           place-items: center;
-
           border-radius: 13px;
-
           background:
             rgba(255,255,255,0.12);
-
           color: #ede9fe;
-
           font-size: 12px;
-
           font-weight: 950;
         }
 
         .journeyCard small {
           color: #ddd6fe;
-
           font-size: 9px;
-
           font-weight: 950;
-
           letter-spacing: 0.07em;
         }
 
         .journeyCard strong {
           display: block;
-
           margin-top: 4px;
-
           font-size: 17px;
         }
 
         .journeyCard p {
           margin: 4px 0 0;
-
           color: #e9e2f2;
-
           font-size: 12px;
-
           line-height: 1.5;
         }
 
         .journeyConnector {
           text-align: center;
-
           color: #c4b5fd;
-
           font-weight: 950;
         }
 
         .planGrid {
           display: grid;
-
           grid-template-columns:
             repeat(3, minmax(0, 1fr));
-
           gap: 24px;
-
           margin-top: 42px;
-
           align-items: stretch;
         }
 
         .planCard {
           position: relative;
-
           min-height: 590px;
-
           display: flex;
-
           flex-direction: column;
-
           overflow: hidden;
-
           padding: 30px;
-
           border-radius: 30px;
-
           background:
             linear-gradient(
               180deg,
               #ffffff 0%,
               #fcfaff 100%
             );
-
           border:
             1px solid rgba(124, 58, 237, 0.13);
-
           box-shadow:
             0 20px 55px
             rgba(56, 31, 92, 0.08);
-
           color: #20122f;
-
           text-decoration: none;
-
           transition:
             transform 0.24s ease,
             box-shadow 0.24s ease,
@@ -1538,10 +1794,8 @@ export default function LanguagesPage() {
 
         .planCard:hover {
           transform: translateY(-8px);
-
           border-color:
             rgba(124, 58, 237, 0.38);
-
           box-shadow:
             0 34px 85px
             rgba(74, 37, 128, 0.14);
@@ -1549,76 +1803,49 @@ export default function LanguagesPage() {
 
         .planCardHeader {
           display: grid;
-
           grid-template-columns:
             minmax(0, 1fr) auto;
-
           gap: 18px;
-
           align-items: start;
         }
 
         .planLabel {
           width: fit-content;
-
           padding: 7px 11px;
-
           border-radius: 999px;
-
           background: #f0e7ff;
-
           color: #6d28d9;
-
           font-size: 10px;
-
           font-weight: 950;
-
           letter-spacing: 0.07em;
         }
 
         .planCard h3 {
           margin: 22px 0 0;
-
           font-size: 27px;
-
           line-height: 1.15;
-
           font-weight: 950;
-
           letter-spacing: -0.025em;
         }
 
         .planCardHeader p {
           margin: 10px 0 0;
-
           color: #73667d;
-
           font-size: 15px;
-
           line-height: 1.6;
         }
 
         .planArrow {
           width: 44px;
-
           height: 44px;
-
           display: grid;
-
           place-items: center;
-
           flex: 0 0 auto;
-
           border-radius: 50%;
-
           background: #f6f0ff;
-
           color: #6d28d9;
-
           font-size: 18px;
-
           font-weight: 950;
-
           transition:
             transform 0.2s ease,
             background 0.2s ease;
@@ -1626,105 +1853,68 @@ export default function LanguagesPage() {
 
         .planCard:hover .planArrow {
           transform: translateX(4px);
-
           background: #ede4ff;
         }
 
         .planFeatureBlock {
           margin-top: 28px;
-
           padding: 21px;
-
           border-radius: 21px;
-
           background: #faf7ff;
-
           border:
             1px solid rgba(124, 58, 237, 0.08);
         }
 
         .featureTitle {
           display: block;
-
           margin-bottom: 16px;
-
           color: #7b6f85;
-
           font-size: 11px;
-
           font-weight: 950;
-
           letter-spacing: 0.07em;
-
           text-transform: uppercase;
         }
 
         .featureList {
           display: grid;
-
           gap: 13px;
         }
 
         .featureList > div {
           display: grid;
-
           grid-template-columns:
             22px 1fr;
-
           gap: 10px;
-
           align-items: start;
-
           color: #554a5f;
-
           font-size: 14px;
-
           line-height: 1.45;
         }
 
         .featureCheck {
           width: 22px;
-
           height: 22px;
-
           display: grid;
-
           place-items: center;
-
           border-radius: 50%;
-
           background: #ede5ff;
-
           color: #6d28d9;
-
           font-size: 11px;
-
           font-weight: 950;
         }
 
         .planFooter {
           min-height: 58px;
-
           margin-top: auto;
-
           display: flex;
-
           align-items: center;
-
           justify-content: space-between;
-
           gap: 18px;
-
           padding: 0 19px;
-
           border-radius: 17px;
-
           background: #f1e8ff;
-
           color: #5b21b6;
-
           font-size: 15px;
-
           font-weight: 950;
         }
 
@@ -1734,11 +1924,8 @@ export default function LanguagesPage() {
 
         .premiumPlan {
           z-index: 2;
-
           transform: translateY(-14px);
-
           border: 2px solid #7c3aed;
-
           background:
             radial-gradient(
               circle at 80% 5%,
@@ -1750,7 +1937,6 @@ export default function LanguagesPage() {
               #ffffff 0%,
               #faf6ff 100%
             );
-
           box-shadow:
             0 34px 90px
             rgba(124, 58, 237, 0.2);
@@ -1758,7 +1944,6 @@ export default function LanguagesPage() {
 
         .premiumPlan:hover {
           transform: translateY(-20px);
-
           box-shadow:
             0 42px 105px
             rgba(124, 58, 237, 0.28);
@@ -1766,33 +1951,22 @@ export default function LanguagesPage() {
 
         .recommended {
           position: absolute;
-
           top: 0;
-
           left: 50%;
-
           transform: translateX(-50%);
-
           padding: 8px 16px;
-
           border-radius:
             0 0 14px 14px;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #8b5cf6
             );
-
           color: #ffffff;
-
           font-size: 9px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
-
           box-shadow:
             0 9px 24px
             rgba(124, 58, 237, 0.24);
@@ -1800,28 +1974,19 @@ export default function LanguagesPage() {
 
         .premiumGlow {
           position: absolute;
-
           width: 180px;
-
           height: 180px;
-
           top: -70px;
-
           right: -60px;
-
           border-radius: 50%;
-
           background:
             rgba(139, 92, 246, 0.1);
-
           filter: blur(15px);
-
           pointer-events: none;
         }
 
         .premiumLabel {
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
@@ -1832,14 +1997,12 @@ export default function LanguagesPage() {
 
         .premiumArrow {
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #8b5cf6
             );
-
           box-shadow:
             0 10px 25px
             rgba(124, 58, 237, 0.22);
@@ -1847,57 +2010,40 @@ export default function LanguagesPage() {
 
         .premiumValue {
           position: relative;
-
           z-index: 1;
-
           margin-top: 26px;
-
           padding: 19px;
-
           border-radius: 20px;
-
           background:
             linear-gradient(
               135deg,
               #efe5ff,
               #faf7ff
             );
-
           border:
             1px solid rgba(124, 58, 237, 0.15);
         }
 
         .premiumValueEyebrow {
           display: block;
-
           color: #7c3aed;
-
           font-size: 9px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
         }
 
         .premiumValue strong {
           display: block;
-
           margin-top: 7px;
-
           color: #4f1d96;
-
           font-size: 16px;
-
           line-height: 1.35;
         }
 
         .premiumValue p {
           margin: 7px 0 0;
-
           color: #71627d;
-
           font-size: 12px;
-
           line-height: 1.55;
         }
 
@@ -1908,37 +2054,453 @@ export default function LanguagesPage() {
 
         .premiumFooter {
           color: #ffffff;
-
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #8b5cf6
             );
-
           box-shadow:
             0 15px 35px
             rgba(124, 58, 237, 0.24);
         }
 
+        /* PRICING SNAPSHOT */
+
+        .pricingSnapshot {
+          padding-top: 96px;
+        }
+
+        .pricingHeading {
+          display: grid;
+          grid-template-columns:
+            minmax(0, 1fr) auto;
+          gap: 30px;
+          align-items: end;
+        }
+
+        .pricingHeading > div {
+          max-width: 760px;
+        }
+
+        .pricingHeading > div > p:last-child {
+          max-width: 620px;
+          margin: 16px 0 0;
+          color: #71657b;
+          font-size: 16px;
+          line-height: 1.65;
+        }
+
+        .pricingTopLink {
+          min-height: 48px;
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          padding: 0 18px;
+          border-radius: 15px;
+          background: #f1e8ff;
+          color: #5b21b6;
+          font-weight: 950;
+          text-decoration: none;
+        }
+
+        .pricingGrid {
+          display: grid;
+          grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+          gap: 22px;
+          margin-top: 36px;
+          align-items: stretch;
+        }
+
+        .pricingCard {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          padding: 29px;
+          border-radius: 30px;
+          background:
+            linear-gradient(
+              180deg,
+              #ffffff,
+              #fdfcff
+            );
+          border:
+            1px solid rgba(124, 58, 237, 0.12);
+          box-shadow:
+            0 20px 55px
+            rgba(60, 31, 100, 0.08);
+        }
+
+        .pricingCardTop {
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .pricePill {
+          width: fit-content;
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: #f0e7ff;
+          color: #6d28d9;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+        }
+
+        .pricingCard h3 {
+          margin: 16px 0 0;
+          font-size: 24px;
+          line-height: 1.15;
+          font-weight: 950;
+        }
+
+        .pricingIcon {
+          width: 43px;
+          height: 43px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          border-radius: 14px;
+          background: #f7f2ff;
+          color: #6d28d9;
+          font-size: 13px;
+          font-weight: 950;
+        }
+
+        .priceDisplay {
+          display: flex;
+          align-items: baseline;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 28px;
+        }
+
+        .priceDisplay strong {
+          color: #251238;
+          font-size:
+            clamp(40px, 4vw, 52px);
+          letter-spacing: -0.05em;
+          line-height: 1;
+        }
+
+        .priceDisplay > span:last-child {
+          color: #7d7086;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .priceFrom {
+          width: 100%;
+          color: #8a7d94;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+        }
+
+        .priceDescription {
+          margin: 18px 0 0;
+          color: #706279;
+          line-height: 1.62;
+          font-size: 14px;
+        }
+
+        .pricingCountryBar {
+  margin-top: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  padding: 15px 17px;
+
+  border-radius: 18px;
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  border:
+    1px solid
+      rgba(124, 58, 237, 0.11);
+
+  box-shadow:
+    0 12px 32px
+      rgba(66, 35, 105, 0.05);
+}
+
+.pricingCountryBar > div {
+  display: grid;
+  gap: 3px;
+}
+
+.countryLabel {
+  color: #8a7c94;
+
+  font-size: 10px;
+  font-weight: 950;
+
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pricingCountryBar strong {
+  color: #402552;
+
+  font-size: 14px;
+}
+
+.pricingCountryBar select {
+  min-height: 44px;
+
+  padding: 0 38px 0 14px;
+
+  border:
+    1px solid
+      rgba(124, 58, 237, 0.16);
+
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  color: #4f286e;
+
+  font-weight: 850;
+
+  cursor: pointer;
+}
+        
+        .miniBenefits {
+          display: grid;
+          gap: 9px;
+          margin: 22px 0 26px;
+          padding-top: 19px;
+          border-top:
+            1px solid rgba(124,58,237,0.09);
+        }
+
+        .miniBenefits span {
+          color: #594c63;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .miniPriceRows {
+          display: grid;
+          gap: 9px;
+          margin-top: 21px;
+          padding: 16px;
+          border-radius: 17px;
+          background: #faf7ff;
+        }
+
+        .miniPriceRows div {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          color: #71657b;
+          font-size: 13px;
+        }
+
+        .miniPriceRows strong {
+          color: #4f1d96;
+        }
+
+        .priceButton {
+          min-height: 54px;
+          margin-top: auto;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 0 18px;
+          border-radius: 16px;
+          font-weight: 950;
+          text-decoration: none;
+        }
+
+        .softPriceButton {
+          color: #5b21b6;
+          background: #f1e8ff;
+        }
+
+        .premiumPricingCard {
+          z-index: 2;
+          transform: translateY(-10px);
+          border: 2px solid #7c3aed;
+          background:
+            radial-gradient(
+              circle at 88% 4%,
+              rgba(139, 92, 246, 0.16),
+              transparent 29%
+            ),
+            linear-gradient(
+              180deg,
+              #ffffff,
+              #faf6ff
+            );
+          box-shadow:
+            0 32px 82px
+            rgba(124, 58, 237, 0.19);
+        }
+
+        .premiumPricingBadge {
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 7px 14px;
+          border-radius:
+            0 0 13px 13px;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
+          color: #ffffff;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+        }
+
+        .premiumPricePill {
+          color: #ffffff;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
+        }
+
+        .premiumPricingIcon {
+          color: #ffffff;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
+        }
+
+        .premiumPriceDisplay strong {
+          color: #5b21b6;
+        }
+
+        .premiumPriceTable {
+          margin-top: 21px;
+          overflow: hidden;
+          border-radius: 18px;
+          border:
+            1px solid rgba(124,58,237,0.12);
+          background: rgba(255,255,255,0.82);
+        }
+
+        .priceTableHeader,
+        .priceTableRow {
+          display: grid;
+          grid-template-columns:
+            1.25fr 0.75fr 0.75fr;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .priceTableHeader {
+          padding: 10px 13px;
+          background: #f1e8ff;
+          color: #7a6790;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+
+        .priceTableRow {
+          padding: 13px;
+          border-top:
+            1px solid rgba(124,58,237,0.08);
+          color: #62546d;
+          font-size: 12px;
+        }
+
+        .priceTableRow strong {
+          color: #3f2753;
+          font-size: 12px;
+        }
+
+        .priceTableRow span {
+          color: #5b21b6;
+          font-weight: 950;
+        }
+
+        .premiumMiniBenefits {
+          margin-top: 18px;
+        }
+
+        .premiumPriceButton {
+          color: #ffffff;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
+          box-shadow:
+            0 14px 32px
+            rgba(124,58,237,0.23);
+        }
+
+        .pricingNote {
+          margin-top: 22px;
+          display: flex;
+          gap: 14px;
+          align-items: center;
+          padding: 18px 20px;
+          border-radius: 20px;
+          background:
+            rgba(255,255,255,0.75);
+          border:
+            1px solid rgba(124,58,237,0.1);
+        }
+
+        .pricingNoteIcon {
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          border-radius: 13px;
+          background: #efe6ff;
+          color: #6d28d9;
+          font-weight: 950;
+        }
+
+        .pricingNote strong {
+          color: #3c254f;
+        }
+
+        .pricingNote p {
+          margin: 3px 0 0;
+          color: #796d82;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
         .finalCta {
           margin-top: 94px;
-
           display: grid;
-
           grid-template-columns:
             auto minmax(0, 1fr) auto;
-
           gap: 22px;
-
           align-items: center;
-
           padding: 42px;
-
           border-radius: 30px;
-
           color: #ffffff;
-
           background:
             radial-gradient(
               circle at 80% 0%,
@@ -1950,7 +2512,6 @@ export default function LanguagesPage() {
               #28103d,
               #4c1d95
             );
-
           box-shadow:
             0 26px 70px
             rgba(49, 17, 79, 0.22);
@@ -1958,76 +2519,54 @@ export default function LanguagesPage() {
 
         .finalIcon {
           width: 58px;
-
           height: 58px;
-
           display: grid;
-
           place-items: center;
-
           border-radius: 18px;
-
           background:
             rgba(255,255,255,0.11);
-
           font-size: 24px;
         }
 
         .finalEyebrow {
           margin: 0;
-
           color: #ddd6fe;
-
           font-size: 10px;
-
           font-weight: 950;
-
           letter-spacing: 0.08em;
         }
 
         .finalCopy h2 {
           margin: 9px 0 0;
-
           max-width: 700px;
-
           font-size:
             clamp(30px, 3.3vw, 46px);
-
           line-height: 1.04;
-
           letter-spacing: -0.04em;
-
           font-weight: 950;
         }
 
         .finalCopy > p:last-child {
           margin: 10px 0 0;
-
           color: #ded3e8;
-
           line-height: 1.6;
         }
 
         .finalActions {
           display: grid;
-
           gap: 9px;
-
           min-width: 220px;
         }
 
         .whiteButton {
           color: #4c1d95;
-
           background: #ffffff;
         }
 
         .outlineButton {
           color: #ffffff;
-
           border:
             1px solid rgba(255,255,255,0.28);
-
           background:
             rgba(255,255,255,0.05);
         }
@@ -2045,17 +2584,28 @@ export default function LanguagesPage() {
 
           .languageGrid,
           .steps,
-          .planGrid {
+          .planGrid,
+          .pricingGrid {
             grid-template-columns: 1fr;
           }
 
           .premiumPlan,
-          .premiumPlan:hover {
+          .premiumPlan:hover,
+          .premiumPricingCard {
             transform: none;
           }
 
           .planCard {
             min-height: auto;
+          }
+
+          .pricingHeading {
+            grid-template-columns: 1fr;
+            align-items: start;
+          }
+
+          .pricingTopLink {
+            width: fit-content;
           }
 
           .finalActions {
@@ -2068,6 +2618,15 @@ export default function LanguagesPage() {
           .page {
             padding: 16px 12px 68px;
           }
+
+          .pricingCountryBar {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.pricingCountryBar select {
+  width: 100%;
+}
 
           .hero {
             min-height: auto;
@@ -2115,11 +2674,13 @@ export default function LanguagesPage() {
 
           .languageSection,
           .learningModel,
-          .plansSection {
+          .plansSection,
+          .pricingSnapshot {
             padding-top: 70px;
           }
 
-          .sectionHeading h2 {
+          .sectionHeading h2,
+          .pricingHeading h2 {
             font-size:
               clamp(34px, 10vw, 47px);
           }
@@ -2158,13 +2719,9 @@ export default function LanguagesPage() {
 
           .planCard {
             min-height: 0;
-
             padding: 24px 21px;
-
             border-radius: 27px;
-
             background: #ffffff;
-
             box-shadow:
               0 16px 40px
               rgba(64, 33, 105, 0.09);
@@ -2173,21 +2730,17 @@ export default function LanguagesPage() {
           .planCardHeader {
             grid-template-columns:
               minmax(0, 1fr) auto;
-
             gap: 14px;
           }
 
           .planCard h3 {
             margin-top: 18px;
-
             font-size: 25px;
           }
 
           .planFeatureBlock {
             margin-top: 22px;
-
             padding: 18px;
-
             border-radius: 18px;
           }
 
@@ -2197,15 +2750,12 @@ export default function LanguagesPage() {
 
           .planFooter {
             min-height: 58px;
-
             margin-top: 22px;
-
             font-size: 16px;
           }
 
           .premiumPlan {
             border: 2px solid #7c3aed;
-
             box-shadow:
               0 24px 58px
               rgba(124, 58, 237, 0.17);
@@ -2217,6 +2767,51 @@ export default function LanguagesPage() {
 
           .recommended {
             top: 0;
+          }
+
+          .pricingGrid {
+            gap: 20px;
+            margin-top: 30px;
+          }
+
+          .pricingCard {
+            padding: 24px 21px;
+            border-radius: 26px;
+          }
+
+          .premiumPricingCard {
+            border: 2px solid #7c3aed;
+            box-shadow:
+              0 24px 58px
+              rgba(124,58,237,0.17);
+          }
+
+          .priceDisplay strong {
+            font-size: 44px;
+          }
+
+          .priceTableHeader,
+          .priceTableRow {
+            grid-template-columns:
+              1.2fr 0.8fr 0.8fr;
+            gap: 7px;
+          }
+
+          .priceTableHeader {
+            font-size: 8px;
+          }
+
+          .priceTableRow {
+            font-size: 11px;
+          }
+
+          .pricingTopLink {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .pricingNote {
+            align-items: flex-start;
           }
         }
       `}</style>
