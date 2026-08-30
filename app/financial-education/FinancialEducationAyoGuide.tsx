@@ -1,0 +1,1043 @@
+"use client";
+
+import Image from "next/image";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+type TourStep = {
+  selector: string;
+  title: string;
+  text: string;
+  pose:
+    | "welcome"
+    | "point-slide"
+    | "explain"
+    | "open-hands";
+  desktopSide: "left" | "right";
+  mobileDock: "top" | "bottom";
+};
+
+const steps: TourStep[] = [
+  {
+    selector: ".fe-hero",
+    title: "Welcome to Fountain Prep",
+    text:
+      "Welcome to Fountain Prep Financial Education. I am Ayo, your guide. If this is your first visit,I will show you around.",
+    pose: "welcome",
+    desktopSide: "right",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-heroCopy",
+    title: "Upgrade your financial literacy",
+    text:
+      "This gateway is designed to help you upgrade your financial literacy. We explore money, assets, enterprise, investing, risk and the decisions that shape financial life.",
+    pose: "explain",
+    desktopSide: "right",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-heroVisual",
+    title: "Learn by making decisions",
+    text:
+      "If you prefer learning by doing, begin with our financial simulations. They let you make decisions, experience consequences and learn from outcomes before real money is at risk.",
+    pose: "point-slide",
+    desktopSide: "right",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-investmentLab",
+    title: "Investment Lab",
+    text:
+      "Investment Lab puts you in the investor's seat with one hundred thousand pounds of fictional capital. Build a portfolio, face changing markets, decide when to buy, hold or sell, and compare your choices with your Financial Twin.",
+    pose: "point-slide",
+    desktopSide: "right",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-lifeWealth",
+    title: "Life & Wealth",
+    text:
+      "The second simulation is Life and Wealth. Here, investing is only part of the story. You live through ten simulated years, making decisions about career, income, housing, lifestyle, saving and investing while unexpected events affect your journey. You and your Financial Twin begin from the same position, but your decisions can produce very different outcomes.",
+    pose: "point-slide",
+    desktopSide: "left",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-perspectives",
+    title: "Four strategic perspectives",
+    text:
+      "Fountain Prep goes beyond simulations. You can enter Financial Literacy, explore Biography of Greatness, develop Language Leverage and study Spiritual Capital. Each pathway has a different purpose, but I remain your guide throughout.",
+    pose: "open-hands",
+    desktopSide: "left",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-perspectives",
+    title: "Biography of Greatness",
+    text:
+      "Inside Biography of Greatness, we study successful wealth creators as real case studies. We look at where they started, how businesses were built, pivotal decisions, ownership, setbacks, capital allocation, risk and legacy.",
+    pose: "explain",
+    desktopSide: "right",
+    mobileDock: "bottom",
+  },
+  {
+    selector: ".fe-final",
+    title: "Choose where to begin",
+    text:
+      "That is your introduction to Fountain Prep Financial Education. You do not need to understand everything before you start. Choose an experience that interests you, and I will meet you inside.",
+    pose: "welcome",
+    desktopSide: "left",
+    mobileDock: "bottom",
+  },
+];
+
+const poseImages = {
+  welcome: "/images/fountaintalk/ayo-welcome.png",
+  "point-slide": "/images/fountaintalk/ayo-point-slide.png",
+  explain: "/images/fountaintalk/ayo-explain.png",
+  "open-hands": "/images/fountaintalk/ayo-open-hands.png",
+} as const;
+
+const GUIDE_TTS_TIMEOUT_MS = 16000;
+
+export default function FinancialEducationAyoGuide() {
+  const [index, setIndex] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [error, setError] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  const requestRef = useRef(0);
+  const lastStartedStepRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+  const automatedScrollRef = useRef(false);
+
+  const step = steps[index];
+
+  const clearAudioUrl = useCallback(() => {
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    requestRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+
+    clearAudioUrl();
+    setSpeaking(false);
+  }, [clearAudioUrl]);
+
+  const moveToSection = useCallback((selector: string) => {
+    const target = document.querySelector(selector);
+
+    if (!target) {
+      return;
+    }
+
+    automatedScrollRef.current = true;
+
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    window.setTimeout(() => {
+      automatedScrollRef.current = false;
+    }, 1100);
+  }, []);
+
+  const playStep = useCallback(
+    async (
+      stepIndex: number,
+      allowAutoplayPrompt = true,
+    ) => {
+      const selected = steps[stepIndex];
+
+      if (!selected) {
+        return;
+      }
+
+      if (
+        lastStartedStepRef.current === stepIndex
+      ) {
+        return;
+      }
+
+      lastStartedStepRef.current = stepIndex;
+
+      stopAudio();
+      setError("");
+      setNeedsGesture(false);
+      setCompleted(false);
+      setLoadingAudio(true);
+      moveToSection(selected.selector);
+
+      const requestId =
+        requestRef.current + 1;
+
+      requestRef.current = requestId;
+
+      const controller =
+        new AbortController();
+
+      abortRef.current = controller;
+
+      timeoutRef.current =
+        window.setTimeout(() => {
+          controller.abort();
+        }, GUIDE_TTS_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(
+          "/api/academy/speech",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              text: selected.text,
+            }),
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Ayo's guided introduction is temporarily unavailable.",
+          );
+        }
+
+        if (timeoutRef.current !== null) {
+          window.clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+
+        const blob = await response.blob();
+
+        if (
+          controller.signal.aborted ||
+          requestId !== requestRef.current
+        ) {
+          return;
+        }
+
+        setLoadingAudio(false);
+        clearAudioUrl();
+
+        const url =
+          URL.createObjectURL(blob);
+
+        audioUrlRef.current = url;
+
+        const audio = new Audio(url);
+
+        audio.preload = "auto";
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          if (
+            requestId !== requestRef.current
+          ) {
+            return;
+          }
+
+          setLoadingAudio(false);
+          setSpeaking(true);
+          setRunning(true);
+          setNeedsGesture(false);
+        };
+
+        audio.onended = () => {
+          if (
+            requestId !== requestRef.current
+          ) {
+            return;
+          }
+
+          setSpeaking(false);
+          audioRef.current = null;
+          abortRef.current = null;
+          clearAudioUrl();
+
+          window.setTimeout(() => {
+            if (
+              !mountedRef.current ||
+              requestId !== requestRef.current
+            ) {
+              return;
+            }
+
+            if (
+              stepIndex >=
+              steps.length - 1
+            ) {
+              setRunning(false);
+              setCompleted(true);
+              return;
+            }
+
+            const nextIndex =
+              stepIndex + 1;
+
+            setIndex(nextIndex);
+            lastStartedStepRef.current =
+              null;
+
+            void playStep(nextIndex);
+          }, 650);
+        };
+
+        try {
+          await audio.play();
+        } catch (playError) {
+          setSpeaking(false);
+
+          if (
+            playError instanceof DOMException &&
+            playError.name === "NotAllowedError" &&
+            allowAutoplayPrompt
+          ) {
+            setLoadingAudio(false);
+            setNeedsGesture(true);
+            setRunning(false);
+            return;
+          }
+
+          throw playError;
+        }
+      } catch (playError) {
+        if (
+          requestId !== requestRef.current
+        ) {
+          return;
+        }
+
+        if (timeoutRef.current !== null) {
+          window.clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+
+        setLoadingAudio(false);
+        setRunning(false);
+        setSpeaking(false);
+
+        if (controller.signal.aborted) {
+          setError(
+            "Ayo's voice took longer than expected to prepare. Please click Continue to try again.",
+          );
+          return;
+        }
+
+        setError(
+          playError instanceof Error
+            ? playError.message
+            : "Ayo's guided introduction is temporarily unavailable.",
+        );
+      }
+    },
+    [
+      clearAudioUrl,
+      moveToSection,
+      stopAudio,
+    ],
+  );
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobile(
+        window.matchMedia(
+          "(max-width: 760px)"
+        ).matches
+      );
+    };
+
+    updateViewport();
+
+    window.addEventListener(
+      "resize",
+      updateViewport
+    );
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        updateViewport
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+  mountedRef.current = true;
+
+  const timer = window.setTimeout(() => {
+    setRunning(true);
+    void playStep(0);
+  }, 700);
+
+  return () => {
+    mountedRef.current = false;
+    window.clearTimeout(timer);
+    stopAudio();
+  };
+}, [playStep, stopAudio]);
+
+  const previous = () => {
+    stopAudio();
+
+    const previousIndex =
+      Math.max(0, index - 1);
+
+    lastStartedStepRef.current = null;
+    setIndex(previousIndex);
+    setRunning(true);
+    setNeedsGesture(false);
+    setCompleted(false);
+    void playStep(previousIndex, false);
+  };
+
+  const pauseResume = () => {
+    if (speaking) {
+      stopAudio();
+      setRunning(false);
+      return;
+    }
+
+    lastStartedStepRef.current = null;
+    setNeedsGesture(false);
+    setRunning(true);
+    void playStep(index, false);
+  };
+
+  const skip = () => {
+    stopAudio();
+    setRunning(false);
+    setCompleted(true);
+    setNeedsGesture(false);
+  };
+
+  const replay = () => {
+    stopAudio();
+    lastStartedStepRef.current = null;
+    setIndex(0);
+    setCompleted(false);
+    setNeedsGesture(false);
+    setRunning(true);
+    void playStep(0, false);
+  };
+
+  const startWithGesture = () => {
+    lastStartedStepRef.current = null;
+    setNeedsGesture(false);
+    setRunning(true);
+    void playStep(index, false);
+  };
+
+  const status = useMemo(() => {
+    if (completed) {
+      return "Tour complete";
+    }
+
+    if (speaking) {
+      return "Presenting now";
+    }
+
+    if (loadingAudio) {
+      return "Preparing Ayo's voice";
+    }
+
+    if (needsGesture) {
+      return "Ready when you are";
+    }
+
+    return running
+      ? "Preparing your tour"
+      : "Tour paused";
+  }, [
+    completed,
+    loadingAudio,
+    needsGesture,
+    running,
+    speaking,
+  ]);
+
+  return (
+    <aside
+      className={[
+        "ayoGuide",
+        `desktop-${step?.desktopSide ?? "right"}`,
+        `mobile-${step?.mobileDock ?? "bottom"}`,
+        speaking ? "is-speaking" : "",
+        completed ? "is-complete" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="Ayo guided introduction"
+      data-viewport={
+        isMobile
+          ? "mobile"
+          : "desktop"
+      }
+    >
+      <div className="ayoStage">
+        <div className="ayoGlow" />
+        <div className="ayoPointerLine" />
+
+        <Image
+          src={
+            poseImages[
+              step?.pose ?? "welcome"
+            ]
+          }
+          alt="Ayo, Fountain Prep tutor"
+          fill
+          priority
+          sizes="260px"
+          className="ayoImage"
+        />
+      </div>
+
+      <div className="ayoCard">
+        <div className="ayoTopline">
+          <div>
+            <span className="liveDot" />
+            <strong>
+              AYO · YOUR GUIDE
+            </strong>
+          </div>
+
+          <small>{status}</small>
+        </div>
+
+        <span className="stepCount">
+          INTRODUCTION {index + 1} /{" "}
+          {steps.length}
+        </span>
+
+        <h3>
+          {step?.title ??
+            "Welcome"}
+        </h3>
+
+        <p>
+          {step?.text ??
+            "Welcome to Fountain Prep."}
+        </p>
+
+        {needsGesture ? (
+          <button
+            type="button"
+            className="startTour"
+            onClick={startWithGesture}
+          >
+            ▶ Let Ayo show me around
+          </button>
+        ) : !speaking && !completed ? (
+          <button
+            type="button"
+            className="startTour secondaryStart"
+            onClick={startWithGesture}
+            disabled={loadingAudio}
+          >
+            {loadingAudio
+              ? "Preparing Ayo's voice..."
+              : "🔊 Hear Ayo and continue"}
+          </button>
+        ) : null}
+
+        {error ? (
+          <small className="tourError">
+            {error}
+          </small>
+        ) : null}
+
+        <div className="tourControls">
+          {completed ? (
+            <button
+              type="button"
+              onClick={replay}
+            >
+              ↻ Replay introduction
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={previous}
+                disabled={index === 0}
+              >
+                ← Back
+              </button>
+
+              <button
+                type="button"
+                onClick={pauseResume}
+                disabled={loadingAudio}
+              >
+                {speaking
+                  ? "❚❚ Pause"
+                  : loadingAudio
+                    ? "Preparing..."
+                    : "▶ Continue"}
+              </button>
+
+              <button
+                type="button"
+                onClick={skip}
+              >
+                Skip tour
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .ayoGuide {
+          position: fixed;
+          z-index: 80;
+          bottom: clamp(14px, 2vw, 28px);
+          width: min(350px, calc(100vw - 28px));
+          pointer-events: none;
+          transition:
+            left .45s ease,
+            right .45s ease,
+            transform .45s ease;
+          font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+        }
+
+        .ayoGuide.desktop-right {
+          right: clamp(14px, 2vw, 28px);
+          left: auto;
+        }
+
+        .ayoGuide.desktop-left {
+          left: clamp(14px, 2vw, 28px);
+          right: auto;
+        }
+
+        .ayoStage {
+          position: absolute;
+          bottom: 100%;
+          width: 160px;
+          height: 265px;
+          pointer-events: none;
+        }
+
+        .desktop-right .ayoStage {
+          right: -2px;
+          left: auto;
+        }
+
+        .desktop-left .ayoStage {
+          left: -2px;
+          right: auto;
+        }
+
+        .ayoStage :global(.ayoImage) {
+          object-fit: contain;
+          object-position: bottom center;
+          filter:
+            drop-shadow(
+              0 24px 35px
+              rgba(38, 20, 54, .24)
+            );
+        }
+
+        .ayoPointerLine {
+          position: absolute;
+          bottom: 20px;
+          width: 84px;
+          height: 2px;
+          border-radius: 999px;
+          background:
+            linear-gradient(
+              90deg,
+              rgba(124, 58, 237, .75),
+              rgba(124, 58, 237, 0)
+            );
+          opacity: .55;
+        }
+
+        .desktop-right .ayoPointerLine {
+          right: 84%;
+          transform: rotate(-8deg);
+          transform-origin: right center;
+        }
+
+        .desktop-left .ayoPointerLine {
+          left: 84%;
+          transform: rotate(8deg);
+          transform-origin: left center;
+        }
+
+        .is-speaking .ayoStage {
+          animation:
+            ayoFloat 2.8s ease-in-out infinite;
+        }
+
+        @keyframes ayoFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+
+        .ayoGlow {
+          position: absolute;
+          inset: 26% 9% 4%;
+          border-radius: 50%;
+          background:
+            radial-gradient(
+              circle,
+              rgba(124, 58, 237, .2),
+              transparent 66%
+            );
+          filter: blur(24px);
+        }
+
+        .ayoCard {
+          position: relative;
+          pointer-events: auto;
+          padding: 17px;
+          border:
+            1px solid
+            rgba(84, 52, 117, .13);
+          border-radius: 22px;
+          background:
+            rgba(255, 255, 255, .96);
+          box-shadow:
+            0 24px 70px
+            rgba(48, 26, 64, .2);
+          backdrop-filter: blur(18px);
+        }
+
+        .ayoTopline {
+          display: flex;
+          align-items: center;
+          justify-content:
+            space-between;
+          gap: 12px;
+        }
+
+        .ayoTopline > div {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+
+        .liveDot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #22c55e;
+          box-shadow:
+            0 0 0 5px
+            rgba(34, 197, 94, .1);
+        }
+
+        .ayoTopline strong {
+          color: #39204d;
+          font-size: 10px;
+          letter-spacing: .08em;
+        }
+
+        .ayoTopline small {
+          color: #8c8194;
+          font-size: 9px;
+          font-weight: 750;
+        }
+
+        .stepCount {
+          display: block;
+          margin-top: 14px;
+          color: #7c3aed;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: .12em;
+        }
+
+        .ayoCard h3 {
+          margin: 6px 0 0;
+          color: #211529;
+          font-family:
+            Georgia,
+            "Times New Roman",
+            serif;
+          font-size: 24px;
+          line-height: 1.05;
+          font-weight: 500;
+        }
+
+        .ayoCard p {
+          margin: 9px 0 0;
+          color: #665c6b;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .startTour {
+          width: 100%;
+          min-height: 44px;
+          margin-top: 13px;
+          border: 0;
+          border-radius: 13px;
+          color: white;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .startTour:disabled {
+          opacity: .72;
+          cursor: wait;
+        }
+
+        .secondaryStart {
+          background:
+            linear-gradient(
+              135deg,
+              #4c1d95,
+              #7c3aed
+            );
+        }
+
+        .tourControls {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 13px;
+        }
+
+        .tourControls button {
+          min-height: 35px;
+          padding: 0 10px;
+          border:
+            1px solid
+            #e6ddee;
+          border-radius: 10px;
+          color: #5a426c;
+          background: white;
+          font-size: 9px;
+          font-weight: 850;
+          cursor: pointer;
+        }
+
+        .tourControls button:disabled {
+          opacity: .4;
+          cursor: default;
+        }
+
+        .tourError {
+          display: block;
+          margin-top: 10px;
+          color: #b45309;
+          font-weight: 750;
+        }
+
+        @media (
+          min-width: 761px
+        ) and (
+          max-width: 1180px
+        ) {
+          .ayoGuide {
+            width: 310px;
+          }
+
+          .ayoStage {
+            width: 140px;
+            height: 200px;
+          }
+
+          .ayoCard {
+            padding: 15px;
+          }
+
+          .ayoCard h3 {
+            font-size: 21px;
+          }
+
+          .ayoCard p {
+            font-size: 11px;
+          }
+        }
+
+        @media (
+          max-width: 760px
+        ) {
+          .ayoGuide,
+          .ayoGuide.desktop-left,
+          .ayoGuide.desktop-right {
+            left: 10px;
+            right: 10px;
+            width: auto;
+            bottom:
+              max(
+                10px,
+                env(
+                  safe-area-inset-bottom
+                )
+              );
+          }
+
+          .ayoStage,
+          .desktop-left .ayoStage,
+          .desktop-right .ayoStage {
+            left: auto;
+            right: 10px;
+            bottom:
+              calc(100% - 2px);
+            width: 96px;
+            height: 132px;
+          }
+
+          .ayoPointerLine {
+            display: none;
+          }
+
+          .ayoCard {
+            padding: 13px 14px;
+            border-radius: 18px;
+            max-height:
+              min(
+                42vh,
+                330px
+              );
+            overflow-y: auto;
+            box-shadow:
+              0 16px 42px
+              rgba(
+                48,
+                26,
+                64,
+                .18
+              );
+          }
+
+          .ayoTopline {
+            padding-right: 78px;
+          }
+
+          .ayoCard h3 {
+            padding-right: 70px;
+            font-size: 20px;
+          }
+
+          .ayoCard p {
+            max-height: 86px;
+            overflow-y: auto;
+            padding-right: 2px;
+            font-size: 11.5px;
+            line-height: 1.48;
+          }
+
+          .tourControls {
+            position: sticky;
+            bottom: 0;
+            padding-top: 8px;
+            margin-top: 10px;
+            background:
+              linear-gradient(
+                180deg,
+                rgba(255,255,255,0),
+                rgba(255,255,255,.96)
+                30%
+              );
+          }
+
+          .tourControls button {
+            min-height: 38px;
+            flex: 1;
+          }
+
+          .startTour {
+            min-height: 46px;
+          }
+        }
+
+        @media (
+          max-width: 420px
+        ) {
+          .ayoStage,
+          .desktop-left .ayoStage,
+          .desktop-right .ayoStage {
+            width: 82px;
+            height: 112px;
+          }
+
+          .ayoTopline {
+            padding-right: 62px;
+          }
+
+          .ayoCard h3 {
+            padding-right: 58px;
+            font-size: 18px;
+          }
+
+          .ayoCard p {
+            max-height: 74px;
+            font-size: 11px;
+          }
+
+          .stepCount {
+            margin-top: 10px;
+          }
+        }
+
+        @media (
+          prefers-reduced-motion:
+          reduce
+        ) {
+          .ayoStage {
+            display: none;
+          }
+        }
+      `}</style>
+    </aside>
+  );
+}

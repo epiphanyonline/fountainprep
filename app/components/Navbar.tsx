@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   usePathname,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 import {
   Menu,
@@ -25,11 +26,77 @@ type UserProfile = {
     | null;
 };
 
+function isFinancialEducationPath(
+  pathname: string,
+  searchParams: ReturnType<typeof useSearchParams>,
+) {
+  if (
+    pathname === "/financial-education" ||
+    pathname.startsWith(
+      "/academies/financial-literacy",
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    pathname === "/classroom/academy" &&
+    searchParams.get("academy") ===
+      "personal-finance"
+  ) {
+    return true;
+  }
+
+  if (
+    pathname === "/pricing" &&
+    searchParams.get("product") ===
+      "academies" &&
+    searchParams.get("academy") ===
+      "personal-finance"
+  ) {
+    return true;
+  }
+
+  const next =
+    searchParams.get("next") ?? "";
+
+  if (
+    [
+      "/signup",
+      "/signup/parent",
+      "/signup/learner",
+      "/login",
+      "/parent/onboarding",
+      "/parent/students",
+    ].includes(pathname) &&
+    (
+      next.includes(
+        "/academies/financial-literacy",
+      ) ||
+      next.includes(
+        "/financial-education",
+      ) ||
+      next.includes(
+        "academy=personal-finance",
+      ) ||
+      next.includes(
+        "product=academies",
+      )
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
   const [profile, setProfile] =
     useState<UserProfile | null>(null);
   const [menuOpen, setMenuOpen] =
@@ -39,83 +106,187 @@ export default function Navbar() {
     setNotificationCount,
   ] = useState(0);
 
+  const financialEducationMode =
+    useMemo(
+      () =>
+        isFinancialEducationPath(
+          pathname,
+          searchParams,
+        ),
+      [pathname, searchParams],
+    );
+
   useEffect(() => {
-    async function loadProfile() {
+    let cancelled = false;
+
+    async function loadProfileForUser(
+      user:
+        | {
+            id: string;
+          }
+        | null,
+    ) {
+      if (cancelled) {
+        return;
+      }
+
       setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        if (!user) {
+          if (!cancelled) {
+            setProfile(null);
+            setNotificationCount(0);
+          }
 
-      if (!user) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+          return;
+        }
 
-      const { data: userProfile } =
-        await supabase
-          .from("user_profiles")
-          .select("id, role, full_name")
-          .eq("id", user.id)
-          .maybeSingle();
-
-      if (!userProfile) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      let accountType:
-        | "PARENT"
-        | "ADULT_LEARNER"
-        | null = null;
-
-      if (userProfile.role === "PARENT") {
-        const { data: parentProfile } =
+        const { data: userProfile } =
           await supabase
-            .from("parent_profiles")
-            .select("account_type")
-            .eq("user_id", user.id)
+            .from("user_profiles")
+            .select(
+              "id, role, full_name",
+            )
+            .eq("id", user.id)
             .maybeSingle();
 
-        accountType =
-          parentProfile?.account_type ===
-          "ADULT_LEARNER"
-            ? "ADULT_LEARNER"
-            : "PARENT";
+        if (
+          cancelled ||
+          !userProfile
+        ) {
+          if (
+            !cancelled &&
+            !userProfile
+          ) {
+            setProfile(null);
+            setNotificationCount(0);
+          }
+
+          return;
+        }
+
+        let accountType:
+          | "PARENT"
+          | "ADULT_LEARNER"
+          | null = null;
+
+        if (
+          userProfile.role ===
+          "PARENT"
+        ) {
+          const {
+            data: parentProfile,
+          } = await supabase
+            .from("parent_profiles")
+            .select("account_type")
+            .eq(
+              "user_id",
+              user.id,
+            )
+            .maybeSingle();
+
+          if (cancelled) {
+            return;
+          }
+
+          accountType =
+            parentProfile?.account_type ===
+            "ADULT_LEARNER"
+              ? "ADULT_LEARNER"
+              : "PARENT";
+        }
+
+        const { count } =
+          await supabase
+            .from("notifications")
+            .select("*", {
+              count: "exact",
+              head: true,
+            })
+            .eq(
+              "user_id",
+              user.id,
+            )
+            .eq(
+              "is_read",
+              false,
+            );
+
+        if (cancelled) {
+          return;
+        }
+
+        setProfile({
+          ...userProfile,
+          account_type:
+            accountType,
+        });
+
+        setNotificationCount(
+          count ?? 0,
+        );
+      } catch (error) {
+        console.error(
+          "Unable to load navbar profile:",
+          error,
+        );
+
+        if (!cancelled) {
+          setProfile(null);
+          setNotificationCount(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      setProfile({
-        ...userProfile,
-        account_type: accountType,
-      });
-
-      const { count } = await supabase
-        .from("notifications")
-        .select("*", {
-          count: "exact",
-          head: true,
-        })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
-
-      setNotificationCount(count ?? 0);
-      setLoading(false);
     }
 
-    void loadProfile();
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        void loadProfileForUser(
+          data.session?.user ??
+            null,
+        );
+      })
+      .catch((error) => {
+        console.error(
+          "Unable to read navbar session:",
+          error,
+        );
+
+        if (!cancelled) {
+          setProfile(null);
+          setNotificationCount(0);
+          setLoading(false);
+        }
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      () => {
-        void loadProfile();
-        router.refresh();
-      },
-    );
+    } =
+      supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          void loadProfileForUser(
+            session?.user ??
+              null,
+          );
+
+          window.setTimeout(
+            () => {
+              if (!cancelled) {
+                router.refresh();
+              }
+            },
+            0,
+          );
+        },
+      );
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, [router]);
@@ -128,7 +299,13 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setProfile(null);
     setMenuOpen(false);
-    router.push("/login");
+
+    router.push(
+      financialEducationMode
+        ? "/financial-education"
+        : "/login",
+    );
+
     router.refresh();
   }
 
@@ -153,27 +330,6 @@ export default function Navbar() {
     return "/account";
   }
 
-  const publicLinks = [
-  { label: "Home", href: "/" },
-  {
-    label: "Self-Paced Academies",
-    href: "/academies",
-  },
-  {
-    label: "Live Tutors",
-    href: "/subjects",
-  },
-  {
-    label: "Plans",
-    href: "/plans",
-  },
-  {
-    label: "Become a Tutor",
-    href: "/signup/tutor",
-  },
-  { label: "Login", href: "/login" },
-];
-
   const isAdultLearner =
     profile?.role === "PARENT" &&
     profile.account_type ===
@@ -184,62 +340,537 @@ export default function Navbar() {
     profile.account_type !==
       "ADULT_LEARNER";
 
-  const authedLinks = isAdultLearner
-    ? [
-        {
-          label: "Self-Paced Academies",
-          href: "/academies",
-        },
-        {
-          label: "Live Tutors",
-          href: "/subjects",
-        },
-        {
-          label: "My Learning",
-          href: "/learner/dashboard",
-        },
-        {
-          label: "Account",
-          href: "/account",
-        },
-      ]
-    : [
-        {
-          label: "Self-Paced Academies",
-          href: "/academies",
-        },
-        {
-          label: "Live Tutors",
-          href: "/subjects",
-        },
+  if (financialEducationMode) {
+    const financeLinks = [
+      {
+        label: "Financial Education",
+        href: "/financial-education",
+      },
+      {
+        label: "Financial Literacy",
+        href: "/academies/financial-literacy",
+      },
+      {
+        label: "Investment Lab",
+        href:
+          "/academies/financial-literacy/investment-lab",
+      },
+      {
+        label: "Wealth Simulator",
+        href:
+          "/academies/financial-literacy/wealth-simulator",
+      },
+      {
+        label:
+          isParentAccount
+            ? "Learners"
+            : "Continue Learning",
+        href:
+          "/academies/financial-literacy/start",
+      },
+      ...(profile
+        ? [
+            {
+              label: "Account",
+              href: "/account",
+            },
+          ]
+        : []),
+    ];
 
-        ...(profile?.role === "PARENT"
-          ? [
-              {
-                label: "My Children",
-                href: "/parent/students",
+    return (
+      <header className="finance-header">
+        <div className="finance-nav container">
+          <Link
+            href="/financial-education"
+            className="finance-brand"
+            aria-label="Fountain Prep Financial Education"
+          >
+            <Image
+              src="/icons/icon-192.png"
+              alt="Fountain Prep"
+              width={42}
+              height={42}
+              priority
+              className="finance-logo"
+            />
+
+            <span className="finance-brand-copy">
+              <span className="finance-brand-main">
+                FountainPrep
+              </span>
+              <span className="finance-divider">
+                /
+              </span>
+              <span className="finance-product">
+                Financial Education
+              </span>
+            </span>
+          </Link>
+
+          <nav
+            className="finance-desktop-nav"
+            aria-label="Financial Education navigation"
+          >
+            {financeLinks.map(
+              (item) => {
+                const active =
+                  item.href ===
+                  "/financial-education"
+                    ? pathname ===
+                      item.href
+                    : pathname.startsWith(
+                        item.href,
+                      );
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={
+                      active
+                        ? "finance-link active"
+                        : "finance-link"
+                    }
+                  >
+                    {item.label}
+                  </Link>
+                );
               },
-            ]
-          : []),
+            )}
 
-        ...(profile?.role === "TUTOR"
-          ? [
-              {
-                label: "Availability",
-                href: "/tutor/availability",
-              },
-            ]
-          : []),
+            {!loading && !profile ? (
+              <Link
+                href={
+                  `/login?next=` +
+                  encodeURIComponent(
+                    "/academies/financial-literacy/start",
+                  )
+                }
+                className="finance-signin"
+              >
+                Sign in
+              </Link>
+            ) : null}
 
-        {
-          label: "Dashboard",
-          href: dashboardHref(),
-        },
-        {
-          label: "Account",
-          href: "/account",
-        },
-      ];
+            {!loading && profile ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="finance-exit"
+              >
+                Logout
+              </button>
+            ) : null}
+          </nav>
+
+          <button
+            type="button"
+            className="finance-menu-btn"
+            onClick={() =>
+              setMenuOpen(
+                (value) =>
+                  !value,
+              )
+            }
+            aria-label="Toggle Financial Education menu"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? (
+              <X size={22} />
+            ) : (
+              <Menu size={22} />
+            )}
+          </button>
+        </div>
+
+        {menuOpen ? (
+          <div className="finance-mobile-panel">
+            <div className="finance-mobile-inner container">
+              {financeLinks.map(
+                (item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="finance-mobile-link"
+                  >
+                    {item.label}
+                  </Link>
+                ),
+              )}
+
+              {!loading &&
+              !profile ? (
+                <Link
+                  href={
+                    `/login?next=` +
+                    encodeURIComponent(
+                      "/academies/financial-literacy/start",
+                    )
+                  }
+                  className="finance-mobile-link primary"
+                >
+                  Sign in
+                </Link>
+              ) : null}
+
+              {!loading &&
+              profile ? (
+                <button
+                  type="button"
+                  className="finance-mobile-link"
+                  onClick={
+                    handleLogout
+                  }
+                >
+                  Logout
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <style jsx>{`
+          .finance-header {
+            position: sticky;
+            top: 0;
+            z-index: 120;
+            background: rgba(
+              255,
+              253,
+              249,
+              0.96
+            );
+            border-bottom: 1px
+              solid
+              rgba(
+                124,
+                58,
+                237,
+                0.12
+              );
+            backdrop-filter:
+              blur(18px);
+          }
+
+          .finance-nav {
+            min-height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content:
+              space-between;
+            gap: 18px;
+          }
+
+          .finance-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            color: inherit;
+            text-decoration: none;
+          }
+
+          .finance-logo {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            object-fit: contain;
+          }
+
+          .finance-brand-copy {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 8px;
+            white-space: nowrap;
+          }
+
+          .finance-brand-main {
+            color: #20112e;
+            font-size: 25px;
+            font-weight: 950;
+            letter-spacing:
+              -0.05em;
+          }
+
+          .finance-divider {
+            color: #b49e72;
+            font-weight: 800;
+          }
+
+          .finance-product {
+            color: #6d28d9;
+            font-size: 14px;
+            font-weight: 950;
+          }
+
+          .finance-desktop-nav {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .finance-link,
+          .finance-signin,
+          .finance-exit {
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content:
+              center;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 0;
+            color: #392c43;
+            background:
+              transparent;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 850;
+            white-space: nowrap;
+            text-decoration: none;
+            cursor: pointer;
+          }
+
+          .finance-link:hover,
+          .finance-link.active {
+            color: #6d28d9;
+            background: #f3ecff;
+          }
+
+          .finance-signin {
+            color: white;
+            background:
+              linear-gradient(
+                135deg,
+                #7c3aed,
+                #5b21b6
+              );
+          }
+
+          .finance-exit {
+            color: #6d28d9;
+            border: 1px solid
+              rgba(
+                124,
+                58,
+                237,
+                0.2
+              );
+            background: white;
+          }
+
+          .finance-menu-btn {
+            display: none;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content:
+              center;
+            border-radius: 16px;
+            border: 1px solid
+              rgba(
+                124,
+                58,
+                237,
+                0.16
+              );
+            color: #251634;
+            background: white;
+          }
+
+          .finance-mobile-panel {
+            display: none;
+            border-top: 1px solid
+              rgba(
+                124,
+                58,
+                237,
+                0.1
+              );
+            background: rgba(
+              255,
+              255,
+              255,
+              0.98
+            );
+          }
+
+          .finance-mobile-inner {
+            display: grid;
+            gap: 9px;
+            padding-top: 12px;
+            padding-bottom: 16px;
+          }
+
+          .finance-mobile-link {
+            min-height: 49px;
+            display: flex;
+            align-items: center;
+            justify-content:
+              center;
+            border-radius: 16px;
+            border: 1px solid
+              rgba(
+                124,
+                58,
+                237,
+                0.12
+              );
+            color: #34253f;
+            background: white;
+            font: inherit;
+            font-weight: 900;
+            text-decoration: none;
+          }
+
+          .finance-mobile-link.primary {
+            color: white;
+            border: 0;
+            background:
+              linear-gradient(
+                135deg,
+                #7c3aed,
+                #5b21b6
+              );
+          }
+
+          @media (
+            max-width: 1180px
+          ) {
+            .finance-desktop-nav {
+              display: none;
+            }
+
+            .finance-menu-btn {
+              display: inline-flex;
+            }
+
+            .finance-mobile-panel {
+              display: block;
+            }
+          }
+
+          @media (
+            max-width: 560px
+          ) {
+            .finance-brand-main {
+              font-size: 22px;
+            }
+
+            .finance-divider {
+              display: none;
+            }
+
+            .finance-product {
+              display: block;
+              font-size: 11px;
+            }
+
+            .finance-brand-copy {
+              display: grid;
+              gap: 1px;
+            }
+          }
+        `}</style>
+      </header>
+    );
+  }
+
+  const publicLinks = [
+    {
+      label: "Home",
+      href: "/",
+    },
+    {
+      label:
+        "Self-Paced Academies",
+      href: "/academies",
+    },
+    {
+      label: "Live Tutors",
+      href: "/subjects",
+    },
+    {
+      label: "Plans",
+      href: "/plans",
+    },
+    {
+      label: "Become a Tutor",
+      href: "/signup/tutor",
+    },
+    {
+      label: "Login",
+      href: "/login",
+    },
+  ];
+
+  const authedLinks =
+    isAdultLearner
+      ? [
+          {
+            label:
+              "Self-Paced Academies",
+            href: "/academies",
+          },
+          {
+            label: "Live Tutors",
+            href: "/subjects",
+          },
+          {
+            label: "My Learning",
+            href:
+              "/learner/dashboard",
+          },
+          {
+            label: "Account",
+            href: "/account",
+          },
+        ]
+      : [
+          {
+            label:
+              "Self-Paced Academies",
+            href: "/academies",
+          },
+          {
+            label: "Live Tutors",
+            href: "/subjects",
+          },
+
+          ...(profile?.role ===
+          "PARENT"
+            ? [
+                {
+                  label:
+                    "My Children",
+                  href:
+                    "/parent/students",
+                },
+              ]
+            : []),
+
+          ...(profile?.role ===
+          "TUTOR"
+            ? [
+                {
+                  label:
+                    "Availability",
+                  href:
+                    "/tutor/availability",
+                },
+              ]
+            : []),
+
+          {
+            label: "Dashboard",
+            href: dashboardHref(),
+          },
+          {
+            label: "Account",
+            href: "/account",
+          },
+        ];
 
   const links = loading
     ? []
@@ -299,15 +930,22 @@ export default function Navbar() {
               0.94
             );
             border-bottom: 1px solid
-              rgba(124, 58, 237, 0.12);
-            backdrop-filter: blur(18px);
+              rgba(
+                124,
+                58,
+                237,
+                0.12
+              );
+            backdrop-filter:
+              blur(18px);
           }
 
           .booking-nav {
             min-height: 68px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content:
+              space-between;
             gap: 16px;
           }
 
@@ -329,7 +967,8 @@ export default function Navbar() {
             align-items: baseline;
             font-size: 29px;
             font-weight: 950;
-            letter-spacing: -0.055em;
+            letter-spacing:
+              -0.055em;
           }
 
           .brand-main {
@@ -349,7 +988,9 @@ export default function Navbar() {
             font-weight: 900;
           }
 
-          @media (max-width: 480px) {
+          @media (
+            max-width: 480px
+          ) {
             .brand-text {
               font-size: 24px;
             }
@@ -404,7 +1045,9 @@ export default function Navbar() {
               item.href === "/"
                 ? pathname === "/"
                 : pathname.startsWith(
-                    item.href.split("?")[0],
+                    item.href.split(
+                      "?",
+                    )[0],
                   );
 
             return (
@@ -436,8 +1079,18 @@ export default function Navbar() {
             </button>
           ) : null}
 
+          {!loading ? (
+            <Link
+              href="/financial-education"
+              className="nav-btn nav-btn-finance"
+            >
+              Financial Education
+            </Link>
+          ) : null}
+
           {!loading &&
-          (!profile || isParentAccount) ? (
+          (!profile ||
+            isParentAccount) ? (
             <Link
               href="/start"
               className="nav-btn nav-btn-primary"
@@ -451,7 +1104,10 @@ export default function Navbar() {
           type="button"
           className="mobile-menu-btn"
           onClick={() =>
-            setMenuOpen((value) => !value)
+            setMenuOpen(
+              (value) =>
+                !value,
+            )
           }
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
@@ -472,7 +1128,8 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={
-                  pathname === item.href
+                  pathname ===
+                  item.href
                     ? "mobile-link active"
                     : "mobile-link"
                 }
@@ -483,7 +1140,9 @@ export default function Navbar() {
 
             {profile ? (
               <NotificationBell
-                count={notificationCount}
+                count={
+                  notificationCount
+                }
                 href="/notifications"
               />
             ) : null}
@@ -502,8 +1161,18 @@ export default function Navbar() {
               </button>
             ) : null}
 
+            {!loading ? (
+              <Link
+                href="/financial-education"
+                className="mobile-link finance"
+              >
+                Financial Education
+              </Link>
+            ) : null}
+
             {!loading &&
-            (!profile || isParentAccount) ? (
+            (!profile ||
+              isParentAccount) ? (
               <Link
                 href="/start"
                 className="mobile-link primary"
@@ -527,15 +1196,22 @@ export default function Navbar() {
             0.9
           );
           border-bottom: 1px solid
-            rgba(124, 58, 237, 0.1);
-          backdrop-filter: blur(18px);
+            rgba(
+              124,
+              58,
+              237,
+              0.1
+            );
+          backdrop-filter:
+            blur(18px);
         }
 
         .site-nav {
           min-height: 76px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content:
+            space-between;
           gap: 18px;
         }
 
@@ -559,7 +1235,8 @@ export default function Navbar() {
           align-items: baseline;
           font-size: 34px;
           font-weight: 950;
-          letter-spacing: -0.055em;
+          letter-spacing:
+            -0.055em;
           line-height: 1;
           white-space: nowrap;
         }
@@ -582,7 +1259,8 @@ export default function Navbar() {
           min-height: 44px;
           display: inline-flex;
           align-items: center;
-          justify-content: center;
+          justify-content:
+            center;
           padding: 0 15px;
           border-radius: 999px;
           font-size: 14px;
@@ -591,12 +1269,14 @@ export default function Navbar() {
           text-decoration: none;
           border: none;
           cursor: pointer;
-          transition: all 160ms ease;
+          transition:
+            all 160ms ease;
         }
 
         .nav-btn-light {
           color: #251634;
-          background: transparent;
+          background:
+            transparent;
         }
 
         .nav-btn-light:hover,
@@ -605,15 +1285,55 @@ export default function Navbar() {
           background: #f4edff;
         }
 
+        .nav-btn-finance {
+          color: #6d28d9;
+          border: 1.5px solid
+            #7c3aed;
+          background: #f8f4ff;
+          box-shadow:
+            0 8px 20px
+            rgba(
+              109,
+              40,
+              217,
+              0.1
+            );
+        }
+
+        .nav-btn-finance:hover {
+          color: white;
+          background:
+            linear-gradient(
+              135deg,
+              #7c3aed,
+              #6d28d9
+            );
+          box-shadow:
+            0 12px 28px
+            rgba(
+              109,
+              40,
+              217,
+              0.2
+            );
+        }
+
         .nav-btn-primary {
           color: white;
-          background: linear-gradient(
-            135deg,
-            #7c3aed,
-            #6d28d9
-          );
-          box-shadow: 0 12px 28px
-            rgba(109, 40, 217, 0.2);
+          background:
+            linear-gradient(
+              135deg,
+              #7c3aed,
+              #6d28d9
+            );
+          box-shadow:
+            0 12px 28px
+            rgba(
+              109,
+              40,
+              217,
+              0.2
+            );
         }
 
         .mobile-menu-btn {
@@ -621,10 +1341,16 @@ export default function Navbar() {
           width: 46px;
           height: 46px;
           align-items: center;
-          justify-content: center;
+          justify-content:
+            center;
           border-radius: 18px;
           border: 1px solid
-            rgba(124, 58, 237, 0.14);
+            rgba(
+              124,
+              58,
+              237,
+              0.14
+            );
           color: #1f1230;
           background: #fff;
         }
@@ -632,7 +1358,12 @@ export default function Navbar() {
         .mobile-panel {
           display: none;
           border-top: 1px solid
-            rgba(124, 58, 237, 0.1);
+            rgba(
+              124,
+              58,
+              237,
+              0.1
+            );
           background: rgba(
             255,
             255,
@@ -644,7 +1375,10 @@ export default function Navbar() {
         .mobile-panel-inner {
           display: grid;
           grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(
+              2,
+              minmax(0, 1fr)
+            );
           gap: 10px;
           padding-top: 12px;
           padding-bottom: 16px;
@@ -654,9 +1388,15 @@ export default function Navbar() {
           min-height: 50px;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justify-content:
+            center;
           border: 1px solid
-            rgba(124, 58, 237, 0.12);
+            rgba(
+              124,
+              58,
+              237,
+              0.12
+            );
           border-radius: 18px;
           color: #251634;
           background: #fff;
@@ -670,18 +1410,31 @@ export default function Navbar() {
           background: #f4edff;
         }
 
-        .mobile-link.primary {
-          grid-column: 1 / -1;
-          color: white;
-          border: 0;
-          background: linear-gradient(
-            135deg,
-            #7c3aed,
-            #6d28d9
-          );
+        .mobile-link.finance {
+          grid-column:
+            1 / -1;
+          color: #6d28d9;
+          border: 1.5px solid
+            #7c3aed;
+          background: #f8f4ff;
         }
 
-        @media (max-width: 1000px) {
+        .mobile-link.primary {
+          grid-column:
+            1 / -1;
+          color: white;
+          border: 0;
+          background:
+            linear-gradient(
+              135deg,
+              #7c3aed,
+              #6d28d9
+            );
+        }
+
+        @media (
+          max-width: 1000px
+        ) {
           .desktop-nav {
             display: none;
           }
@@ -699,7 +1452,9 @@ export default function Navbar() {
           }
         }
 
-        @media (max-width: 480px) {
+        @media (
+          max-width: 480px
+        ) {
           .brand-logo {
             width: 40px;
             height: 40px;
@@ -710,12 +1465,11 @@ export default function Navbar() {
           }
 
           .mobile-panel-inner {
-            grid-template-columns: 1fr;
+            grid-template-columns:
+              1fr;
           }
         }
       `}</style>
     </header>
   );
 }
-
-

@@ -8,7 +8,13 @@ import { supabase } from "../lib/supabase";
 type NoticeType = "success" | "error" | "info";
 
 function safeParentNext(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//")
+  ) {
+    return null;
+  }
 
   const allowedPrefixes = [
     "/parent/",
@@ -16,9 +22,14 @@ function safeParentNext(value: string | null) {
     "/pricing",
     "/schedule",
     "/payment",
+    "/academies/",
+    "/classroom/academy",
   ];
 
-  return allowedPrefixes.some((prefix) => value.startsWith(prefix))
+  return allowedPrefixes.some(
+    (prefix) =>
+      value.startsWith(prefix),
+  )
     ? value
     : null;
 }
@@ -75,8 +86,8 @@ function LoginForm() {
     showNotice(
       "success",
       nextPath
-        ? "Login successful. Continuing your booking..."
-        : "Login successful. Preparing your dashboard...",
+  ? "Login successful. Continuing your learning journey..."
+  : "Login successful. Preparing your dashboard...",
     );
 
     const { data: userProfile, error: profileError } = await supabase
@@ -111,12 +122,27 @@ function LoginForm() {
         .maybeSingle();
 
       if (parentProfile?.account_type === "ADULT_LEARNER") {
-        router.replace("/learner/dashboard");
+        /*
+         * A destination supplied by the journey takes priority.
+         *
+         * Example:
+         * Financial Education
+         *   -> login
+         *   -> /academies/financial-literacy/start
+         *
+         * Only use the general Adult Learner dashboard when
+         * the learner came directly to the login page.
+         */
+        router.replace(
+          nextPath || "/learner/dashboard",
+        );
         router.refresh();
         return;
       }
 
-      router.replace(nextPath || "/parent/dashboard");
+      router.replace(
+        nextPath || "/parent/dashboard",
+      );
       router.refresh();
       return;
     }
@@ -168,8 +194,8 @@ function LoginForm() {
           <p className="eyebrow">Fountain Prep</p>
           <h1>Welcome back to your learning centre.</h1>
           <p>
-            Sign in to manage lessons, bookings, payments, progress updates and
-            support messages.
+            Sign in to continue your Fountain Prep journey, manage learning,
+            access progress, and return to the pathway you were using.
           </p>
 
           <div className="trustGrid">
@@ -195,7 +221,7 @@ function LoginForm() {
 
           <p className="subtitle">
             {nextPath
-              ? "Log in to continue your booking from the next step."
+              ? "Log in to continue your learning journey."
               : "Access your Fountain Prep account securely."}
           </p>
 
@@ -271,29 +297,39 @@ function LoginForm() {
           </div>
 
           <div className="signupLinks">
-  <p>
-    New parent?{" "}
-    <Link
-      href={`/signup/parent?next=${encodeURIComponent(signupNext)}`}
-    >
-      Create parent account
-    </Link>
-  </p>
+            <p>
+              New parent?{" "}
+              <Link
+                href={`/signup/parent?next=${encodeURIComponent(
+                  signupNext,
+                )}`}
+              >
+                Create parent account
+              </Link>
+            </p>
 
-  <p>
-    Adult learner?{" "}
-    <Link href="/signup/learner">
-      Create your account
-    </Link>
-  </p>
+            <p>
+              Adult learner?{" "}
+              <Link
+                href={
+                  nextPath
+                    ? `/signup/learner?next=${encodeURIComponent(
+                        nextPath,
+                      )}`
+                    : "/signup/learner"
+                }
+              >
+                Create your account
+              </Link>
+            </p>
 
-  <p>
-    New tutor?{" "}
-    <Link href="/signup/tutor">
-      Create tutor account
-    </Link>
-  </p>
-</div>
+            <p>
+              New tutor?{" "}
+              <Link href="/signup/tutor">
+                Create tutor account
+              </Link>
+            </p>
+          </div>
         </div>
       </section>
 

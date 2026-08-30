@@ -1,71 +1,139 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
-const parentNext = "/parent/students?mode=booking";
+const defaultParentNext = "/parent/students?mode=booking";
+const financialEducationNext = "/academies/financial-literacy/start";
 
-const signupOptions = [
-  {
-    title: "Parent or Guardian",
-    description: "Book and manage private lessons for a child.",
-    icon: "👨‍👩‍👧",
-    href: `/signup/parent?next=${encodeURIComponent(parentNext)}`,
-    action: "Create Parent Account",
-    points: [
-      "Academic tutoring",
-      "African languages",
-      "Weekly timetable",
-      "Progress reports",
-    ],
-    featured: true,
-    badge: "RECOMMENDED FOR BOOKING",
-  },
-  {
-    title: "Adult Learner",
-    description: "Book private African language lessons for yourself.",
-    icon: "🎓",
-    href: "/signup/learner",
-    action: "Continue as Adult Learner",
-    points: [
-      "Learn Yoruba",
-      "Learn Igbo",
-      "Learn Hausa",
-      "More languages coming",
-    ],
-    featured: false,
-    badge: "",
-  },
-  {
-    title: "Tutor",
-    description: "Apply to teach learners through Fountain Prep.",
-    icon: "👩🏾‍🏫",
-    href: "/signup/tutor",
-    action: "Become a Tutor",
-    points: [
-      "Teach online",
-      "Flexible availability",
-      "Weekly payouts",
-      "Professional platform",
-    ],
-    featured: false,
-    badge: "",
-  },
-];
+type SignupOption = {
+  title: string;
+  description: string;
+  icon: string;
+  href: string;
+  action: string;
+  points: string[];
+  featured: boolean;
+  badge: string;
+};
 
 export default function SignupLandingPage() {
   return (
-    <main className="signupPage">
+    <Suspense fallback={<SignupLoading />}>
+      <SignupLandingContent />
+    </Suspense>
+  );
+}
+
+function SignupLandingContent() {
+  const searchParams = useSearchParams();
+  const incomingNext = safeNextPath(searchParams.get("next"));
+
+  const isFinancialEducationJourney = useMemo(
+    () =>
+      incomingNext.startsWith("/academies/financial-literacy") ||
+      incomingNext.startsWith("/financial-education") ||
+      incomingNext.startsWith("/classroom/academy") ||
+      incomingNext.startsWith("/pricing?product=academies"),
+    [incomingNext],
+  );
+
+  const nextPath = incomingNext || (isFinancialEducationJourney ? financialEducationNext : defaultParentNext);
+  const parentNext = isFinancialEducationJourney ? nextPath : nextPath || defaultParentNext;
+  const learnerNext = isFinancialEducationJourney ? nextPath : nextPath || "/learner/dashboard";
+
+  const signupOptions: SignupOption[] = isFinancialEducationJourney
+    ? [
+        {
+          title: "Individual Learner",
+          description:
+            "Learn Financial Literacy for yourself with one continuous personal learning record.",
+          icon: "🎓",
+          href: `/signup/learner?next=${encodeURIComponent(learnerNext)}`,
+          action: "Continue as Individual Learner",
+          points: [
+            "Full Financial Literacy pathway",
+            "Personal progress record",
+            "Assessments and achievements",
+            "Certificate on completion",
+          ],
+          featured: true,
+          badge: "PREMIUM INDIVIDUAL",
+        },
+        {
+          title: "Parent or Guardian",
+          description:
+            "Create a family account and manage Financial Literacy learning for your children.",
+          icon: "👨‍👩‍👧",
+          href: `/signup/parent?next=${encodeURIComponent(parentNext)}`,
+          action: "Continue with Family",
+          points: [
+            "Manage multiple learners",
+            "Choose who is learning",
+            "Individual progress records",
+            "Family Academy access",
+          ],
+          featured: false,
+          badge: "FAMILY",
+        },
+      ]
+    : [
+        {
+          title: "Parent or Guardian",
+          description: "Book and manage private lessons for a child.",
+          icon: "👨‍👩‍👧",
+          href: `/signup/parent?next=${encodeURIComponent(parentNext || defaultParentNext)}`,
+          action: "Create Parent Account",
+          points: [
+            "Academic tutoring",
+            "African languages",
+            "Weekly timetable",
+            "Progress reports",
+          ],
+          featured: true,
+          badge: "RECOMMENDED FOR BOOKING",
+        },
+        {
+          title: "Adult Learner",
+          description: "Book private African language lessons for yourself.",
+          icon: "🎓",
+          href: `/signup/learner?next=${encodeURIComponent(learnerNext)}`,
+          action: "Continue as Adult Learner",
+          points: ["Learn Yoruba", "Learn Igbo", "Learn Hausa", "More languages coming"],
+          featured: false,
+          badge: "",
+        },
+        {
+          title: "Tutor",
+          description: "Apply to teach learners through Fountain Prep.",
+          icon: "👩🏾‍🏫",
+          href: "/signup/tutor",
+          action: "Become a Tutor",
+          points: ["Teach online", "Flexible availability", "Weekly payouts", "Professional platform"],
+          featured: false,
+          badge: "",
+        },
+      ];
+
+  const loginHref = `/login?next=${encodeURIComponent(
+    isFinancialEducationJourney ? nextPath : nextPath || defaultParentNext,
+  )}`;
+
+  return (
+    <main className={`signupPage ${isFinancialEducationJourney ? "financialEducationSignup" : ""}`}>
       <div className="signupContainer">
         <section className="signupHero">
-          <span>Join Fountain Prep</span>
-          <h1>Who are you joining as?</h1>
+          <span>{isFinancialEducationJourney ? "Fountain Prep Financial Education" : "Join Fountain Prep"}</span>
+          <h1>{isFinancialEducationJourney ? "Who will be learning?" : "Who are you joining as?"}</h1>
           <p>
-            Choose the option that best describes who will take or manage
-            lessons.
+            {isFinancialEducationJourney
+              ? "Choose the account that matches how you will continue your Financial Literacy journey."
+              : "Choose the option that best describes who will take or manage lessons."}
           </p>
         </section>
 
-        <section className="signupCards">
+        <section className={`signupCards ${isFinancialEducationJourney ? "financialCards" : ""}`}>
           {signupOptions.map((option) => (
             <Link
               key={option.href}
@@ -73,9 +141,7 @@ export default function SignupLandingPage() {
               className={option.featured ? "signupCard featured" : "signupCard"}
               aria-label={option.action}
             >
-              {option.badge ? (
-                <span className="cardBadge">{option.badge}</span>
-              ) : null}
+              {option.badge ? <span className="cardBadge">{option.badge}</span> : null}
               <div className="cardIcon">{option.icon}</div>
               <h2>{option.title}</h2>
               <p>{option.description}</p>
@@ -93,35 +159,27 @@ export default function SignupLandingPage() {
         </section>
 
         <div className="loginRow">
-          Already have an account?{" "}
-          <Link href={`/login?next=${encodeURIComponent(parentNext)}`}>
-            Log in
-          </Link>
+          Already have an account? <Link href={loginHref}>Log in</Link>
         </div>
       </div>
 
       <style jsx global>{`
         .signupPage {
           min-height: 100vh;
-          padding: 58px 18px 78px;
+          padding: 118px 18px 78px;
           color: #241235;
           background:
-            radial-gradient(
-              circle at 8% 0%,
-              rgba(124, 58, 237, 0.13),
-              transparent 30%
-            ),
+            radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.13), transparent 30%),
             linear-gradient(180deg, #fffaff, #f6efff);
         }
-        .signupContainer {
-          width: min(1180px, 100%);
-          margin: 0 auto;
+        .signupPage.financialEducationSignup {
+          background:
+            radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.12), transparent 30%),
+            radial-gradient(circle at 92% 10%, rgba(217, 164, 65, 0.11), transparent 28%),
+            linear-gradient(180deg, #fffdf9, #f8f2ff);
         }
-        .signupHero {
-          max-width: 760px;
-          margin: 0 auto 40px;
-          text-align: center;
-        }
+        .signupContainer { width: min(1180px, 100%); margin: 0 auto; }
+        .signupHero { max-width: 760px; margin: 0 auto 40px; text-align: center; }
         .signupHero > span {
           display: inline-flex;
           padding: 9px 15px;
@@ -131,23 +189,11 @@ export default function SignupLandingPage() {
           font-size: 13px;
           font-weight: 950;
         }
-        .signupHero h1 {
-          margin: 18px 0 0;
-          font-size: clamp(42px, 6vw, 66px);
-          line-height: 1;
-          letter-spacing: -0.06em;
-        }
-        .signupHero p {
-          margin: 16px auto 0;
-          color: #6d647c;
-          font-size: 18px;
-          line-height: 1.65;
-        }
-        .signupCards {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 22px;
-        }
+        .financialEducationSignup .signupHero > span { color: #6a4710; background: #fff1c7; }
+        .signupHero h1 { margin: 18px 0 0; font-size: clamp(42px, 6vw, 66px); line-height: 1; letter-spacing: -0.06em; }
+        .signupHero p { margin: 16px auto 0; color: #6d647c; font-size: 18px; line-height: 1.65; }
+        .signupCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+        .signupCards.financialCards { width: min(820px, 100%); margin: 0 auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .signupCard {
           position: relative;
           min-height: 440px;
@@ -160,31 +206,18 @@ export default function SignupLandingPage() {
           background: rgba(255, 255, 255, 0.97);
           border: 2px solid transparent;
           box-shadow: 0 24px 70px rgba(55, 35, 95, 0.09);
-          transition:
-            transform 180ms ease,
-            border-color 180ms ease,
-            box-shadow 180ms ease;
+          transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
         }
-        .signupCard:hover {
-          transform: translateY(-5px);
-          border-color: rgba(124, 58, 237, 0.45);
-          box-shadow: 0 32px 80px rgba(74, 44, 120, 0.15);
-        }
+        .signupCard:hover { transform: translateY(-5px); border-color: rgba(124, 58, 237, 0.45); box-shadow: 0 32px 80px rgba(74, 44, 120, 0.15); }
         .signupCard.featured {
           border-color: #7c3aed;
-          background:
-            radial-gradient(
-              circle at top right,
-              rgba(124, 58, 237, 0.12),
-              transparent 34%
-            ),
-            #fff;
+          background: radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 34%), #fff;
         }
         .cardBadge {
           position: absolute;
           top: 20px;
           right: 20px;
-          max-width: 150px;
+          max-width: 160px;
           padding: 7px 10px;
           border-radius: 999px;
           color: #fff;
@@ -193,89 +226,48 @@ export default function SignupLandingPage() {
           font-weight: 950;
           text-align: center;
         }
-        .cardIcon {
-          width: 60px;
-          height: 60px;
-          display: grid;
-          place-items: center;
-          margin-bottom: 21px;
-          border-radius: 19px;
-          background: #f2eaff;
-          font-size: 30px;
-        }
-        .signupCard h2 {
-          margin: 0;
-          font-size: 28px;
-          line-height: 1.05;
-          letter-spacing: -0.04em;
-        }
-        .signupCard p {
-          min-height: 52px;
-          margin: 13px 0 0;
-          color: #685d74;
-          line-height: 1.6;
-        }
-        .signupCard ul {
-          flex: 1;
-          display: grid;
-          align-content: start;
-          gap: 10px;
-          margin: 23px 0 0;
-          padding: 0;
-          color: #51475c;
-          list-style: none;
-          font-weight: 750;
-        }
-        .signupCard li {
-          line-height: 1.5;
-        }
-        .cardAction {
-          min-height: 55px;
-          margin-top: 26px;
-          padding: 0 18px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-radius: 17px;
-          color: #fff;
-          background: linear-gradient(135deg, #7c3aed, #5b21b6);
-          font-size: 15px;
-          font-weight: 950;
-        }
-        .cardAction b {
-          font-size: 20px;
-        }
-        .loginRow {
-          margin-top: 38px;
-          text-align: center;
-          color: #6d647c;
-          font-weight: 750;
-        }
-        .loginRow a {
-          color: #6d28d9;
-          font-weight: 950;
-        }
+        .cardIcon { width: 60px; height: 60px; display: grid; place-items: center; margin-bottom: 21px; border-radius: 19px; background: #f2eaff; font-size: 30px; }
+        .signupCard h2 { margin: 0; font-size: 28px; line-height: 1.05; letter-spacing: -0.04em; }
+        .signupCard p { min-height: 52px; margin: 13px 0 0; color: #685d74; line-height: 1.6; }
+        .signupCard ul { flex: 1; display: grid; align-content: start; gap: 10px; margin: 23px 0 0; padding: 0; color: #51475c; list-style: none; font-weight: 750; }
+        .signupCard li { line-height: 1.5; }
+        .cardAction { min-height: 55px; margin-top: 26px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-radius: 17px; color: #fff; background: linear-gradient(135deg, #7c3aed, #5b21b6); font-size: 15px; font-weight: 950; }
+        .cardAction b { font-size: 20px; }
+        .loginRow { margin-top: 38px; text-align: center; color: #6d647c; font-weight: 750; }
+        .loginRow a { color: #6d28d9; font-weight: 950; }
         @media (max-width: 920px) {
-          .signupCards {
-            grid-template-columns: 1fr;
-          }
-          .signupCard {
-            min-height: 0;
-          }
-          .signupCard p {
-            min-height: 0;
-          }
+          .signupCards, .signupCards.financialCards { grid-template-columns: 1fr; }
+          .signupCards.financialCards { width: min(620px, 100%); }
+          .signupCard { min-height: 0; }
+          .signupCard p { min-height: 0; }
         }
         @media (max-width: 560px) {
-          .signupPage {
-            padding: 36px 13px 65px;
-          }
-          .signupCard {
-            padding: 24px 20px;
-            border-radius: 26px;
-          }
+          .signupPage { padding: 100px 13px 65px; }
+          .signupCard { padding: 24px 20px; border-radius: 26px; }
         }
       `}</style>
+    </main>
+  );
+}
+
+function safeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
+  return value;
+}
+
+function SignupLoading() {
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#faf7ff",
+        color: "#5b21b6",
+        fontWeight: 900,
+      }}
+    >
+      Preparing your Fountain Prep journey...
     </main>
   );
 }

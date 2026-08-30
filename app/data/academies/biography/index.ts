@@ -10,22 +10,33 @@ import {
 export const biographyAcademy =
   createAcademy({
     code: "biography",
-    title: "Biography of Greatness",
+
+    title:
+      "Biography of Greatness",
+
     description:
-      "Immersive narrated biographies that turn remarkable lives into lessons in courage, curiosity, service, enterprise and leadership.",
+      "Cinematic biographies of notable wealth creators, exploring where they started, what they owned, the businesses behind their fortunes, pivotal decisions, capital allocation, risk and legacy.",
+
     programmes: [
       createProgramme({
-        id: "greatness-foundation",
-        academy: "biography",
-        title: "Greatness Foundation",
+        id:
+          "greatness-foundation",
+
+        academy:
+          "biography",
+
+        title:
+          "The Lives Behind the Capital",
+
         description:
-          "Meet remarkable people, understand the choices behind their impact and reflect on lessons for your own life.",
+          "Travel country by country through documented wealth journeys and discover the financial ideas hidden inside real businesses, ownership structures and major capital decisions.",
+
         suitableAgeGroups: [
-          "6-9",
           "10-13",
           "14-17",
           "adult",
         ],
+
         courses: [
           biographyFoundationCourse,
         ],

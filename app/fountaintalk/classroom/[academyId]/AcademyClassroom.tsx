@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  useEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -29,6 +30,7 @@ import type {
 type AcademyClassroomProps = {
   academyId: NonLanguageAcademyId;
   studentId: string | null;
+  guestMode?: boolean;
 };
 
 const statusLabels = {
@@ -77,6 +79,7 @@ const poseImages: Record<AyoPose, string> = {
 export default function AcademyClassroom({
   academyId,
   studentId,
+  guestMode = false,
 }: AcademyClassroomProps) {
   const [raiseHandOpen, setRaiseHandOpen] = useState(false);
   const [imageFallback, setImageFallback] = useState(false);
@@ -85,23 +88,35 @@ export default function AcademyClassroom({
   learner,
   loading: learnerLoading,
   error: learnerError,
-} = useSelectedLearner(studentId);
+} = useSelectedLearner(
+  studentId,
+  {
+    skip: guestMode,
+  },
+);
 
 const {
   access: subscriptionAccess,
   loading: subscriptionLoading,
   error: subscriptionError,
-} = useAcademySubscription(studentId);
+} = useAcademySubscription(
+  studentId,
+  {
+    skip: guestMode,
+  },
+);
 
   const classroom = useAcademyClassroom({
   academyId,
   learner,
   subscriptionAccess,
+  guestMode,
 });
 
   const {
     academy,
     course,
+    guestTrialComplete,
     isAgeEligible,
     isCourseAccessible,
 requiredAccessTier,
@@ -137,6 +152,7 @@ availableAccessTier,
     startLesson,
     toggleMicrophone,
     repeatTutorMessage,
+    restartLesson,
     stopSpeech,
     submitAnswer,
     askAyo,
@@ -148,6 +164,30 @@ availableAccessTier,
     tutorStatus === "thinking" ||
     tutorStatus === "speaking" ||
     isSubmitting;
+
+  useEffect(() => {
+    if (
+      !guestMode ||
+      academyId !== "wealth" ||
+      !guestTrialComplete
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setTimeout(() => {
+        window.location.href =
+          "/classroom/academy/guest-finance";
+      }, 3200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    academyId,
+    guestMode,
+    guestTrialComplete,
+  ]);
 
   const theme = {
     "--academy-accent": academy.accent,
@@ -233,119 +273,165 @@ availableAccessTier,
     step.title,
   ]);
 
-  if (learnerLoading) {
-  return (
-    <main className="classroom-loading">
-      <div className="loading-mark">
-        <span />
-        <span />
-        <span />
-      </div>
+  const slideDensity = useMemo(() => {
+    const titleLength = scene.title.trim().length;
+    const bodyLength = scene.body.trim().length;
+    const outcomeLength = scene.outcomes.reduce(
+      (total, outcome) => total + outcome.length,
+      0
+    );
 
-      <strong>Loading learner profile</strong>
+    const visualWeight =
+      session.phase === "teaching" && (step.visual || step.code)
+        ? 80
+        : 0;
 
-      <p>
-        Checking the learner’s academy pathway and age suitability...
-      </p>
-    </main>
-  );
-}
+    const score =
+      titleLength * 1.7 +
+      bodyLength * 0.45 +
+      outcomeLength * 0.55 +
+      scene.outcomes.length * 24 +
+      visualWeight;
 
-if (learnerError || !learner) {
-  return (
-    <main className="classroom-loading">
-      <strong>Unable to open this academy</strong>
+    if (
+      score >= 390 ||
+      titleLength >= 105 ||
+      scene.outcomes.length >= 4
+    ) {
+      return "compact";
+    }
 
-      <p role="alert">
-        {learnerError ??
-          "The selected learner could not be loaded."}
-      </p>
+    if (
+      score >= 255 ||
+      titleLength >= 72 ||
+      scene.outcomes.length >= 3
+    ) {
+      return "dense";
+    }
 
-      <Link href="/subjects" className="topbar-link">
-        Return to Subjects
-      </Link>
-    </main>
-  );
-}
+    return "normal";
+  }, [
+    scene.body,
+    scene.outcomes,
+    scene.title,
+    session.phase,
+    step.code,
+    step.visual,
+  ]);
 
-if (subscriptionLoading) {
-  return (
-    <main className="classroom-loading">
-      <div className="loading-mark">
-        <span />
-        <span />
-        <span />
-      </div>
+  if (!guestMode && learnerLoading) {
+    return (
+      <main className="classroom-loading">
+        <div className="loading-mark">
+          <span />
+          <span />
+          <span />
+        </div>
 
-      <strong>Checking academy access</strong>
+        <strong>Loading learner profile</strong>
 
-      <p>
-        Confirming the learner’s subscription and free lesson access...
-      </p>
-    </main>
-  );
-}
+        <p>
+          Checking the learner’s academy pathway and age suitability...
+        </p>
+      </main>
+    );
+  }
 
-if (subscriptionError || !subscriptionAccess) {
-  return (
-    <main className="classroom-loading">
-      <strong>Unable to confirm academy access</strong>
+  if (!guestMode && (learnerError || !learner)) {
+    return (
+      <main className="classroom-loading">
+        <strong>Unable to open this academy</strong>
 
-      <p role="alert">
-        {subscriptionError ??
-          "Subscription access could not be loaded."}
-      </p>
+        <p role="alert">
+          {learnerError ??
+            "The selected learner could not be loaded."}
+        </p>
 
-      <Link href="/pricing" className="topbar-link">
-        View academy plans
-      </Link>
-    </main>
-  );
-}
+        <Link href="/subjects" className="topbar-link">
+          Return to Subjects
+        </Link>
+      </main>
+    );
+  }
 
-if (!isAgeEligible) {
-  return (
-    <main className="classroom-loading">
-      <strong>
-        This course is not designed for this learner’s age group
-      </strong>
+  if (!guestMode && subscriptionLoading) {
+    return (
+      <main className="classroom-loading">
+        <div className="loading-mark">
+          <span />
+          <span />
+          <span />
+        </div>
 
-      <p>
-        {course.title} currently supports ages{" "}
-        {course.ageGroups.join(", ")}. We will offer an appropriate
-        pathway where the academy supports multiple age levels.
-      </p>
+        <strong>Checking academy access</strong>
 
-      <Link href="/subjects" className="topbar-link">
-        Choose another academy
-      </Link>
-    </main>
-  );
-}
+        <p>
+          Confirming the learner’s subscription and free lesson access...
+        </p>
+      </main>
+    );
+  }
 
-if (!isCourseAccessible) {
-  return (
-    <main className="classroom-loading">
-      <strong>This course requires an upgrade</strong>
+  if (!guestMode && (subscriptionError || !subscriptionAccess)) {
+    return (
+      <main className="classroom-loading">
+        <strong>Unable to confirm academy access</strong>
 
-      <p>
-        {course.title} requires the {requiredAccessTier} tier.
-        This learner currently has {availableAccessTier} access.
-      </p>
+        <p role="alert">
+          {subscriptionError ??
+            "Subscription access could not be loaded."}
+        </p>
 
-      <Link
-        href={
-          studentId
-            ? `/pricing?studentId=${encodeURIComponent(studentId)}&product=academies`
-            : "/pricing?product=academies"
-        }
-        className="topbar-link"
-      >
-        View subscription plans
-      </Link>
-    </main>
-  );
-}
+        <Link href="/pricing" className="topbar-link">
+          View academy plans
+        </Link>
+      </main>
+    );
+  }
+
+  if (!isAgeEligible) {
+    return (
+      <main className="classroom-loading">
+        <strong>
+          This course is not designed for this learner’s age group
+        </strong>
+
+        <p>
+          {course.title} currently supports ages{" "}
+          {course.ageGroups.join(", ")}. We will offer an appropriate
+          pathway where the academy supports multiple age levels.
+        </p>
+
+        <Link href="/subjects" className="topbar-link">
+          Choose another academy
+        </Link>
+      </main>
+    );
+  }
+
+  if (!guestMode && !isCourseAccessible) {
+    return (
+      <main className="classroom-loading">
+        <strong>This course requires an upgrade</strong>
+
+        <p>
+          {course.title} requires the {requiredAccessTier} tier.
+          This learner currently has {availableAccessTier} access.
+        </p>
+
+        <Link
+          href={
+            studentId
+              ? `/pricing?studentId=${encodeURIComponent(studentId)}&product=academies`
+              : "/pricing?product=academies"
+          }
+          className="topbar-link"
+        >
+          View subscription plans
+        </Link>
+      </main>
+    );
+  }
 
   if (!hydrated) {
     return (
@@ -361,11 +447,128 @@ if (!isCourseAccessible) {
     );
   }
 
+  if (
+    guestMode &&
+    academyId === "wealth" &&
+    guestTrialComplete
+  ) {
+    return (
+      <main className="classroom-loading" style={theme}>
+        <div
+          style={{
+            width: "min(760px, calc(100% - 32px))",
+            padding: "clamp(28px, 5vw, 48px)",
+            borderRadius: "32px",
+            color: "#ffffff",
+            background:
+              "linear-gradient(145deg, #17110a, #2a1b0c)",
+            boxShadow:
+              "0 30px 90px rgba(0,0,0,0.25)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#f2c96d",
+              fontSize: "11px",
+              fontWeight: 900,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            Complimentary experience 1 of 2 complete
+          </p>
+
+          <h1
+            style={{
+              margin: "14px 0 12px",
+              fontSize: "clamp(36px, 6vw, 62px)",
+              lineHeight: 1,
+              letterSpacing: "-0.045em",
+            }}
+          >
+            Excellent work. Your next class is ready.
+          </h1>
+
+          <p
+            style={{
+              maxWidth: "620px",
+              margin: 0,
+              color: "#ddd4c9",
+              fontSize: "17px",
+              lineHeight: 1.65,
+            }}
+          >
+            Ayo is taking you into Fountain Prep&apos;s main Financial
+            Literacy experience now. Your first complimentary completion
+            has been saved.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px",
+              marginTop: "28px",
+            }}
+          >
+            <Link
+              href="/classroom/academy/guest-finance"
+              style={{
+                minHeight: "52px",
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "0 22px",
+                borderRadius: "999px",
+                color: "#28190c",
+                background: "#efd495",
+                textDecoration: "none",
+                fontWeight: 900,
+              }}
+            >
+              Continue now →
+            </Link>
+
+            <Link
+              href="/financial-education"
+              style={{
+                minHeight: "52px",
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "0 22px",
+                borderRadius: "999px",
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.18)",
+                textDecoration: "none",
+                fontWeight: 800,
+              }}
+            >
+              Return to Financial Education
+            </Link>
+          </div>
+
+          <p
+            style={{
+              margin: "18px 0 0",
+              color: "#9f9488",
+              fontSize: "12px",
+            }}
+          >
+            Continuing automatically in a moment…
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="academy-classroom" style={theme}>
       <div className="classroom-shell">
         <header className="classroom-topbar">
-          <Link href="/fountaintalk" className="topbar-link">
+          <Link
+            href={guestMode ? "/academies/financial-literacy" : "/fountaintalk"}
+            className="topbar-link"
+          >
             <span>←</span>
             Leave classroom
           </Link>
@@ -399,13 +602,20 @@ if (!isCourseAccessible) {
               </div>
             </button>
 
-            <Link
-              href="/fountaintalk/progress"
-              className="progress-chip"
-            >
-              Progress
-              <strong>{courseProgressPercentage}%</strong>
-            </Link>
+            {guestMode ? (
+              <div className="progress-chip">
+                Complimentary
+                <strong>1 of 2</strong>
+              </div>
+            ) : (
+              <Link
+                href="/fountaintalk/progress"
+                className="progress-chip"
+              >
+                Progress
+                <strong>{courseProgressPercentage}%</strong>
+              </Link>
+            )}
           </div>
         </header>
 
@@ -454,7 +664,9 @@ if (!isCourseAccessible) {
             <div className="stage-glow stage-glow-one" />
             <div className="stage-glow stage-glow-two" />
 
-            <article className="premium-slide">
+            <article
+              className={`premium-slide density-${slideDensity}`}
+            >
               <div className="slide-topline">
                 <span>{scene.label}</span>
                 <small>
@@ -564,6 +776,18 @@ if (!isCourseAccessible) {
                 <p>{tutorMessage}</p>
 
                 <div className="conversation-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopSpeech();
+                      goToPreviousStep();
+                    }}
+                    disabled={!canGoBack}
+                    title="Return to the previous teaching slide and hear it again"
+                  >
+                    ← Previous
+                  </button>
+
                   {tutorStatus === "speaking" ? (
                     <button type="button" onClick={stopSpeech}>
                       Pause
@@ -580,6 +804,17 @@ if (!isCourseAccessible) {
 
                   <button
                     type="button"
+                    onClick={() => {
+                      stopSpeech();
+                      restartLesson();
+                    }}
+                    title="Replay this lesson from slide one without deleting progress"
+                  >
+                    ↻ Restart lesson
+                  </button>
+
+                  <button
+                    type="button"
                     className={raiseHandOpen ? "is-active" : ""}
                     onClick={() =>
                       setRaiseHandOpen((current) => !current)
@@ -593,7 +828,11 @@ if (!isCourseAccessible) {
 
             {!lessonStarted && !progress.completedAt && (
               <div className="start-panel">
-                <span>Private, voice-led learning</span>
+                <span>
+                  {guestMode
+                    ? "Complimentary Foundation experience"
+                    : "Private, voice-led learning"}
+                </span>
                 <h2>Enter your classroom</h2>
                 <p>
                   Ayo will begin teaching immediately. Slides and visual
@@ -619,8 +858,9 @@ if (!isCourseAccessible) {
                 </button>
 
                 <small>
-                  Your microphone stays closed during the lecture until
-                  you choose to raise your hand.
+                  {guestMode
+                    ? "No account required for this complimentary experience."
+                    : "Your microphone stays closed during the lecture until you choose to raise your hand."}
                 </small>
               </div>
             )}
@@ -1138,7 +1378,7 @@ if (!isCourseAccessible) {
 
         .premium-slide {
           position: absolute;
-          inset: 28px 39% 132px 28px;
+          inset: 28px 39% 126px 28px;
           z-index: 1;
           padding: clamp(28px, 3vw, 48px);
           color: #211826;
@@ -1148,7 +1388,28 @@ if (!isCourseAccessible) {
           border: 1px solid rgba(255, 255, 255, 0.72);
           border-radius: 26px;
           box-shadow: 0 34px 90px rgba(0, 0, 0, 0.34);
-          overflow: hidden;
+          overflow-x: hidden;
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color:
+            color-mix(in srgb, var(--academy-accent) 38%, transparent)
+            transparent;
+          overscroll-behavior: contain;
+          scroll-padding-bottom: 28px;
+        }
+
+        .premium-slide::-webkit-scrollbar {
+          width: 7px;
+        }
+
+        .premium-slide::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .premium-slide::-webkit-scrollbar-thumb {
+          background:
+            color-mix(in srgb, var(--academy-accent) 28%, transparent);
+          border-radius: 999px;
         }
 
         .premium-slide::after {
@@ -1160,6 +1421,7 @@ if (!isCourseAccessible) {
           top: -115px;
           border: 32px solid color-mix(in srgb, var(--academy-accent) 11%, transparent);
           border-radius: 50%;
+          pointer-events: none;
         }
 
         .slide-topline {
@@ -1192,6 +1454,119 @@ if (!isCourseAccessible) {
           margin-top: clamp(34px, 5vh, 64px);
           position: relative;
           z-index: 1;
+        }
+
+        .premium-slide.density-dense {
+          padding: clamp(24px, 2.4vw, 38px);
+        }
+
+        .premium-slide.density-compact {
+          padding: clamp(20px, 2vw, 32px);
+        }
+
+        .density-dense .slide-content {
+          margin-top: clamp(22px, 3vh, 36px);
+        }
+
+        .density-compact .slide-content {
+          margin-top: clamp(16px, 2vh, 28px);
+        }
+
+        .density-dense .slide-content h1 {
+          font-size: clamp(31px, 3.2vw, 52px);
+          line-height: 1.01;
+          letter-spacing: -0.048em;
+        }
+
+        .density-compact .slide-content h1 {
+          font-size: clamp(26px, 2.7vw, 44px);
+          line-height: 1.04;
+          letter-spacing: -0.042em;
+        }
+
+        .density-dense .slide-content > p {
+          margin-top: 13px;
+          font-size: clamp(12.5px, 1vw, 16px);
+          line-height: 1.48;
+        }
+
+        .density-compact .slide-content > p {
+          margin-top: 10px;
+          font-size: clamp(11.5px, .9vw, 14.5px);
+          line-height: 1.42;
+        }
+
+        .density-dense .outcome-grid {
+          margin-top: 17px;
+          gap: 8px;
+        }
+
+        .density-compact .outcome-grid {
+          margin-top: 13px;
+          gap: 7px;
+        }
+
+        .density-dense .outcome-grid > div {
+          min-height: 60px;
+          padding: 10px;
+        }
+
+        .density-compact .outcome-grid > div {
+          min-height: 52px;
+          padding: 8px 10px;
+        }
+
+        .density-dense .outcome-grid strong {
+          font-size: 10px;
+          line-height: 1.35;
+        }
+
+        .density-compact .outcome-grid strong {
+          font-size: 9px;
+          line-height: 1.3;
+        }
+
+        .density-dense .scene-visual,
+        .density-dense .visual-card {
+          margin-top: 17px;
+          padding: 14px;
+        }
+
+        .density-compact .scene-visual,
+        .density-compact .visual-card {
+          margin-top: 12px;
+          padding: 11px;
+        }
+
+        .density-compact .scene-symbol,
+        .density-compact .visual-symbol {
+          width: 42px;
+          height: 42px;
+          font-size: 21px;
+        }
+
+        .density-compact .animated-card-grid,
+        .density-compact .comparison-grid {
+          margin-top: 11px;
+          gap: 6px;
+        }
+
+        .density-compact .animated-card-grid > div,
+        .density-compact .comparison-grid > div {
+          min-height: 46px;
+          padding: 8px;
+        }
+
+        .density-compact .diagram-orbit {
+          height: 205px;
+          transform: scale(.84);
+          transform-origin: top center;
+          margin-bottom: -34px;
+        }
+
+        .density-compact .chart-bars {
+          height: 145px;
+          margin-top: 10px;
         }
 
         .slide-eyebrow {
@@ -1338,6 +1713,30 @@ if (!isCourseAccessible) {
           white-space: pre-wrap;
           font-size: 12px;
           line-height: 1.7;
+        }
+
+        .premium-slide .slide-content {
+          padding-bottom: 24px;
+          zoom: 0.88;
+        }
+
+        .premium-slide.density-dense .slide-content {
+          zoom: 0.82;
+        }
+
+        .premium-slide.density-compact .slide-content {
+          zoom: 0.76;
+        }
+
+        .premium-slide .scene-visual,
+        .premium-slide .visual-card {
+          max-height: 230px;
+          overflow: hidden;
+        }
+
+        .premium-slide .scene-visual > *,
+        .premium-slide .visual-card > * {
+          max-width: 100%;
         }
 
         .premium-slide footer {
@@ -2037,6 +2436,29 @@ if (!isCourseAccessible) {
 
           .slide-content h1 {
             font-size: clamp(33px, 10vw, 48px);
+          }
+
+          .premium-slide .slide-content,
+          .premium-slide.density-dense .slide-content,
+          .premium-slide.density-compact .slide-content {
+            zoom: 1;
+          }
+
+          .density-dense .slide-content h1 {
+            font-size: clamp(29px, 8.5vw, 42px);
+          }
+
+          .density-compact .slide-content h1 {
+            font-size: clamp(25px, 7.5vw, 36px);
+          }
+
+          .density-dense .slide-content,
+          .density-compact .slide-content {
+            margin-top: 20px;
+          }
+
+          .density-compact .outcome-grid > div {
+            min-height: 48px;
           }
 
           .outcome-grid { grid-template-columns: 1fr; }

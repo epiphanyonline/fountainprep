@@ -8,6 +8,10 @@ import {
   useState,
 } from "react";
 
+import {
+  getAcademyGuestKey,
+} from "@/app/lib/academyGuest";
+
 import { getAcademy } from "../data/academyRegistry";
 import { getStarterCourse } from "../data/starterCurricula";
 
@@ -38,6 +42,7 @@ type UseAcademyClassroomInput = {
   academyId: NonLanguageAcademyId;
   learner: SelectedAcademyLearner | null;
   subscriptionAccess: AcademySubscriptionAccess | null;
+  guestMode?: boolean;
 };
 
 const DEFAULT_LEARNER_NAME = "Learner";
@@ -179,6 +184,7 @@ export function useAcademyClassroom({
   academyId,
   learner,
   subscriptionAccess,
+  guestMode = false,
 }: UseAcademyClassroomInput) {
   const learnerId = learner?.id ?? "demo-learner";
   const learnerAgeGroup = learner?.ageGroup ?? "adult";
@@ -225,6 +231,10 @@ const isCourseAccessible =
   const [microphoneMode, setMicrophoneMode] =
     useState<MicrophoneMode>("muted");
   const [ayoPose, setAyoPose] = useState<AyoPose>("neutral");
+  const [
+  guestTrialComplete,
+  setGuestTrialComplete,
+] = useState(false);
 
   useEffect(() => {
   if (!learner) {
@@ -252,8 +262,13 @@ const isCourseAccessible =
   learner,
 ]);
 
-  const speechRef =
-    useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef =
+    useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef =
+    useRef<string | null>(null);
+  const speechAbortRef =
+    useRef<AbortController | null>(null);
+  const speechRequestIdRef = useRef(0);
   const speechCompletionRef = useRef<(() => void) | null>(null);
   const recognitionRef = useRef<{
     stop: () => void;
@@ -463,6 +478,31 @@ const isCourseAccessible =
   }, [hydrated, progress, progressStorageKey]);
 
   useEffect(() => {
+  if (
+    !hydrated ||
+    !guestMode ||
+    academyId !== "wealth"
+  ) {
+    return;
+  }
+
+  const wealthTrialAlreadyCompleted =
+    progress.completedLessonIds.includes(
+      "wealth-needs-wants",
+    );
+
+  if (wealthTrialAlreadyCompleted) {
+    setGuestTrialComplete(true);
+  }
+}, [
+  academyId,
+  guestMode,
+  hydrated,
+  progress.completedLessonIds,
+]);
+
+
+  useEffect(() => {
     if (!hydrated) return;
 
     window.localStorage.setItem(
@@ -502,20 +542,36 @@ const isCourseAccessible =
     }
   }, []);
 
-  const stopSpeech = useCallback(() => {
-    clearAutoAdvance();
+  const releaseAudioUrl = useCallback(() => {
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
 
-    if (
-      typeof window !== "undefined" &&
-      "speechSynthesis" in window
-    ) {
-      window.speechSynthesis.cancel();
+  const stopCurrentAudio = useCallback(() => {
+    speechRequestIdRef.current += 1;
+
+    speechAbortRef.current?.abort();
+    speechAbortRef.current = null;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current = null;
     }
 
-    speechRef.current = null;
+    releaseAudioUrl();
+  }, [releaseAudioUrl]);
+
+  const stopSpeech = useCallback(() => {
+    clearAutoAdvance();
+    stopCurrentAudio();
+
     speechCompletionRef.current = null;
     setTutorStatus("ready");
-  }, [clearAutoAdvance]);
+  }, [clearAutoAdvance, stopCurrentAudio]);
 
   const speak = useCallback(
     (
@@ -525,74 +581,212 @@ const isCourseAccessible =
     ) => {
       clearAutoAdvance();
 
-      if (
-        typeof window === "undefined" ||
-        !("speechSynthesis" in window)
-      ) {
+      const speechText = cleanForSpeech(text);
+
+      if (!speechText) {
         setTutorStatus(finalStatus);
         onComplete?.();
         return;
       }
 
-      window.speechSynthesis.cancel();
-      speechCompletionRef.current = onComplete ?? null;
+      stopCurrentAudio();
 
-      const utterance = new SpeechSynthesisUtterance(
-        cleanForSpeech(text)
-      );
-      const voices = window.speechSynthesis.getVoices();
+      const requestId =
+        speechRequestIdRef.current + 1;
 
-      utterance.voice =
-        voices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en-gb")
-        ) ??
-        voices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en")
-        ) ??
-        null;
+      speechRequestIdRef.current = requestId;
+      speechCompletionRef.current =
+        onComplete ?? null;
 
-      utterance.lang = utterance.voice?.lang ?? "en-GB";
-      utterance.rate =
-  learnerAgeGroup === "3-5"
-    ? 0.78
-    : learnerAgeGroup === "6-9"
-      ? 0.84
-      : 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+      const controller = new AbortController();
 
-      utterance.onstart = () => setTutorStatus("speaking");
+      speechAbortRef.current = controller;
 
-      utterance.onend = () => {
-        speechRef.current = null;
-        setTutorStatus(finalStatus);
+      setErrorMessage("");
+      setTutorStatus("thinking");
 
-        const completion = speechCompletionRef.current;
-        speechCompletionRef.current = null;
-        completion?.();
-      };
+      void (async () => {
+        try {
+          const response = await fetch(
+            "/api/academy/speech",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: speechText,
+              }),
+              signal: controller.signal,
+            }
+          );
 
-      utterance.onerror = (event) => {
-        speechRef.current = null;
+          if (!response.ok) {
+            const responseText =
+              await response.text();
 
-        if (
-          event.error === "canceled" ||
-          event.error === "interrupted"
-        ) {
-          return;
+            let message =
+              "Ayo's natural teaching voice is temporarily unavailable.";
+
+            try {
+              const parsed =
+                responseText
+                  ? (JSON.parse(responseText) as {
+                      error?: string;
+                    })
+                  : {};
+
+              if (parsed.error) {
+                message = parsed.error;
+              }
+            } catch {
+              // Keep the default message.
+            }
+
+            throw new Error(message);
+          }
+
+          const blob = await response.blob();
+
+          if (
+            controller.signal.aborted ||
+            requestId !== speechRequestIdRef.current
+          ) {
+            return;
+          }
+
+          releaseAudioUrl();
+
+          const audioUrl =
+            URL.createObjectURL(blob);
+
+          audioUrlRef.current = audioUrl;
+
+          const audio = new Audio(audioUrl);
+
+          audio.preload = "auto";
+          audioRef.current = audio;
+
+          audio.onplay = () => {
+            if (
+              requestId !== speechRequestIdRef.current
+            ) {
+              return;
+            }
+
+            setTutorStatus("speaking");
+          };
+
+          audio.onended = () => {
+            if (
+              requestId !== speechRequestIdRef.current
+            ) {
+              return;
+            }
+
+            audioRef.current = null;
+            speechAbortRef.current = null;
+            releaseAudioUrl();
+
+            setTutorStatus(finalStatus);
+
+            const completion =
+              speechCompletionRef.current;
+
+            speechCompletionRef.current = null;
+            completion?.();
+          };
+
+          audio.onerror = () => {
+            if (
+              requestId !== speechRequestIdRef.current
+            ) {
+              return;
+            }
+
+            audioRef.current = null;
+            speechAbortRef.current = null;
+            releaseAudioUrl();
+
+            setTutorStatus(finalStatus);
+            setErrorMessage(
+              "Ayo's natural teaching voice could not be played. The lesson will continue using the on-screen caption."
+            );
+
+            const completion =
+              speechCompletionRef.current;
+
+            speechCompletionRef.current = null;
+            completion?.();
+          };
+
+          try {
+            await audio.play();
+          } catch (playbackError) {
+            if (
+              controller.signal.aborted ||
+              requestId !== speechRequestIdRef.current
+            ) {
+              return;
+            }
+
+            audioRef.current = null;
+            speechAbortRef.current = null;
+            releaseAudioUrl();
+
+            setTutorStatus(finalStatus);
+
+            const isAutoplayBlock =
+              playbackError instanceof DOMException &&
+              playbackError.name === "NotAllowedError";
+
+            setErrorMessage(
+              isAutoplayBlock
+                ? "Your browser blocked automatic audio. Tap Hear again to let Ayo continue with the natural teaching voice."
+                : "Ayo's natural teaching voice could not be played. Tap Hear again to retry."
+            );
+
+            if (!isAutoplayBlock) {
+              const completion =
+                speechCompletionRef.current;
+
+              speechCompletionRef.current = null;
+              completion?.();
+            }
+          }
+        } catch (error) {
+          if (
+            controller.signal.aborted ||
+            requestId !== speechRequestIdRef.current
+          ) {
+            return;
+          }
+
+          speechAbortRef.current = null;
+          audioRef.current = null;
+          releaseAudioUrl();
+
+          setTutorStatus(finalStatus);
+
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Ayo's natural teaching voice is temporarily unavailable."
+          );
+
+          const completion =
+            speechCompletionRef.current;
+
+          speechCompletionRef.current = null;
+          completion?.();
         }
-
-        speechCompletionRef.current = null;
-        setTutorStatus("ready");
-        setErrorMessage(
-          "Ayo could not play the teaching voice. You can continue by reading the caption."
-        );
-      };
-
-      speechRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      })();
     },
-    [clearAutoAdvance]
+    [
+      clearAutoAdvance,
+      releaseAudioUrl,
+      stopCurrentAudio,
+    ]
   );
 
   const askAgainAfterSilence = useCallback(
@@ -907,8 +1101,7 @@ const isCourseAccessible =
     (purpose: ListeningPurpose = "step-answer") => {
       if (
         typeof window === "undefined" ||
-        microphoneMuted ||
-        !voiceSessionEnabled
+        microphoneMuted
       ) {
         setMicrophoneMode(
           microphoneMuted ? "muted" : "ready"
@@ -1012,7 +1205,6 @@ const isCourseAccessible =
       handleOpeningResponse,
       microphoneMuted,
       session.phase,
-      voiceSessionEnabled,
     ]
   );
 
@@ -1066,7 +1258,7 @@ const isCourseAccessible =
     speak,
   ]);
 
-  const continueToNextStep = useCallback(() => {
+  const continueToNextStep = useCallback(async () => {
     if (
       step.responseType !== "none" &&
       !feedback?.isCorrect
@@ -1076,6 +1268,184 @@ const isCourseAccessible =
       );
       return;
     }
+
+    const isCompletingLesson =
+  progress.currentStepIndex ===
+  lesson.steps.length - 1;
+
+  const isCompletingGuestWealthTrial =
+  guestMode &&
+  academyId === "wealth" &&
+  lesson.id === "wealth-needs-wants" &&
+  isCompletingLesson;
+
+if (isCompletingGuestWealthTrial) {
+  try {
+    const guestKey =
+      getAcademyGuestKey();
+
+    if (!guestKey) {
+      throw new Error(
+        "Unable to identify this complimentary learning session.",
+      );
+    }
+
+    const response =
+      await fetch(
+        "/api/academy/foundation-access",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            academy:
+              "wealth",
+
+            action:
+              "complete",
+
+            guestKey,
+
+            experienceId:
+              "wealth-needs-wants",
+          }),
+        },
+      );
+
+    const result =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error ??
+          "Unable to record complimentary completion.",
+      );
+    }
+
+    if (!result.allowed) {
+  const alreadyCompletedLocally =
+    progress.completedLessonIds.includes(
+      "wealth-needs-wants",
+    );
+
+  if (alreadyCompletedLocally) {
+    setErrorMessage("");
+    setGuestTrialComplete(true);
+
+    setSession((current) => ({
+      ...current,
+      phase: "completed",
+    }));
+
+    return;
+  }
+
+  setErrorMessage(
+    "Your complimentary Financial Literacy experience has already been completed. Returning you to Financial Education.",
+  );
+
+  setGuestTrialComplete(true);
+
+  setSession((current) => ({
+    ...current,
+    phase: "completed",
+  }));
+
+  return;
+}
+
+    const studiedAt =
+      new Date().toISOString();
+
+    setProgress((current) => {
+      const completedStepIds =
+        current.completedStepIds.includes(
+          step.id,
+        )
+          ? current.completedStepIds
+          : [
+              ...current.completedStepIds,
+              step.id,
+            ];
+
+      const lessonAlreadyCompleted =
+        current.completedLessonIds.includes(
+          lesson.id,
+        );
+
+      const completedLessonIds =
+        lessonAlreadyCompleted
+          ? current.completedLessonIds
+          : [
+              ...current.completedLessonIds,
+              lesson.id,
+            ];
+
+      return {
+        ...current,
+
+        completedStepIds,
+
+        completedLessonIds,
+
+        points:
+          current.points +
+          (
+            lessonAlreadyCompleted
+              ? 0
+              : lesson.completionPoints
+          ),
+
+        lastStudiedAt:
+          studiedAt,
+
+        currentStepIndex:
+          lesson.steps.length - 1,
+      };
+    });
+
+    const completionMessage =
+      `Excellent work, ${currentLearnerName}. ` +
+      "You have completed your first complimentary Financial Literacy experience. " +
+      "Next, I will take you inside FountainPrep's main Financial Literacy curriculum.";
+
+    setTutorMessage(
+      completionMessage,
+    );
+
+    setAyoPose(
+      "celebrate",
+    );
+
+    setSession((current) => ({
+      ...current,
+      phase: "completed",
+    }));
+
+    setGuestTrialComplete(
+      true,
+    );
+
+    speak(
+      completionMessage,
+      "completed",
+    );
+
+    return;
+  } catch (error) {
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "Unable to record complimentary completion.",
+    );
+
+    return;
+  }
+}
 
     const isCompletingCourse =
       progress.currentStepIndex === lesson.steps.length - 1 &&
@@ -1167,16 +1537,18 @@ const isCourseAccessible =
       };
     });
   }, [
-    course.title,
-    currentLearnerName,
-    feedback?.isCorrect,
-    lesson,
-    progress,
-    session.desiredOutcome,
-    speak,
-    step,
-    unit.lessons,
-  ]);
+  academyId,
+  course.title,
+  currentLearnerName,
+  feedback?.isCorrect,
+  guestMode,
+  lesson,
+  progress,
+  session.desiredOutcome,
+  speak,
+  step,
+  unit.lessons,
+]);
 
   useEffect(() => {
     continueRef.current = continueToNextStep;
@@ -1294,27 +1666,36 @@ const isCourseAccessible =
     setMicrophoneMuted((current) => {
       const nextMuted = !current;
 
+      setVoiceSessionEnabled(!nextMuted);
+
       if (nextMuted) {
         recognitionRef.current?.abort?.();
         recognitionRef.current = null;
         setMicrophoneMode("muted");
-        setTutorStatus("ready");
+
+        if (tutorStatus === "listening") {
+          setTutorStatus("ready");
+        }
       } else {
         setMicrophoneMode("ready");
+        setErrorMessage("");
 
-        if (
-          lessonStarted &&
-          tutorStatus !== "speaking" &&
-          tutorStatus !== "thinking"
-        ) {
-          window.setTimeout(() => {
-            const purpose: ListeningPurpose =
-              session.phase === "teaching"
-                ? "step-answer"
-                : "opening";
-            beginListeningRef.current(purpose);
-          }, 300);
-        }
+        window.setTimeout(() => {
+          if (
+            !lessonStarted ||
+            tutorStatus === "speaking" ||
+            tutorStatus === "thinking"
+          ) {
+            return;
+          }
+
+          const purpose: ListeningPurpose =
+            session.phase === "teaching"
+              ? "step-answer"
+              : "opening";
+
+          beginListeningRef.current(purpose);
+        }, 450);
       }
 
       return nextMuted;
@@ -1328,6 +1709,50 @@ const isCourseAccessible =
   const repeatTutorMessage = useCallback(() => {
     speak(tutorMessage);
   }, [speak, tutorMessage]);
+
+  const restartLesson = useCallback(() => {
+    clearAutoAdvance();
+    stopSpeech();
+
+    setFeedback(null);
+    setSelectedAnswer("");
+    setTypedAnswer("");
+    setAskAyoText("");
+    setAskAyoReply("");
+    setErrorMessage("");
+    silenceRetryRef.current = 0;
+
+    setProgress((current) => ({
+      ...current,
+      currentStepIndex: 0,
+      completedAt: null,
+    }));
+
+    const message = [
+      `Let us revisit ${lesson.title} from the beginning.`,
+      "I will take you through the lesson again, and your existing progress will remain saved.",
+    ].join(" ");
+
+    setTutorMessage(message);
+    setAyoPose("welcome");
+
+    setSession((current) => ({
+      ...current,
+      phase: "lesson-promise",
+    }));
+
+    speak(message, "ready", () => {
+      setSession((current) => ({
+        ...current,
+        phase: "teaching",
+      }));
+    });
+  }, [
+    clearAutoAdvance,
+    lesson.title,
+    speak,
+    stopSpeech,
+  ]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.abort?.();
@@ -1415,12 +1840,24 @@ const isCourseAccessible =
 
       recognitionRef.current?.abort?.();
 
-      if (
-        typeof window !== "undefined" &&
-        "speechSynthesis" in window
-      ) {
-        window.speechSynthesis.cancel();
+      speechRequestIdRef.current += 1;
+      speechAbortRef.current?.abort();
+      speechAbortRef.current = null;
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
       }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(
+          audioUrlRef.current
+        );
+        audioUrlRef.current = null;
+      }
+
+      speechCompletionRef.current = null;
     };
   }, [clearAutoAdvance, learnerAgeGroup]);
 
@@ -1435,6 +1872,7 @@ const isCourseAccessible =
   return {
   academy,
   course,
+  guestTrialComplete,
   isAgeEligible,
   isCourseAccessible,
   requiredAccessTier,
@@ -1474,6 +1912,7 @@ const isCourseAccessible =
     startLesson,
     toggleMicrophone,
     repeatTutorMessage,
+    restartLesson,
     stopSpeech,
     beginListening,
     stopListening,

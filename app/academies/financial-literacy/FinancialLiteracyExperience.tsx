@@ -140,7 +140,8 @@ function simulationTitle(id: FinancialLiteracySimulation) {
 
 export default function FinancialLiteracyExperience() {
   const blueprint = financialLiteracyPremiumBlueprint;
-  const startHref = "/academies/financial-literacy/start";
+  const startHref =
+  "/fountaintalk/classroom/wealth?guest=1";
   const premiumHref = "/pricing?product=academies";
 
   const [activeStage, setActiveStage] =
@@ -794,6 +795,154 @@ export default function FinancialLiteracyExperience() {
           </div>
         </div>
       </section>
+
+      <section className="signatureLabsSection">
+  <div className="sectionIntro" data-reveal>
+    <p className="eyebrow">
+      FountainPrep Signature Experiences
+    </p>
+
+    <h2>
+      Don&apos;t just study finance.
+      <br />
+      Make the decisions.
+    </h2>
+
+    <span>
+      Two full financial simulations put the
+      curriculum into practice. Each experience
+      gives you a Financial Twin who starts from
+      the same position but makes different
+      allocation decisions.
+    </span>
+  </div>
+
+  <div className="signatureLabsGrid">
+    <Link
+      href="/academies/financial-literacy/investment-lab"
+      className="signatureLabCard investmentLabCard"
+      data-reveal
+    >
+      <div className="signatureLabTop">
+        <span>INVESTMENT LAB</span>
+        <b>01</b>
+      </div>
+
+      <div className="signatureLabVisual">
+        <span>STARTING CAPITAL</span>
+        <strong>FC100,000</strong>
+        <small>
+          Fictional capital · Real portfolio reasoning
+        </small>
+      </div>
+
+      <div className="signatureLabCopy">
+        <p className="labQuestion">
+          Could you successfully invest
+          FC100,000?
+        </p>
+
+        <p>
+          Build a portfolio, react to market
+          events, buy and sell assets, manage
+          risk and experience the consequences
+          of your decisions.
+        </p>
+
+        <div className="twinTeaser">
+          <span>YOUR FINANCIAL TWIN</span>
+          <strong>
+            Same FC100,000. Same market.
+            Different decisions.
+          </strong>
+        </div>
+
+        <div className="labFeatures">
+          <span>12 market episodes</span>
+          <span>Buy & sell</span>
+          <span>Market news</span>
+          <span>Financial Twin</span>
+        </div>
+      </div>
+
+      <div className="signatureLabAction">
+        <span>Enter Investment Lab</span>
+        <b>→</b>
+      </div>
+    </Link>
+
+    <Link
+      href="/academies/financial-literacy/wealth-simulator"
+      className="signatureLabCard wealthLabCard"
+      data-reveal
+    >
+      <div className="signatureLabTop">
+        <span>LIFE &amp; WEALTH SIMULATOR</span>
+        <b>02</b>
+      </div>
+
+      <div className="wealthYears">
+        <div>
+          <span>YEAR</span>
+          <strong>01</strong>
+        </div>
+
+        <i>→</i>
+
+        <div>
+          <span>YEAR</span>
+          <strong>10</strong>
+        </div>
+      </div>
+
+      <div className="signatureLabCopy">
+        <p className="labQuestion">
+          Same income. Ten years.
+          Different choices.
+        </p>
+
+        <p>
+          Navigate career, housing, cars,
+          lifestyle, saving, investing and
+          unexpected life events — with the
+          freedom to change your mind along
+          the way.
+        </p>
+
+        <div className="twinTeaser">
+          <span>YOUR FINANCIAL TWIN</span>
+          <strong>
+            Same income. Same starting point.
+            Different allocation.
+          </strong>
+        </div>
+
+        <div className="labFeatures">
+          <span>10-year financial life</span>
+          <span>Course correction</span>
+          <span>Life events</span>
+          <span>Twin comparison</span>
+        </div>
+      </div>
+
+      <div className="signatureLabAction">
+        <span>Start Life Simulator</span>
+        <b>→</b>
+      </div>
+    </Link>
+  </div>
+
+  <div className="signatureLabsNote" data-reveal>
+    <span>◈</span>
+
+    <p>
+      Both experiences use fictional scenarios
+      for financial education. They do not
+      provide investment, tax or financial advice.
+    </p>
+  </div>
+</section>
+
 
       <section className="simulationSection">
         <div className="sectionIntro" data-reveal>
@@ -2480,6 +2629,345 @@ export default function FinancialLiteracyExperience() {
           border:1px solid rgba(255,255,255,.13);
         }
 
+        .signatureLabsSection {
+  width:min(1320px,calc(100% - 40px));
+  margin:0 auto;
+  padding:100px 0 38px;
+}
+
+.signatureLabsGrid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+}
+
+:global(.signatureLabCard) {
+  position:relative;
+  min-height:650px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:34px;
+  text-decoration:none;
+  transition:
+    transform .22s ease,
+    box-shadow .22s ease;
+}
+
+:global(.signatureLabCard:hover) {
+  transform:translateY(-5px);
+}
+
+:global(.investmentLabCard) {
+  color:#fff;
+  background:
+    radial-gradient(
+      circle at 75% 18%,
+      rgba(167,139,250,.38),
+      transparent 28%
+    ),
+    linear-gradient(
+      145deg,
+      #21142f,
+      #3d1d61 55%,
+      #5b21b6
+    );
+  box-shadow:
+    0 28px 80px
+    rgba(55,27,82,.18);
+}
+
+:global(.wealthLabCard) {
+  color:#21142f;
+  background:
+    radial-gradient(
+      circle at 82% 18%,
+      rgba(124,58,237,.15),
+      transparent 29%
+    ),
+    linear-gradient(
+      145deg,
+      #fff,
+      #faf6ff
+    );
+  border:1px solid rgba(124,58,237,.12);
+  box-shadow:
+    0 28px 80px
+    rgba(55,27,82,.09);
+}
+
+.signatureLabTop {
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  align-items:center;
+  padding:26px 28px 0;
+}
+
+.signatureLabTop span {
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+
+.investmentLabCard
+.signatureLabTop span {
+  color:#c9b4ec;
+}
+
+.wealthLabCard
+.signatureLabTop span {
+  color:#7c3aed;
+}
+
+.signatureLabTop b {
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  font-size:10px;
+}
+
+.investmentLabCard
+.signatureLabTop b {
+  color:#fff;
+  background:rgba(255,255,255,.10);
+}
+
+.wealthLabCard
+.signatureLabTop b {
+  color:#7c3aed;
+  background:#eee6fb;
+}
+
+.signatureLabVisual {
+  min-height:220px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  padding:20px;
+  text-align:center;
+}
+
+.signatureLabVisual span,
+.signatureLabVisual strong,
+.signatureLabVisual small {
+  display:block;
+}
+
+.signatureLabVisual span {
+  color:#cbb6e6;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+
+.signatureLabVisual strong {
+  margin:7px 0;
+  font-size:clamp(56px,6vw,78px);
+  line-height:1;
+  letter-spacing:-.06em;
+}
+
+.signatureLabVisual small {
+  color:#cbbddd;
+  font-size:10px;
+}
+
+.wealthYears {
+  min-height:220px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:28px;
+  padding:20px;
+}
+
+.wealthYears div {
+  width:132px;
+  height:132px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  border-radius:50%;
+  background:#fff;
+  border:1px solid #e6daee;
+  box-shadow:
+    0 16px 40px
+    rgba(58,30,80,.08);
+}
+
+.wealthYears span,
+.wealthYears strong {
+  display:block;
+}
+
+.wealthYears span {
+  color:#94869d;
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+
+.wealthYears strong {
+  margin-top:4px;
+  color:#7c3aed;
+  font-size:40px;
+  letter-spacing:-.05em;
+}
+
+.wealthYears i {
+  color:#7c3aed;
+  font-size:28px;
+  font-style:normal;
+}
+
+.signatureLabCopy {
+  flex:1;
+  padding:0 28px 24px;
+}
+
+.labQuestion {
+  margin:0 0 12px !important;
+  max-width:560px;
+  font-size:clamp(30px,3vw,42px) !important;
+  font-weight:950;
+  line-height:1.02 !important;
+  letter-spacing:-.05em;
+}
+
+.signatureLabCopy>p:not(.labQuestion) {
+  margin:0;
+  max-width:580px;
+  font-size:13px;
+  line-height:1.7;
+}
+
+.investmentLabCard
+.signatureLabCopy>p {
+  color:#ded1e8;
+}
+
+.wealthLabCard
+.signatureLabCopy>p {
+  color:#716579;
+}
+
+.twinTeaser {
+  margin-top:22px;
+  padding:17px;
+  border-radius:17px;
+}
+
+.investmentLabCard
+.twinTeaser {
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.wealthLabCard
+.twinTeaser {
+  background:#f2ebf9;
+}
+
+.twinTeaser span,
+.twinTeaser strong {
+  display:block;
+}
+
+.twinTeaser span {
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+
+.investmentLabCard
+.twinTeaser span {
+  color:#c6a9e8;
+}
+
+.wealthLabCard
+.twinTeaser span {
+  color:#7c3aed;
+}
+
+.twinTeaser strong {
+  margin-top:5px;
+  font-size:13px;
+  line-height:1.45;
+}
+
+.labFeatures {
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:18px;
+}
+
+.labFeatures span {
+  padding:7px 9px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:850;
+}
+
+.investmentLabCard
+.labFeatures span {
+  color:#e4d7ed;
+  background:rgba(255,255,255,.08);
+}
+
+.wealthLabCard
+.labFeatures span {
+  color:#6d28d9;
+  background:#f0e9f8;
+}
+
+.signatureLabAction {
+  min-height:67px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 28px;
+  border-top:1px solid;
+  font-size:12px;
+  font-weight:950;
+}
+
+.investmentLabCard
+.signatureLabAction {
+  border-color:rgba(255,255,255,.10);
+}
+
+.wealthLabCard
+.signatureLabAction {
+  border-color:#e8deee;
+}
+
+.signatureLabAction b {
+  font-size:20px;
+}
+
+.signatureLabsNote {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-top:18px;
+  color:#8b7f92;
+  text-align:center;
+}
+
+.signatureLabsNote span {
+  color:#7c3aed;
+}
+
+.signatureLabsNote p {
+  margin:0;
+  font-size:10px;
+}
+
         .mobileCta {
           display:none;
         }
@@ -2830,6 +3318,44 @@ export default function FinancialLiteracyExperience() {
             transition:none;
           }
         }
+
+        .signatureLabsSection {
+  width:min(100% - 24px,1320px);
+  padding-top:70px;
+}
+
+.signatureLabsGrid {
+  grid-template-columns:1fr;
+}
+
+:global(.signatureLabCard) {
+  min-height:0;
+}
+
+.signatureLabVisual,
+.wealthYears {
+  min-height:190px;
+}
+
+.wealthYears {
+  gap:15px;
+}
+
+.wealthYears div {
+  width:112px;
+  height:112px;
+}
+
+.signatureLabCopy {
+  padding-left:22px;
+  padding-right:22px;
+}
+
+.signatureLabTop,
+.signatureLabAction {
+  padding-left:22px;
+  padding-right:22px;
+}
       `}</style>
     </main>
   );

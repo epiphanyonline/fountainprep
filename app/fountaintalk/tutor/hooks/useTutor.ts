@@ -40,6 +40,8 @@ import {
   repeatCurrentStep,
 } from "@/app/fountaintalk/tutor/services/lessonEngine";
 
+import { supabase } from "@/app/lib/supabase";
+
 type UseTutorOptions = {
   learner: LearnerProfile;
 };
@@ -50,10 +52,27 @@ type TutorApiResponse = Partial<TutorReply> & {
 
 const MAX_PRONUNCIATION_ATTEMPTS = 3;
 
+type FoundationAccessResponse = {
+  allowed: boolean;
+  accessType:
+    | "FREE_FOUNDATION"
+    | "PREMIUM_BUNDLE"
+    | "ACADEMY_SUBSCRIPTION";
+  unlimited: boolean;
+  completedRuns: number | null;
+  freeRunsRemaining: number | null;
+  foundationLocked: boolean;
+  alreadyRecorded?: boolean;
+  error?: string;
+};
+
 export function useTutor({
   learner,
 }: UseTutorOptions) {
   const router = useRouter();
+
+  const foundationRunIdRef =
+  useRef<string | null>(null);
 
   const recognitionRef =
     useRef<SpeechRecognition | null>(null);
@@ -1090,50 +1109,222 @@ setProgress({
       }
     }, []);
 
-  const startLesson =
-    useCallback(() => {
-      setErrorMessage("");
+    const getFoundationRunStorageKey =
+  useCallback(
+    () =>
+      `fountaintalk:foundation-run:${learner.id}:${learner.language.toLowerCase()}`,
+    [learner.id, learner.language],
+  );
 
-      if (!audioWorking) {
-        setErrorMessage(
-          "Please test your speaker first."
-        );
+const getOrCreateFoundationRunId =
+  useCallback(() => {
+    if (typeof window === "undefined") {
+      return crypto.randomUUID();
+    }
+
+    if (foundationRunIdRef.current) {
+      return foundationRunIdRef.current;
+    }
+
+    const storageKey =
+      getFoundationRunStorageKey();
+
+    const existing =
+      window.sessionStorage.getItem(
+        storageKey,
+      );
+
+    if (existing) {
+      foundationRunIdRef.current =
+        existing;
+
+      return existing;
+    }
+
+    const runId =
+      crypto.randomUUID();
+
+    window.sessionStorage.setItem(
+      storageKey,
+      runId,
+    );
+
+    foundationRunIdRef.current =
+      runId;
+
+    return runId;
+  }, [getFoundationRunStorageKey]);
+
+const clearFoundationRunId =
+  useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(
+        getFoundationRunStorageKey(),
+      );
+    }
+
+    foundationRunIdRef.current = null;
+  }, [getFoundationRunStorageKey]);
+
+  const startLesson =
+  useCallback(async () => {
+    setErrorMessage("");
+
+    if (!audioWorking) {
+      setErrorMessage(
+        "Please test your speaker first.",
+      );
+      return;
+    }
+
+    if (!microphoneGranted) {
+      setErrorMessage(
+        "Please allow microphone access first.",
+      );
+      return;
+    }
+
+    try {
+      setIsRequestPending(true);
+
+      const {
+        data: { session },
+      } =
+        await supabase.auth.getSession();
+
+      const accessToken =
+        session?.access_token;
+
+      if (!accessToken) {
+        router.push("/login");
         return;
       }
 
-      if (!microphoneGranted) {
-        setErrorMessage(
-          "Please allow microphone access first."
+      const response =
+        await fetch(
+          "/api/fountaintalk/foundation-access",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+
+            body: JSON.stringify({
+              studentId:
+                learner.id,
+
+              language:
+                learner.language,
+
+              action: "check",
+            }),
+          },
         );
+
+      const data =
+        (await response.json()) as
+          FoundationAccessResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ??
+            "Unable to check lesson access.",
+        );
+      }
+
+      if (!data.allowed) {
+        clearFoundationRunId();
+
+        const params =
+          new URLSearchParams({
+            studentId:
+              learner.id,
+
+            language:
+              learner.language,
+
+            reason:
+              "foundation_complete",
+          });
+
+        router.push(
+          `/academy/subscription?${params.toString()}`,
+        );
+
         return;
+      }
+
+      /*
+       * We only need a run ID for free Foundation.
+       *
+       * Paid learners have unlimited access and
+       * do not consume Foundation runs.
+       */
+      if (
+        data.accessType ===
+        "FREE_FOUNDATION"
+      ) {
+        getOrCreateFoundationRunId();
+      } else {
+        clearFoundationRunId();
       }
 
       const openingMessage =
         getStepOpeningMessage(
           learner.name,
           activeLesson.lesson,
-          activeLesson.step
+          activeLesson.step,
         );
 
       setLessonStarted(true);
-      setConversationMode("curriculum");
+      setConversationMode(
+        "curriculum",
+      );
+
       setLearnerTranscript("");
-      setTutorMessage(openingMessage);
+      setTutorMessage(
+        openingMessage,
+      );
+
       setCorrectedPhrase(null);
       setEncouragement(null);
 
       playStepAudio(
         openingMessage,
-        "ready"
+        "ready",
       );
-    }, [
-      activeLesson.lesson,
-      activeLesson.step,
-      audioWorking,
-      learner.name,
-      microphoneGranted,
-      playStepAudio,
-    ]);
+    } catch (error) {
+      console.error(
+        "Unable to start FountainTalk lesson:",
+        error,
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to start the lesson.",
+      );
+    } finally {
+      setIsRequestPending(false);
+    }
+  }, [
+    activeLesson.lesson,
+    activeLesson.step,
+    audioWorking,
+    clearFoundationRunId,
+    getOrCreateFoundationRunId,
+    learner.id,
+    learner.language,
+    learner.name,
+    microphoneGranted,
+    playStepAudio,
+    router,
+  ]);
 
   const applyTutorAction =
     useCallback(
@@ -1823,6 +2014,85 @@ if (isPronunciationCorrection) {
 }
 
     if (isFinalCourseLesson && isFinalStep) {
+      try {
+  const {
+    data: { session },
+  } =
+    await supabase.auth.getSession();
+
+  const accessToken =
+    session?.access_token;
+
+  if (!accessToken) {
+    throw new Error(
+      "Your session has expired. Please sign in again.",
+    );
+  }
+
+  const runId =
+    getOrCreateFoundationRunId();
+
+  const accessResponse =
+    await fetch(
+      "/api/fountaintalk/foundation-access",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          Authorization:
+            `Bearer ${accessToken}`,
+        },
+
+        body: JSON.stringify({
+          studentId:
+            learner.id,
+
+          language:
+            learner.language,
+
+          action:
+            "complete",
+
+          runId,
+        }),
+      },
+    );
+
+  const accessData =
+    (await accessResponse.json()) as
+      FoundationAccessResponse;
+
+  if (!accessResponse.ok) {
+    throw new Error(
+      accessData.error ??
+        "Foundation completion could not be recorded.",
+    );
+  }
+
+  /*
+   * Completion succeeded.
+   *
+   * Remove this run ID so another deliberate
+   * Foundation attempt receives a new ID.
+   */
+  clearFoundationRunId();
+} catch (error) {
+  console.error(
+    "Unable to record Foundation completion:",
+    error,
+  );
+
+  setErrorMessage(
+    error instanceof Error
+      ? error.message
+      : "Your lesson was completed, but Foundation access could not be updated.",
+  );
+
+  return;
+}
       const completedProgress =
         completeCurrentLesson(
     course,

@@ -8,6 +8,7 @@ import {
   getAcademyMarketing,
   publicAcademySlugs,
 } from "@/app/data/academies/marketing";
+import BiographyLanding from "@/app/components/academy/BiographyLanding";
 
 type PageProps = {
   params: Promise<{
@@ -50,5 +51,17 @@ export default async function AcademyPage({
     notFound();
   }
 
-  return <AcademyLanding academy={academy} />;
+  if (slug === "biography") {
+  return (
+    <BiographyLanding
+      academy={academy}
+    />
+  );
+}
+
+return (
+  <AcademyLanding
+    academy={academy}
+  />
+);
 }

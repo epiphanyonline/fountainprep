@@ -248,56 +248,80 @@ export const academyMarketing:
   },
 
   biography: {
-    slug: "biography",
-    academyCode: "biography",
-    programmeId: "greatness-foundation",
-    eyebrow: "Biography of Greatness",
-    title: "Biography of Greatness",
-    headline:
-      "Let remarkable lives teach courage, character, curiosity and possibility.",
-    summary:
-      "An immersive visual story academy where learners meet innovators, leaders, scientists, creators and change-makers, then turn their choices and impact into lessons for their own lives.",
-    parentPromise:
-      "Give younger learners role models whose stories expand what they believe is possible.",
-    audience:
-      "Especially powerful for children and teenagers, with story depth adapted by age.",
-    outcomes: [
-      "Understand the human story behind major achievements.",
-      "Recognise persistence, discipline, creativity and courage.",
-      "Connect historical impact to present-day choices.",
-      "Reflect on character, service and responsibility.",
-      "Build ambition without reducing success to fame or wealth.",
-    ],
-    curriculum: [
-      "Nelson Mandela — Courage and Reconciliation",
-      "Marie Curie — Curiosity and Scientific Persistence",
-      "Katherine Johnson — Precision, Learning and Possibility",
-      "Wangari Maathai — Environment, Community and Leadership",
-      "Madam C. J. Walker — Enterprise and Opportunity",
-      "Leonardo da Vinci — Curiosity Across Disciplines",
-      "Martin Luther King Jr. — Voice, Service and Justice",
-      "Malala Yousafzai — Education and Courage",
-    ],
-    freePreview: [
-      "One complete visual biography story",
-      "Character reflection",
-      "Impact timeline",
-    ],
-    premiumDepth: [
-      "Full biography library",
-      "Portrait-led story slides",
-      "Timelines and maps",
-      "Decision moments and reflections",
-      "Cross-story themes: courage, service, invention and leadership",
-    ],
-    proofPoints: [
-      "Visual storytelling",
-      "Real people and impact",
-      "Character reflection",
-      "Inspiring younger learners",
-    ],
-    accent: "gold",
-  },
+  slug: "biography",
+  academyCode: "biography",
+  programmeId: "greatness-foundation",
+
+  eyebrow:
+    "Biography of Greatness",
+
+  title:
+    "Biography of Greatness",
+
+  headline:
+    "Study the lives, decisions and ownership journeys behind extraordinary wealth.",
+
+  summary:
+    "A cinematic global biography academy exploring notable wealth creators country by country — their upbringing, early opportunities, first businesses, ownership, setbacks, turning points, publicly known assets, capital allocation and approaches to legacy.",
+
+  parentPromise:
+    "Help learners understand that significant financial outcomes usually sit behind years of decisions, ownership, enterprise, risk, discipline, opportunity and changing circumstances.",
+
+  audience:
+    "Designed for teenagers, young adults and adults who want to understand the human and business stories behind major fortunes without reducing financial success to shortcuts or celebrity worship.",
+
+  outcomes: [
+    "Understand how notable wealth creators started and the environments in which they grew up.",
+    "Identify the main businesses, assets or ownership interests behind their fortunes.",
+    "Recognise pivotal decisions, opportunities, setbacks and periods of uncertainty.",
+    "Distinguish income from ownership and concentrated business equity.",
+    "Explore how publicly documented wealth is allocated across businesses, investments, property, liquidity and other assets.",
+    "Understand introductory ideas around succession, philanthropy and intergenerational wealth transfer.",
+    "Compare different wealth-building journeys across countries, sectors and generations.",
+    "Separate documented facts from estimates, assumptions and private financial information.",
+  ],
+
+  curriculum: [
+    "Nigeria — Aliko Dangote: Manufacturing, Ownership and Industrial Scale",
+    "United States — Warren Buffett: Ownership, Compounding and Capital Allocation",
+    "United States — Jeff Bezos: Amazon, Reinvention and Long-Term Ownership",
+    "France — Bernard Arnault: Luxury, Brands and Controlling Equity",
+    "India — Mukesh Ambani: Family Enterprise, Energy, Telecom and Retail",
+    "Spain — Amancio Ortega: Retail, Ownership and Real Estate",
+    "United States — Jensen Huang: Technology, Equity and Long-Term Company Building",
+    "China — Selected Wealth Creators: Technology, Manufacturing and Enterprise",
+  ],
+
+  freePreview: [
+    "One complete cinematic wealth biography",
+    "Origins and early-life timeline",
+    "Business and ownership map",
+    "Key decision moment",
+    "Publicly documented asset-allocation overview",
+  ],
+
+  premiumDepth: [
+    "Global country-by-country biography library",
+    "Portrait-led cinematic story scenes",
+    "Interactive timelines and maps",
+    "Business ownership diagrams",
+    "Capital-allocation visualisations",
+    "Turning-point and decision analysis",
+    "Setbacks, risks and controversies where relevant",
+    "Succession, philanthropy and legacy perspectives",
+    "Cross-biography comparisons by country and industry",
+  ],
+
+  proofPoints: [
+    "Real people and documented businesses",
+    "Country-by-country storytelling",
+    "Ownership and asset analysis",
+    "Clear distinction between public facts and estimates",
+    "Cinematic visual learning",
+  ],
+
+  accent: "gold",
+},
 
   bible: {
     slug: "bible",

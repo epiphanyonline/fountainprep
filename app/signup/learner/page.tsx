@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { FormEvent, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { FormEvent, Suspense, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 const countryOptions = [
@@ -48,7 +48,31 @@ const goals = [
 ]
 
 export default function AdultLearnerSignupPage() {
+  return (
+    <Suspense fallback={<SignupLoading />}>
+      <AdultLearnerSignupContent />
+    </Suspense>
+  )
+}
+
+function AdultLearnerSignupContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const nextPath = safeNextPath(searchParams.get('next'))
+  const isAcademySignup = useMemo(
+    () =>
+      nextPath.startsWith('/pricing?product=academies') ||
+      nextPath.startsWith('/academies/') ||
+      nextPath.startsWith('/classroom/academy'),
+    [nextPath],
+  )
+
+  const loginHref =
+    `/login?next=${encodeURIComponent(nextPath)}`
+
+  const parentHref =
+    `/signup/parent?next=${encodeURIComponent(nextPath)}`
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -80,7 +104,7 @@ export default function AdultLearnerSignupPage() {
     event.preventDefault()
 
     if (!takingLessonsForSelf) {
-      router.push('/signup/parent')
+      router.push(parentHref)
       return
     }
 
@@ -90,13 +114,13 @@ export default function AdultLearnerSignupPage() {
       return
     }
 
-    if (!languageInterest) {
+    if (!isAcademySignup && !languageInterest) {
       setMessageType('error')
       setMessage('Please select the language you would like to learn.')
       return
     }
 
-    if (!learningGoal) {
+    if (!isAcademySignup && !learningGoal) {
       setMessageType('error')
       setMessage('Please select your main learning goal.')
       return
@@ -113,19 +137,29 @@ export default function AdultLearnerSignupPage() {
     setMessageType('')
 
     try {
+      const cleanEmail = email.trim().toLowerCase()
+      const cleanName = fullName.trim()
+
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        window.location.origin
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
         options: {
+          emailRedirectTo:
+            `${siteUrl}/login?next=${encodeURIComponent(nextPath)}`,
           data: {
             role: 'PARENT',
             account_type: 'ADULT_LEARNER',
-            full_name: fullName.trim(),
+            full_name: cleanName,
             phone: phone.trim(),
             country,
             timezone,
-            language_interest: languageInterest,
-            learning_goal: learningGoal,
+            language_interest: languageInterest || null,
+            learning_goal: learningGoal || null,
           },
         },
       })
@@ -134,23 +168,122 @@ export default function AdultLearnerSignupPage() {
         throw error
       }
 
-      if (data.session) {
+      /*
+       * When email confirmation is disabled Supabase gives us
+       * a live session immediately. Complete the canonical
+       * account + self-learner records before continuing.
+       *
+       * When confirmation is required, the existing database
+       * auth/profile trigger can create the account records;
+       * the confirmation link preserves nextPath.
+       */
+      if (data.session && data.user) {
+        const { error: userProfileError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: data.user.id,
+            email: cleanEmail,
+            role: 'PARENT',
+            full_name: cleanName,
+            phone: phone.trim() || null,
+            country,
+            timezone,
+            is_active: true,
+          })
+
+        const {
+          data: parentProfile,
+          error: parentProfileError,
+        } = await supabase
+          .from('parent_profiles')
+          .upsert(
+            {
+              user_id: data.user.id,
+              full_name: cleanName,
+              phone: phone.trim() || null,
+              country,
+              timezone,
+              account_type: 'ADULT_LEARNER',
+            },
+            { onConflict: 'user_id' },
+          )
+          .select('id')
+          .single()
+
+        if (userProfileError || parentProfileError || !parentProfile) {
+          throw new Error(
+            userProfileError?.message ||
+              parentProfileError?.message ||
+              'Your account was created, but the Adult Learner profile could not be completed.',
+          )
+        }
+
+        const {
+          data: existingSelfLearner,
+          error: selfLearnerLookupError,
+        } = await supabase
+          .from('student_profiles')
+          .select('id')
+          .eq('parent_id', parentProfile.id)
+          .eq('is_self_learner', true)
+          .maybeSingle()
+
+        if (selfLearnerLookupError) {
+          throw selfLearnerLookupError
+        }
+
+        let selfLearnerId =
+          existingSelfLearner?.id ?? null
+
+        if (!selfLearnerId) {
+          const {
+            data: createdSelfLearner,
+            error: selfLearnerError,
+          } = await supabase
+            .from('student_profiles')
+            .insert({
+              parent_id: parentProfile.id,
+              full_name: cleanName,
+              child_age: null,
+              age_group: 'adult',
+              is_self_learner: true,
+            })
+            .select('id')
+            .single()
+
+          if (selfLearnerError || !createdSelfLearner) {
+            throw new Error(
+              selfLearnerError?.message ||
+                'Your account was created, but your learner profile could not be completed.',
+            )
+          }
+
+          selfLearnerId = createdSelfLearner.id
+        }
+
+        const destination =
+          addStudentIdToNextPath(
+            nextPath,
+            selfLearnerId,
+          )
+
         setMessageType('success')
         setMessage(
-          'Your Adult Learner account has been created. Redirecting you to your learning journey...'
+          'Your Individual Learner account has been created. Redirecting you to continue...'
         )
 
-        setTimeout(() => {
-          router.push('/start?type=language')
+        window.setTimeout(() => {
+          router.replace(destination)
           router.refresh()
-        }, 1200)
+        }, 700)
 
         return
       }
 
+
       setMessageType('success')
       setMessage(
-        'Your Adult Learner account has been created. Please check your email and confirm your account before logging in.'
+        'Your Individual Learner account has been created. Please check your email and confirm your account. After confirmation, log in and you will return to the plan you selected.'
       )
 
       setFullName('')
@@ -185,11 +318,16 @@ export default function AdultLearnerSignupPage() {
             Adult Learner
           </div>
 
-          <h1>Start learning for yourself.</h1>
+          <h1>
+            {isAcademySignup
+              ? 'Create your Individual Learner account.'
+              : 'Start learning for yourself.'}
+          </h1>
 
           <p>
-            Create an account to book private Yoruba, Igbo or Hausa lessons
-            and manage your own learning journey.
+            {isAcademySignup
+              ? 'One account for your own self-paced Academy learning, progress, assessments and certificates.'
+              : 'Create an account to book private Yoruba, Igbo or Hausa lessons and manage your own learning journey.'}
           </p>
         </div>
 
@@ -198,8 +336,8 @@ export default function AdultLearnerSignupPage() {
             <div className="account-notice">
               <strong>You are creating an Adult Learner account</strong>
               <span>
-                This account is for adults aged 18 or over who will personally
-                take the lessons.
+                This account is for one adult learner aged 18 or over. It cannot
+                be used to add children; choose the Family plan for that.
               </span>
             </div>
 
@@ -307,6 +445,7 @@ export default function AdultLearnerSignupPage() {
               </div>
             </div>
 
+            {!isAcademySignup ? (
             <div className="form-section">
               <div className="section-heading">
                 <span>03</span>
@@ -356,6 +495,9 @@ export default function AdultLearnerSignupPage() {
               </label>
             </div>
 
+            ) : null}
+
+            {!isAcademySignup ? (
             <div className="identity-check">
               <strong>Who will take the lessons?</strong>
 
@@ -388,6 +530,8 @@ export default function AdultLearnerSignupPage() {
               </button>
             </div>
 
+            ) : null}
+
             {message ? (
               <div
                 className={
@@ -414,27 +558,36 @@ export default function AdultLearnerSignupPage() {
             >
               {loading
                 ? 'Creating your account...'
-                : takingLessonsForSelf
-                  ? 'Create Adult Learner Account'
-                  : 'Continue to Parent Signup'}
+                : isAcademySignup
+                  ? 'Create Individual Learner Account'
+                  : takingLessonsForSelf
+                    ? 'Create Adult Learner Account'
+                    : 'Continue to Parent Signup'}
             </button>
 
             <p className="login-copy">
               Already have an account?{' '}
-              <Link href="/login">Log in</Link>
+              <Link href={loginHref}>Log in</Link>
             </p>
           </form>
 
           <aside className="benefit-card">
             <div className="benefit-icon">🎓</div>
 
-            <p className="benefit-eyebrow">Learn for yourself</p>
+            <p className="benefit-eyebrow">
+              {isAcademySignup ? 'Premium Individual' : 'Learn for yourself'}
+            </p>
 
-            <h2>Your language journey, your schedule.</h2>
+            <h2>
+              {isAcademySignup
+                ? 'One learner. One continuous learning record.'
+                : 'Your language journey, your schedule.'}
+            </h2>
 
             <p className="benefit-description">
-              Learn with a private tutor who can adapt each lesson to your
-              current level, goals and preferred pace.
+              {isAcademySignup
+                ? 'Your Academy progress, assessments and certificates stay attached to you as the learner.'
+                : 'Learn with a private tutor who can adapt each lesson to your current level, goals and preferred pace.'}
             </p>
 
             <div className="benefit-list">
@@ -480,7 +633,7 @@ export default function AdultLearnerSignupPage() {
                 child&apos;s lessons.
               </span>
 
-              <Link href="/signup/parent">
+              <Link href={parentHref}>
                 Continue as Parent →
               </Link>
             </div>
@@ -954,6 +1107,50 @@ export default function AdultLearnerSignupPage() {
           }
         }
       `}</style>
+    </main>
+  )
+}
+
+function safeNextPath(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/learner/dashboard'
+  }
+
+  return value
+}
+
+function addStudentIdToNextPath(
+  nextPath: string,
+  studentId: string,
+) {
+  const [pathname, rawQuery = ''] =
+    nextPath.split('?')
+
+  const params =
+    new URLSearchParams(rawQuery)
+
+  params.set('studentId', studentId)
+
+  const query = params.toString()
+
+  return query
+    ? `${pathname}?${query}`
+    : pathname
+}
+
+function SignupLoading() {
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: '#faf7ff',
+        color: '#5b21b6',
+        fontWeight: 900,
+      }}
+    >
+      Preparing your account...
     </main>
   )
 }

@@ -1,0 +1,2712 @@
+"use client";
+
+import Image from "next/image";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+type Props = {
+  academyCode?: string;
+  activityId: string;
+  title: string;
+  text: string;
+  explanation?: string | null;
+  instruction?: string | null;
+  narrationText?: string | null;
+  visualTitle?: string | null;
+  visualDescription?: string | null;
+  story?: string | null;
+  autoNarrate?: boolean;
+};
+
+export default function AcademyMediaPanel({
+  academyCode,
+  activityId,
+  title,
+  text,
+  explanation,
+  instruction,
+  narrationText,
+  visualTitle,
+  visualDescription,
+  story,
+  autoNarrate = true,
+}: Props) {
+  const [speaking, setSpeaking] =
+    useState(false);
+
+  const [loadingAudio, setLoadingAudio] =
+    useState(false);
+
+  const [audioError, setAudioError] =
+    useState("");
+
+  const audioRef =
+    useRef<HTMLAudioElement | null>(null);
+
+  const audioUrlRef =
+    useRef<string | null>(null);
+
+  const lastAutoNarrated =
+    useRef<string | null>(null);
+
+  const isBiography =
+    academyCode === "biography";
+
+  const speechText = useMemo(() => {
+    if (narrationText?.trim()) {
+      return narrationText.trim();
+    }
+
+    return [
+      title,
+      text,
+      explanation,
+      story,
+      instruction,
+    ]
+      .filter(Boolean)
+      .join(". ");
+  }, [
+    explanation,
+    instruction,
+    narrationText,
+    story,
+    text,
+    title,
+  ]);
+
+  const stop = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    setSpeaking(false);
+  }, []);
+
+  const clearAudioUrl =
+    useCallback(() => {
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(
+          audioUrlRef.current,
+        );
+
+        audioUrlRef.current = null;
+      }
+    }, []);
+
+  const generateAudio =
+    useCallback(async () => {
+      if (!speechText.trim()) {
+        return null;
+      }
+
+      const response = await fetch(
+        "/api/academy/speech",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            text: speechText,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const responseText =
+          await response.text();
+
+        let message =
+          "The natural teaching voice is temporarily unavailable.";
+
+        try {
+          const parsed =
+            responseText
+              ? JSON.parse(responseText)
+              : {};
+
+          if (parsed.error) {
+            message = parsed.error;
+          }
+        } catch {
+          // Keep default.
+        }
+
+        throw new Error(message);
+      }
+
+      const blob =
+        await response.blob();
+
+      clearAudioUrl();
+
+      const url =
+        URL.createObjectURL(blob);
+
+      audioUrlRef.current = url;
+
+      return url;
+    }, [
+      clearAudioUrl,
+      speechText,
+    ]);
+
+  const speak =
+    useCallback(async () => {
+      if (!speechText.trim()) {
+        return;
+      }
+
+      stop();
+      setAudioError("");
+      setLoadingAudio(true);
+
+      try {
+        const audioUrl =
+          audioUrlRef.current ||
+          (await generateAudio());
+
+        if (!audioUrl) return;
+
+        const audio =
+          new Audio(audioUrl);
+
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setSpeaking(true);
+          setLoadingAudio(false);
+        };
+
+        audio.onended = () => {
+          setSpeaking(false);
+          audioRef.current = null;
+        };
+
+        audio.onerror = () => {
+          setSpeaking(false);
+          setLoadingAudio(false);
+          audioRef.current = null;
+
+          setAudioError(
+            "The lesson voice could not be played. Please try again.",
+          );
+        };
+
+        await audio.play();
+      } catch (error) {
+        console.error(
+          "Academy narration error:",
+          error,
+        );
+
+        setSpeaking(false);
+        setLoadingAudio(false);
+
+        setAudioError(
+          error instanceof Error
+            ? error.message
+            : "The natural teaching voice is temporarily unavailable.",
+        );
+      }
+    }, [
+      generateAudio,
+      speechText,
+      stop,
+    ]);
+
+  useEffect(() => {
+    stop();
+    clearAudioUrl();
+    setAudioError("");
+
+    if (
+      autoNarrate &&
+      lastAutoNarrated.current !==
+        activityId
+    ) {
+      lastAutoNarrated.current =
+        activityId;
+
+      const timer =
+        window.setTimeout(
+          () => {
+            void speak();
+          },
+          500,
+        );
+
+      return () => {
+        window.clearTimeout(timer);
+        stop();
+        clearAudioUrl();
+      };
+    }
+
+    return () => {
+      stop();
+      clearAudioUrl();
+    };
+  }, [
+    activityId,
+    autoNarrate,
+    clearAudioUrl,
+    speak,
+    stop,
+  ]);
+
+  return (
+    <section
+      className={
+        isBiography
+          ? "mediaPanel biographyMode"
+          : "mediaPanel"
+      }
+    >
+      {isBiography ? (
+        <BiographyCinematicStage
+          activityId={activityId}
+          title={visualTitle || title}
+          description={
+            visualDescription ||
+            explanation ||
+            ""
+          }
+        />
+      ) : (
+        <DefaultVisualStage
+          title={visualTitle || title}
+          description={
+            visualDescription ||
+            explanation ||
+            "Listen, explore the idea, then apply it in the activity."
+          }
+          hasStory={Boolean(story)}
+        />
+      )}
+
+      {story ? (
+        <div
+          className={
+            isBiography
+              ? "storyCard biographyStory"
+              : "storyCard"
+          }
+        >
+          <small>
+            {isBiography
+              ? "AYO · STORY CONTEXT"
+              : "REAL-LIFE STORY / CASE"}
+          </small>
+
+          <p>{story}</p>
+        </div>
+      ) : null}
+
+      <div className="audioBar">
+        <button
+          type="button"
+          className="primaryAudio"
+          onClick={() =>
+            void speak()
+          }
+          disabled={
+            speaking ||
+            loadingAudio
+          }
+        >
+          {loadingAudio
+            ? "Preparing AYO..."
+            : speaking
+              ? "🔊 AYO is speaking..."
+              : "🔊 Hear AYO again"}
+        </button>
+
+        {speaking ? (
+          <button
+            type="button"
+            onClick={stop}
+          >
+            Stop
+          </button>
+        ) : null}
+
+        <span>
+          Natural tutor narration
+        </span>
+      </div>
+
+      {audioError ? (
+        <div className="audioError">
+          {audioError}
+        </div>
+      ) : null}
+
+      <style jsx>{`
+        .mediaPanel {
+          display: grid;
+          gap: 14px;
+          margin-top: 22px;
+        }
+
+        .storyCard {
+          padding: 19px;
+          border: 1px solid
+            rgba(180, 125, 0, 0.16);
+          border-radius: 21px;
+          background:
+            linear-gradient(
+              135deg,
+              #fffaf0,
+              #fff5d9
+            );
+        }
+
+        .storyCard small {
+          color: #9a6700;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+        }
+
+        .storyCard p {
+          margin: 8px 0 0;
+          color: #584c39;
+          line-height: 1.68;
+        }
+
+        .biographyStory {
+          padding: 18px 21px;
+          border-color:
+            rgba(181, 145, 78, 0.16);
+
+          background:
+            linear-gradient(
+              135deg,
+              #fbf8f1,
+              #f4ede1
+            );
+        }
+
+        .biographyStory small {
+          color: #87672f;
+          font-size: 9px;
+          letter-spacing: 0.13em;
+        }
+
+        .biographyStory p {
+          color: #5d5348;
+          line-height: 1.72;
+        }
+
+        .audioBar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 9px;
+        }
+
+        .audioBar button {
+          min-height: 45px;
+          padding: 0 16px;
+          border: 0;
+          border-radius: 14px;
+          color: #5b21b6;
+          background: #f2eaff;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .audioBar .primaryAudio {
+          color: #fff;
+          background:
+            linear-gradient(
+              135deg,
+              #7c3aed,
+              #6d28d9
+            );
+
+          box-shadow:
+            0 12px 28px
+            rgba(
+              109,
+              40,
+              217,
+              0.2
+            );
+        }
+
+        .biographyMode
+        .audioBar
+        .primaryAudio {
+          background:
+            linear-gradient(
+              135deg,
+              #332418,
+              #74552c
+            );
+
+          box-shadow:
+            0 12px 28px
+            rgba(70, 48, 26, 0.17);
+        }
+
+        .audioBar button:disabled {
+          opacity: 0.78;
+          cursor: wait;
+        }
+
+        .audioBar span {
+          color: #81758a;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .audioError {
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          color: #9a3412;
+          font-size: 13px;
+          font-weight: 750;
+        }
+
+        @media (max-width: 620px) {
+          .audioBar {
+            align-items: stretch;
+          }
+
+          .audioBar button {
+            width: 100%;
+          }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+function DefaultVisualStage({
+  title,
+  description,
+  hasStory,
+}: {
+  title: string;
+  description: string;
+  hasStory: boolean;
+}) {
+  return (
+    <div className="visualStage">
+      <div className="slideLabel">
+        Visual learning
+      </div>
+
+      <div className="visualCore">
+        <span className="visualIcon">
+          {hasStory ? "📖" : "💡"}
+        </span>
+
+        <div>
+          <strong>{title}</strong>
+
+          <p>{description}</p>
+        </div>
+      </div>
+
+      <div
+        className="visualRing ringOne"
+        aria-hidden="true"
+      />
+
+      <div
+        className="visualRing ringTwo"
+        aria-hidden="true"
+      />
+
+      <style jsx>{`
+        .visualStage {
+          position: relative;
+          min-height: 190px;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          padding: 28px;
+
+          border:
+            1px solid
+            rgba(124,58,237,.12);
+
+          border-radius: 25px;
+
+          background:
+            radial-gradient(
+              circle at 72% 32%,
+              rgba(124,58,237,.15),
+              transparent 29%
+            ),
+            linear-gradient(
+              135deg,
+              #fff,
+              #f5efff
+            );
+        }
+
+        .slideLabel {
+          position: absolute;
+          top: 14px;
+          left: 16px;
+          z-index: 3;
+
+          color: #7c3aed;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: .1em;
+          text-transform: uppercase;
+        }
+
+        .visualCore {
+          position: relative;
+          z-index: 2;
+
+          width:
+            min(560px,92%);
+
+          display: grid;
+
+          grid-template-columns:
+            auto 1fr;
+
+          align-items: center;
+
+          gap: 18px;
+
+          padding: 20px;
+
+          border-radius: 23px;
+
+          background:
+            rgba(255,255,255,.94);
+
+          box-shadow:
+            0 16px 42px
+            rgba(57,34,84,.1);
+        }
+
+        .visualIcon {
+          width: 62px;
+          height: 62px;
+
+          display: grid;
+          place-items: center;
+
+          border-radius: 19px;
+
+          background: #f2eaff;
+
+          font-size: 29px;
+        }
+
+        .visualCore strong {
+          display: block;
+
+          color: #2d183f;
+
+          font-size: 19px;
+        }
+
+        .visualCore p {
+          margin: 7px 0 0;
+
+          color: #716479;
+
+          line-height: 1.55;
+        }
+
+        .visualRing {
+          position: absolute;
+
+          border:
+            1px solid
+            rgba(124,58,237,.11);
+
+          border-radius: 50%;
+        }
+
+        .ringOne {
+          width: 190px;
+          height: 190px;
+          right: -30px;
+          top: -35px;
+        }
+
+        .ringTwo {
+          width: 300px;
+          height: 300px;
+          right: -80px;
+          top: -90px;
+        }
+
+        @media (max-width:620px) {
+          .visualStage {
+            min-height: 165px;
+            padding: 22px 14px;
+          }
+
+          .visualCore {
+            grid-template-columns: 1fr;
+            text-align: center;
+          }
+
+          .visualIcon {
+            margin: 0 auto;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function BiographyCinematicStage({
+  activityId,
+  title,
+  description,
+}: {
+  activityId: string;
+  title: string;
+  description: string;
+}) {
+  const scene =
+    getBiographyScene(activityId);
+
+  return (
+    <div className="cinematicStage">
+      <div className="cinematicTop">
+        <div>
+          <small>
+            BIOGRAPHY OF GREATNESS
+          </small>
+
+          <span>
+            NIGERIA · ALIKO DANGOTE
+          </span>
+        </div>
+
+        <strong>
+          {scene.sceneNumber}
+        </strong>
+      </div>
+
+      <div className="cinematicCanvas">
+        <BiographySceneVisual
+          scene={scene.type}
+        />
+
+        <div className="cinematicCopy">
+          <small>
+            {scene.eyebrow}
+          </small>
+
+          <h3>
+            {title}
+          </h3>
+
+          <p>
+            {description}
+          </p>
+        </div>
+
+        <div className="cinematicGradient" />
+      </div>
+
+      <div className="cinematicFooter">
+        <span>
+          AYO MASTERCLASS
+        </span>
+
+        <div>
+          <i
+            style={{
+              width: `${scene.progress}%`,
+            }}
+          />
+        </div>
+
+        <span>
+          {scene.progress}%
+        </span>
+      </div>
+
+      <style jsx>{`
+        .cinematicStage {
+          overflow: hidden;
+
+          border-radius: 28px;
+
+          border:
+            1px solid
+            rgba(96,72,45,.14);
+
+          color: white;
+
+          background: #171310;
+
+          box-shadow:
+            0 28px 70px
+            rgba(45,31,20,.20);
+        }
+
+        .cinematicTop {
+          min-height: 58px;
+
+          padding:
+            12px 18px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content:
+            space-between;
+
+          gap: 20px;
+
+          background:
+            linear-gradient(
+              90deg,
+              #211a15,
+              #181310
+            );
+
+          border-bottom:
+            1px solid
+            rgba(255,255,255,.06);
+        }
+
+        .cinematicTop small,
+        .cinematicTop span {
+          display: block;
+        }
+
+        .cinematicTop small {
+          color: #cfb37b;
+
+          font-size: 8px;
+
+          font-weight: 950;
+
+          letter-spacing: .15em;
+        }
+
+        .cinematicTop span {
+          margin-top: 3px;
+
+          color: #82776d;
+
+          font-size: 8px;
+
+          font-weight: 750;
+
+          letter-spacing: .08em;
+        }
+
+        .cinematicTop strong {
+          color: #a7937d;
+
+          font-family:
+            Georgia,
+            serif;
+
+          font-size: 19px;
+          font-weight: 500;
+        }
+
+        .cinematicCanvas {
+          min-height: 390px;
+
+          position: relative;
+
+          overflow: hidden;
+
+          background:
+            radial-gradient(
+              circle at 75% 20%,
+              rgba(191,149,80,.23),
+              transparent 28%
+            ),
+            linear-gradient(
+              145deg,
+              #31271e,
+              #17120f 70%
+            );
+        }
+
+        .cinematicCopy {
+          position: absolute;
+
+          z-index: 4;
+
+          left: 33px;
+          bottom: 54px;
+
+          width:
+            min(530px,73%);
+        }
+
+        .cinematicCopy small {
+          color: #d8bb80;
+
+          font-size: 8px;
+
+          font-weight: 900;
+
+          letter-spacing: .16em;
+        }
+
+        .cinematicCopy h3 {
+          margin:
+            8px 0 7px;
+
+          font-family:
+            Georgia,
+            serif;
+
+          font-size:
+            clamp(
+              30px,
+              4vw,
+              48px
+            );
+
+          line-height: .98;
+
+          letter-spacing:
+            -.035em;
+
+          font-weight: 500;
+        }
+
+        .cinematicCopy p {
+          margin: 0;
+
+          max-width: 510px;
+
+          color: #c8beb3;
+
+          line-height: 1.55;
+
+          font-size: 12px;
+        }
+
+        .cinematicGradient {
+          position: absolute;
+
+          z-index: 3;
+
+          inset: 0;
+
+          pointer-events: none;
+
+          background:
+            linear-gradient(
+              90deg,
+              rgba(16,12,9,.89) 0%,
+              rgba(16,12,9,.55) 42%,
+              transparent 72%
+            ),
+            linear-gradient(
+              0deg,
+              rgba(13,10,8,.9),
+              transparent 62%
+            );
+        }
+
+        .cinematicFooter {
+          min-height: 48px;
+
+          padding:
+            0 17px;
+
+          display: grid;
+
+          grid-template-columns:
+            auto 1fr auto;
+
+          align-items: center;
+
+          gap: 16px;
+
+          background: #15110e;
+        }
+
+        .cinematicFooter span {
+          color: #7f7469;
+
+          font-size: 7px;
+
+          font-weight: 800;
+
+          letter-spacing: .12em;
+        }
+
+        .cinematicFooter > div {
+          height: 3px;
+
+          overflow: hidden;
+
+          border-radius:
+            999px;
+
+          background: #312923;
+        }
+
+        .cinematicFooter i {
+          height: 100%;
+
+          display: block;
+
+          background:
+            linear-gradient(
+              90deg,
+              #92703b,
+              #d2ad69
+            );
+        }
+
+        @media (max-width:620px) {
+          .cinematicCanvas {
+            min-height: 360px;
+          }
+
+          .cinematicCopy {
+            left: 22px;
+            right: 22px;
+            bottom: 24px;
+
+            width: auto;
+          }
+
+          .cinematicCopy h3 {
+            font-size: 34px;
+          }
+
+          .cinematicCopy p {
+            font-size: 11px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+type BiographySceneType =
+  | "opening"
+  | "origins"
+  | "trading"
+  | "transition"
+  | "ownership"
+  | "portfolio"
+  | "scale"
+  | "risk"
+  | "evidence"
+  | "reflection";
+
+type BiographyScene = {
+  type: BiographySceneType;
+  sceneNumber: string;
+  eyebrow: string;
+  progress: number;
+};
+
+function getBiographyScene(
+  activityId: string,
+): BiographyScene {
+  const scenes:
+    Record<string, BiographyScene> = {
+      "bio-dangote-a1": {
+        type: "opening",
+        sceneNumber: "01",
+        eyebrow:
+          "BEFORE THE HEADLINES",
+        progress: 7,
+      },
+
+      "bio-dangote-a2": {
+        type: "origins",
+        sceneNumber: "02",
+        eyebrow:
+          "STARTING ENVIRONMENT",
+        progress: 14,
+      },
+
+      "bio-dangote-a3": {
+        type: "trading",
+        sceneNumber: "03",
+        eyebrow:
+          "BUSINESS ENGINE 01",
+        progress: 21,
+      },
+
+      "bio-dangote-a4": {
+        type: "trading",
+        sceneNumber: "04",
+        eyebrow:
+          "CHECK YOUR UNDERSTANDING",
+        progress: 29,
+      },
+
+      "bio-dangote-a5": {
+        type: "transition",
+        sceneNumber: "05",
+        eyebrow:
+          "THE STRATEGIC SHIFT",
+        progress: 36,
+      },
+
+      "bio-dangote-a6": {
+        type: "transition",
+        sceneNumber: "06",
+        eyebrow:
+          "CAPITAL DECISION",
+        progress: 43,
+      },
+
+      "bio-dangote-a7": {
+        type: "ownership",
+        sceneNumber: "07",
+        eyebrow:
+          "OWNERSHIP MAP",
+        progress: 50,
+      },
+
+      "bio-dangote-a8": {
+        type: "ownership",
+        sceneNumber: "08",
+        eyebrow:
+          "NET WORTH ≠ CASH",
+        progress: 57,
+      },
+
+      "bio-dangote-a9": {
+        type: "portfolio",
+        sceneNumber: "09",
+        eyebrow:
+          "INDUSTRIAL PORTFOLIO",
+        progress: 64,
+      },
+
+      "bio-dangote-a10": {
+        type: "scale",
+        sceneNumber: "10",
+        eyebrow:
+          "CAPITAL AT SCALE",
+        progress: 71,
+      },
+
+      "bio-dangote-a11": {
+        type: "risk",
+        sceneNumber: "11",
+        eyebrow:
+          "CONCENTRATION",
+        progress: 79,
+      },
+
+      "bio-dangote-a12": {
+        type: "evidence",
+        sceneNumber: "12",
+        eyebrow:
+          "EVIDENCE MATTERS",
+        progress: 86,
+      },
+
+      "bio-dangote-a13": {
+        type: "evidence",
+        sceneNumber: "13",
+        eyebrow:
+          "SOURCE QUALITY",
+        progress: 93,
+      },
+
+      "bio-dangote-a14": {
+        type: "reflection",
+        sceneNumber: "14",
+        eyebrow:
+          "THE AYO LESSON",
+        progress: 100,
+      },
+    };
+
+  return (
+    scenes[activityId] ?? {
+      type: "opening",
+      sceneNumber: "01",
+      eyebrow:
+        "BIOGRAPHY OF GREATNESS",
+      progress: 10,
+    }
+  );
+}
+
+function BiographySceneVisual({
+  scene,
+}: {
+  scene: BiographySceneType;
+}) {
+  if (scene === "opening") {
+  return (
+    <div className="openingScene">
+      <div className="openingMap">
+        <Image
+          src="/images/academy/biography/dangote/nigeria-map.svg"
+          alt="Map of Nigeria"
+          fill
+          sizes="260px"
+          className="openingMapImage"
+        />
+
+        <div className="mapGlow" />
+
+        <span className="countryLabel">
+          NIGERIA
+        </span>
+      </div>
+
+      <div className="openingPortrait">
+        <Image
+          src="/images/academy/biography/dangote/aliko-dangote.jpg"
+          alt="Aliko Dangote"
+          fill
+          priority
+          sizes="(max-width: 620px) 48vw, 260px"
+          className="openingPortraitImage"
+        />
+
+        <div className="openingPortraitFade" />
+
+        <div className="openingPortraitMeta">
+          <small>
+            BIOGRAPHY STUDY
+          </small>
+
+          <strong>
+            Aliko Dangote
+          </strong>
+
+          <span>
+            Nigeria
+          </span>
+        </div>
+      </div>
+
+      <div className="journeyTimeline">
+        <div className="journeyPoint active">
+          <span>1978</span>
+          <small>Trading</small>
+        </div>
+
+        <i />
+
+        <div className="journeyPoint">
+          <span>1990s</span>
+          <small>Industrial expansion</small>
+        </div>
+
+        <i />
+
+        <div className="journeyPoint">
+          <span>2000s</span>
+          <small>Manufacturing scale</small>
+        </div>
+
+        <i />
+
+        <div className="journeyPoint">
+          <span>2020s</span>
+          <small>Refining & infrastructure</small>
+        </div>
+      </div>      
+
+      <style jsx>{`
+        .openingScene {
+          position: absolute;
+          inset: 0;
+        }
+
+        .openingMap {
+          position: absolute;
+          right: 28%;
+          top: 10%;
+          width: 245px;
+          height: 205px;
+          opacity: .42;
+          filter:
+            sepia(.2)
+            saturate(.65)
+            brightness(.82);
+        }
+
+        .openingMap :global(.openingMapImage) {
+          object-fit: contain;
+        }
+
+        .mapGlow {
+          position: absolute;
+          inset: 12%;
+          border-radius: 50%;
+          background:
+            radial-gradient(
+              circle,
+              rgba(210,168,95,.17),
+              transparent 65%
+            );
+          filter: blur(12px);
+        }
+
+        .countryLabel {
+          position: absolute;
+          left: 50%;
+          top: 48%;
+          transform:
+            translate(-50%, -50%);
+          color: #d9bd82;
+          font-size: 7px;
+          font-weight: 950;
+          letter-spacing: .15em;
+        }
+
+        .openingPortrait {
+          position: absolute;
+          right: 6%;
+          top: 6%;
+          width: 220px;
+          height: 300px;
+          overflow: hidden;
+          border-radius: 22px;
+          border:
+            1px solid
+            rgba(255,255,255,.09);
+          box-shadow:
+            0 26px 55px
+            rgba(0,0,0,.35);
+        }
+
+        .openingPortrait :global(.openingPortraitImage) {
+          object-fit: cover;
+          object-position: 52% 28%;
+          filter:
+            saturate(.78)
+            contrast(1.05)
+            brightness(.78);
+        }
+
+        .openingPortraitFade {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(
+              0deg,
+              rgba(12,8,6,.95) 0%,
+              rgba(12,8,6,.64) 22%,
+              transparent 56%
+            );
+        }
+
+        .openingPortraitMeta {
+          position: absolute;
+          left: 17px;
+          right: 17px;
+          bottom: 15px;
+          z-index: 2;
+        }
+
+        .openingPortraitMeta small,
+        .openingPortraitMeta strong,
+        .openingPortraitMeta span {
+          display: block;
+        }
+
+        .openingPortraitMeta small {
+          color: #cfaf72;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: .13em;
+        }
+
+        .openingPortraitMeta strong {
+          margin-top: 5px;
+          font-family:
+            Georgia,
+            serif;
+          font-size: 21px;
+          font-weight: 500;
+        }
+
+        .openingPortraitMeta span {
+          margin-top: 2px;
+          color: #a99b8d;
+          font-size: 8px;
+        }
+
+        .journeyTimeline {
+  position: absolute;
+  left: 35%;
+  right: 5%;
+  bottom: 5%;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  z-index: 2;
+}
+
+        .journeyTimeline > i {
+          flex: 1;
+          height: 1px;
+          background:
+            rgba(219,183,116,.32);
+        }
+
+        .journeyPoint {
+  min-width: 62px;
+  text-align: center;
+}
+
+.journeyPoint span {
+  color: #c8b59d;
+  font-family: Georgia, serif;
+  font-size: 12px;
+}
+
+.journeyPoint small {
+  margin-top: 2px;
+  color: #8f8174;
+  font-size: 5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+
+        .journeyPoint span {
+          color: #c8b59d;
+          font-family:
+            Georgia,
+            serif;
+          font-size: 14px;
+        }
+
+        .journeyPoint small {
+          margin-top: 3px;
+          color: #8f8174;
+          font-size: 6px;
+          font-weight: 800;
+          letter-spacing: .06em;
+        }
+
+        .journeyPoint.active span {
+          color: #e0bd75;
+        }
+        
+          padding: 11px 13px;
+          border-radius: 12px;
+
+          background:
+            rgba(17,12,9,.60);
+
+          border:
+            1px solid
+            rgba(213,177,109,.15);
+
+          backdrop-filter:
+            blur(8px);
+        } 
+          
+        @media(max-width:620px) {
+          .openingPortrait {
+            right: 4%;
+            width: 150px;
+            height: 220px;
+          }
+
+          .openingMap {
+            right: 24%;
+            width: 165px;
+            height: 140px;
+          }
+          
+          .journeyTimeline {
+            gap: 4px;
+          }
+
+          .journeyPoint {
+            min-width: 50px;
+          }
+
+          .journeyPoint span {
+            font-size: 11px;
+          }
+
+          .journeyPoint small {
+            font-size: 5px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+  if (scene === "origins") {
+    return (
+      <div className="originsScene">
+        <div className="originCard">
+          <small>
+            STARTING CONTEXT
+          </small>
+
+          <strong>
+            Kano
+          </strong>
+
+          <span>
+            Commerce • family • exposure
+          </span>
+        </div>
+
+        <div className="decisionCard">
+          <small>
+            WHAT FOLLOWED
+          </small>
+
+          <strong>
+            Decisions
+          </strong>
+
+          <span>
+            Trade • reinvestment • scale
+          </span>
+        </div>
+
+        <style jsx>{`
+          .originsScene {
+            position: absolute;
+            inset: 0;
+          }
+
+          .originCard,
+          .decisionCard {
+            position: absolute;
+            right: 8%;
+
+            width: 230px;
+
+            padding: 20px;
+
+            border:
+              1px solid
+              rgba(255,255,255,.10);
+
+            border-radius: 20px;
+
+            background:
+              rgba(255,255,255,.055);
+
+            backdrop-filter:
+              blur(10px);
+          }
+
+          .originCard {
+            top: 16%;
+          }
+
+          .decisionCard {
+            top: 52%;
+            right: 13%;
+          }
+
+          small,
+          strong,
+          span {
+            display: block;
+          }
+
+          small {
+            color: #c5a972;
+            font-size: 7px;
+            letter-spacing: .13em;
+          }
+
+          strong {
+            margin-top: 6px;
+            font-family: Georgia,serif;
+            font-size: 27px;
+            font-weight: 500;
+          }
+
+          span {
+            margin-top: 5px;
+            color: #9f9185;
+            font-size: 9px;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "trading") {
+    return (
+      <div className="tradingScene">
+        <FlowNode
+          label="BUY"
+          x="54%"
+          y="18%"
+        />
+
+        <FlowLine
+          x="65%"
+          y="28%"
+          rotate={42}
+        />
+
+        <FlowNode
+          label="MOVE"
+          x="73%"
+          y="36%"
+        />
+
+        <FlowLine
+          x="70%"
+          y="53%"
+          rotate={132}
+        />
+
+        <FlowNode
+          label="SELL"
+          x="54%"
+          y="65%"
+        />
+
+        <div className="marginChip">
+          RETAIN MARGIN
+        </div>
+
+        <style jsx>{`
+          .tradingScene {
+            position:absolute;
+            inset:0;
+          }
+
+          .marginChip {
+            position:absolute;
+            right:12%;
+            bottom:12%;
+
+            padding:
+              9px 12px;
+
+            border-radius:
+              999px;
+
+            color:#d6bd8d;
+
+            background:
+              rgba(
+                191,
+                151,
+                81,
+                .13
+              );
+
+            border:
+              1px solid
+              rgba(
+                214,
+                189,
+                141,
+                .14
+              );
+
+            font-size:7px;
+            font-weight:900;
+            letter-spacing:.11em;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "transition") {
+    return (
+      <div className="transitionScene">
+        <div className="tradeBox">
+          <small>BEFORE</small>
+          <strong>
+            Trading
+          </strong>
+          <span>
+            Distribution margin
+          </span>
+        </div>
+
+        <div className="arrow">
+          →
+        </div>
+
+        <div className="factory">
+          <div className="chimney one" />
+          <div className="chimney two" />
+          <div className="building" />
+
+          <small>
+            OWN PRODUCTION
+          </small>
+        </div>
+
+        <style jsx>{`
+          .transitionScene {
+            position:absolute;
+            inset:0;
+
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
+
+            padding-right:7%;
+
+            gap:26px;
+          }
+
+          .tradeBox {
+            width:170px;
+
+            padding:20px;
+
+            border-radius:18px;
+
+            border:
+              1px solid
+              rgba(255,255,255,.10);
+
+            background:
+              rgba(255,255,255,.05);
+          }
+
+          .tradeBox small,
+          .tradeBox strong,
+          .tradeBox span {
+            display:block;
+          }
+
+          .tradeBox small {
+            color:#a89685;
+            font-size:7px;
+            letter-spacing:.12em;
+          }
+
+          .tradeBox strong {
+            margin-top:5px;
+
+            font-family:
+              Georgia,
+              serif;
+
+            font-size:25px;
+            font-weight:500;
+          }
+
+          .tradeBox span {
+            margin-top:5px;
+
+            color:#8f8379;
+            font-size:9px;
+          }
+
+          .arrow {
+            color:#c6a467;
+            font-size:31px;
+          }
+
+          .factory {
+            width:205px;
+            height:190px;
+
+            position:relative;
+          }
+
+          .building {
+            position:absolute;
+            left:10px;
+            right:10px;
+            bottom:21px;
+            height:85px;
+
+            border-radius:
+              9px 9px 4px 4px;
+
+            background:
+              linear-gradient(
+                145deg,
+                #806039,
+                #4c3929
+              );
+
+            box-shadow:
+              0 20px 30px
+              rgba(0,0,0,.20);
+          }
+
+          .chimney {
+            position:absolute;
+            bottom:102px;
+            width:25px;
+
+            background:
+              #5f4934;
+
+            border-radius:
+              5px 5px 0 0;
+          }
+
+          .chimney.one {
+            height:70px;
+            right:35px;
+          }
+
+          .chimney.two {
+            height:48px;
+            right:75px;
+          }
+
+          .factory small {
+            position:absolute;
+            bottom:0;
+            left:23px;
+
+            color:#c9ac77;
+            font-size:7px;
+            letter-spacing:.12em;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "ownership") {
+    return (
+      <div className="ownershipScene">
+        <div className="ownershipPortrait">
+  <Image
+    src="/images/academy/biography/dangote/aliko-dangote.jpg"
+    alt=""
+    fill
+    sizes="180px"
+    className="ownershipPortraitImage"
+  />
+
+  <div className="ownershipPortraitFade" />
+</div>
+        <OwnershipNode
+          top="15%"
+          right="12%"
+          label="ALIKO DANGOTE"
+        />
+
+        <div className="ownershipStem one" />
+
+        <OwnershipNode
+          top="43%"
+          right="12%"
+          label="DANGOTE INDUSTRIES"
+        />
+
+        <div className="ownershipStem two" />
+
+        <OwnershipNode
+          top="70%"
+          right="12%"
+          label="DANGOTE CEMENT"
+          accent
+        />
+
+        <style jsx>{`
+          .ownershipScene {
+            position:absolute;
+            inset:0;
+          }
+
+          .ownershipPortrait {
+  position: absolute;
+  left: 21%;
+  top: 6%;
+  width: 220px;
+  height: 280px;
+  overflow: hidden;
+  border-radius: 26px;
+  pointer-events: none;
+}
+
+.ownershipPortrait :global(.ownershipPortraitImage) {
+  object-fit: cover;
+  object-position: 52% 32%;
+  opacity: 0.58;
+
+  filter:
+    grayscale(.75)
+    sepia(.18)
+    saturate(.75)
+    brightness(.82)
+    contrast(1.08);
+}
+
+.ownershipPortraitFade {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(24, 18, 15, .35) 0%,
+      transparent 35%,
+      transparent 75%,
+      rgba(24, 18, 15, .18) 100%
+    ),
+    linear-gradient(
+      0deg,
+      #18120f 0%,
+      rgba(24, 18, 15, .68) 12%,
+      transparent 48%
+    );
+}
+
+          .ownershipStem {
+            position:absolute;
+
+            right:
+              calc(
+                12% + 99px
+              );
+
+            width:1px;
+
+            background:
+              rgba(
+                210,
+                176,
+                112,
+                .42
+              );
+          }
+
+          .ownershipStem.one {
+            top:31%;
+            height:49px;
+          }
+
+          .ownershipStem.two {
+            top:58%;
+            height:47px;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "portfolio") {
+    const sectors = [
+      "CEMENT",
+      "FERTILIZER",
+      "SUGAR",
+      "SALT",
+      "REFINING",
+    ];
+
+    return (
+      <div className="portfolioScene">
+        <div className="portfolioCore">
+          DIL
+        </div>
+
+        {sectors.map(
+          (sector, index) => (
+            <span
+              key={sector}
+              className={`sector sector-${index}`}
+            >
+              {sector}
+            </span>
+          ),
+        )}
+
+        <style jsx>{`
+          .portfolioScene {
+            position:absolute;
+            inset:0;
+          }
+
+          .portfolioCore {
+            position:absolute;
+            right:28%;
+            top:42%;
+
+            width:78px;
+            height:78px;
+
+            display:grid;
+            place-items:center;
+
+            border-radius:50%;
+
+            border:
+              1px solid
+              rgba(
+                214,
+                180,
+                116,
+                .28
+              );
+
+            color:#e2c68f;
+
+            background:
+              #5f472b;
+
+            font-family:
+              Georgia,
+              serif;
+
+            font-size:22px;
+          }
+
+          .sector {
+            position:absolute;
+
+            min-width:95px;
+
+            padding:
+              10px 12px;
+
+            text-align:center;
+
+            border-radius:
+              999px;
+
+            border:
+              1px solid
+              rgba(255,255,255,.09);
+
+            background:
+              rgba(255,255,255,.05);
+
+            color:#baa993;
+
+            font-size:7px;
+            font-weight:850;
+            letter-spacing:.09em;
+          }
+
+          .sector-0 {
+            right:8%;
+            top:17%;
+          }
+
+          .sector-1 {
+            right:34%;
+            top:12%;
+          }
+
+          .sector-2 {
+            right:6%;
+            top:53%;
+          }
+
+          .sector-3 {
+            right:35%;
+            bottom:11%;
+          }
+
+          .sector-4 {
+            right:8%;
+            bottom:11%;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "scale") {
+  return (
+    <div className="scaleScene">
+      <div className="refineryImage">
+        <Image
+          src="/images/academy/biography/dangote/dangote-refinery.jpg"
+          alt="Dangote Refinery industrial infrastructure"
+          fill
+          sizes="(max-width: 620px) 65vw, 460px"
+          className="refineryPhoto"
+        />
+
+        <div className="refineryOverlay" />
+      </div>
+
+      <div className="scaleNumber">
+        <small>
+          REPORTED PROJECT SCALE
+        </small>
+
+        <strong>
+          ~$23B
+        </strong>
+
+        <span>
+          reported investment associated with the refinery project
+        </span>
+      </div>
+
+      <div className="scaleTimeline">
+        <span>COMMIT</span>
+        <i />
+        <span>BUILD</span>
+        <i />
+        <span>OPERATE</span>
+      </div>
+
+      <div className="assetLabel">
+        <small>PRODUCTIVE ASSET</small>
+        <strong>Refining infrastructure</strong>
+      </div>
+
+      <style jsx>{`
+        .scaleScene {
+          position: absolute;
+          inset: 0;
+        }
+
+        .refineryImage {
+          position: absolute;
+          right: 0;
+          top: 0;
+          width: 61%;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        .refineryImage :global(.refineryPhoto) {
+          object-fit: cover;
+          object-position: 54% center;
+          filter:
+            saturate(.72)
+            contrast(1.12)
+            brightness(.62);
+        }
+
+        .refineryOverlay {
+          position: absolute;
+          inset: 0;
+
+          background:
+            linear-gradient(
+              90deg,
+              #18120e 0%,
+              rgba(24,18,14,.82) 18%,
+              rgba(24,18,14,.32) 55%,
+              rgba(24,18,14,.08) 100%
+            ),
+            linear-gradient(
+              0deg,
+              rgba(13,9,6,.72) 0%,
+              transparent 55%
+            );
+        }
+
+        .scaleNumber {
+          position: absolute;
+          right: 8%;
+          top: 18%;
+          z-index: 2;
+          text-align: right;
+          max-width: 300px;
+        }
+
+        .scaleNumber small,
+        .scaleNumber strong,
+        .scaleNumber span {
+          display: block;
+        }
+
+        .scaleNumber small {
+          color: #d8bd87;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: .13em;
+        }
+
+        .scaleNumber strong {
+          margin-top: 3px;
+          color: #edcb84;
+          font-family:
+            Georgia,
+            serif;
+          font-size: 68px;
+          line-height: 1;
+          font-weight: 500;
+          letter-spacing: -.055em;
+          text-shadow:
+            0 8px 28px rgba(0,0,0,.48);
+        }
+
+        .scaleNumber span {
+          margin-top: 5px;
+          color: #c7b9aa;
+          font-size: 9px;
+          line-height: 1.45;
+        }
+
+        .scaleTimeline {
+          position: absolute;
+          right: 8%;
+          bottom: 14%;
+          z-index: 2;
+
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          color: #d0c1b1;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: .1em;
+        }
+
+        .scaleTimeline i {
+          width: 38px;
+          height: 1px;
+          background:
+            rgba(226,190,122,.5);
+        }
+
+        .assetLabel {
+          position: absolute;
+          right: 8%;
+          bottom: 25%;
+          z-index: 2;
+          padding: 10px 13px;
+          border-radius: 12px;
+
+          background:
+            rgba(20,14,10,.62);
+
+          border:
+            1px solid
+            rgba(226,190,122,.15);
+
+          backdrop-filter:
+            blur(8px);
+        }
+
+        .assetLabel small,
+        .assetLabel strong {
+          display: block;
+        }
+
+        .assetLabel small {
+          color: #ad956c;
+          font-size: 6px;
+          letter-spacing: .12em;
+          font-weight: 900;
+        }
+
+        .assetLabel strong {
+          margin-top: 4px;
+          color: #e4d8c8;
+          font-family:
+            Georgia,
+            serif;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        @media(max-width:620px) {
+          .refineryImage {
+            width: 68%;
+          }
+
+          .scaleNumber {
+            right: 5%;
+            max-width: 220px;
+          }
+
+          .scaleNumber strong {
+            font-size: 46px;
+          }
+
+          .scaleTimeline {
+            right: 5%;
+          }
+
+          .scaleTimeline i {
+            width: 18px;
+          }
+
+          .assetLabel {
+            right: 5%;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+  if (scene === "risk") {
+    return (
+      <div className="riskScene">
+        <div className="riskColumn">
+          <small>
+            CONCENTRATION
+          </small>
+
+          <div className="riskBar">
+            <i />
+          </div>
+
+          <strong>
+            Control
+          </strong>
+
+          <span>
+            upside • influence
+          </span>
+        </div>
+
+        <div className="riskColumn second">
+          <small>
+            EXPOSURE
+          </small>
+
+          <div className="riskBar danger">
+            <i />
+          </div>
+
+          <strong>
+            Risk
+          </strong>
+
+          <span>
+            industry • finance • execution
+          </span>
+        </div>
+
+        <style jsx>{`
+          .riskScene {
+            position:absolute;
+            inset:0;
+
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
+
+            gap:20px;
+
+            padding-right:8%;
+          }
+
+          .riskColumn {
+            width:185px;
+
+            padding:22px;
+
+            border-radius:20px;
+
+            background:
+              rgba(255,255,255,.05);
+
+            border:
+              1px solid
+              rgba(255,255,255,.09);
+          }
+
+          .riskColumn small,
+          .riskColumn strong,
+          .riskColumn span {
+            display:block;
+          }
+
+          .riskColumn small {
+            color:#b49f87;
+            font-size:7px;
+            letter-spacing:.12em;
+          }
+
+          .riskColumn strong {
+            margin-top:12px;
+
+            font-family:
+              Georgia,
+              serif;
+
+            font-size:28px;
+            font-weight:500;
+          }
+
+          .riskColumn span {
+            margin-top:4px;
+
+            color:#8e8277;
+            font-size:8px;
+          }
+
+          .riskBar {
+            margin-top:14px;
+
+            height:6px;
+
+            border-radius:
+              999px;
+
+            overflow:hidden;
+
+            background:#44382d;
+          }
+
+          .riskBar i {
+            display:block;
+
+            width:83%;
+            height:100%;
+
+            background:#b79558;
+          }
+
+          .riskBar.danger i {
+            width:68%;
+
+            background:#8f5e44;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (scene === "evidence") {
+    return (
+      <div className="evidenceScene">
+        <EvidenceCard
+          label="PUBLIC FACT"
+          value="Audited ownership"
+          strong
+        />
+
+        <EvidenceCard
+          label="ESTIMATE"
+          value="External net-worth estimate"
+        />
+
+        <EvidenceCard
+          label="PRIVATE"
+          value="Not publicly disclosed"
+        />
+
+        <style jsx>{`
+          .evidenceScene {
+            position:absolute;
+
+            right:6%;
+            top:12%;
+            bottom:12%;
+
+            width:44%;
+
+            display:grid;
+            gap:9px;
+          }
+
+          @media(max-width:620px) {
+            .evidenceScene {
+              right:4%;
+              width:51%;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="reflectionScene">
+      <div className="reflectionRing">
+        <span>
+          TRADING
+        </span>
+
+        <span>
+          OWNERSHIP
+        </span>
+
+        <span>
+          SCALE
+        </span>
+
+        <span>
+          RISK
+        </span>
+      </div>
+
+      <style jsx>{`
+        .reflectionScene {
+          position:absolute;
+          inset:0;
+        }
+
+        .reflectionRing {
+          position:absolute;
+
+          right:10%;
+          top:15%;
+
+          width:260px;
+          height:260px;
+
+          border:
+            1px solid
+            rgba(
+              211,
+              178,
+              115,
+              .23
+            );
+
+          border-radius:50%;
+
+          display:grid;
+          place-items:center;
+        }
+
+        .reflectionRing::before {
+          content:"AYO";
+
+          position:absolute;
+
+          width:86px;
+          height:86px;
+
+          border-radius:50%;
+
+          display:grid;
+          place-items:center;
+
+          color:#d8bb82;
+
+          background:
+            rgba(
+              180,
+              139,
+              72,
+              .12
+            );
+
+          font-family:
+            Georgia,
+            serif;
+
+          font-size:23px;
+        }
+
+        .reflectionRing span {
+          position:absolute;
+
+          color:#9f8e7c;
+
+          font-size:7px;
+          font-weight:900;
+          letter-spacing:.10em;
+        }
+
+        .reflectionRing span:nth-child(1) {
+          top:14px;
+        }
+
+        .reflectionRing span:nth-child(2) {
+          right:-16px;
+        }
+
+        .reflectionRing span:nth-child(3) {
+          bottom:14px;
+        }
+
+        .reflectionRing span:nth-child(4) {
+          left:-8px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function FlowNode({
+  label,
+  x,
+  y,
+}: {
+  label: string;
+  x: string;
+  y: string;
+}) {
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        width: 80,
+        height: 80,
+        borderRadius: "50%",
+        display: "grid",
+        placeItems: "center",
+        transform:
+          "translate(-50%, -50%)",
+        color: "#d6bd8d",
+        border:
+          "1px solid rgba(214,189,141,.18)",
+        background:
+          "rgba(181,142,76,.10)",
+        fontSize: 8,
+        fontWeight: 900,
+        letterSpacing: ".1em",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function FlowLine({
+  x,
+  y,
+  rotate,
+}: {
+  x: string;
+  y: string;
+  rotate: number;
+}) {
+  return (
+    <i
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        width: 70,
+        height: 1,
+        background:
+          "rgba(214,189,141,.24)",
+        transform:
+          `rotate(${rotate}deg)`,
+        transformOrigin: "left center",
+      }}
+    />
+  );
+}
+
+function OwnershipNode({
+  top,
+  right,
+  label,
+  accent = false,
+}: {
+  top: string;
+  right: string;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top,
+        right,
+        width: 200,
+        padding: "14px 16px",
+        borderRadius: 14,
+        textAlign: "center",
+        border:
+          accent
+            ? "1px solid rgba(220,184,112,.30)"
+            : "1px solid rgba(255,255,255,.09)",
+        color:
+          accent
+            ? "#e0c58f"
+            : "#b6a594",
+        background:
+          accent
+            ? "rgba(181,140,71,.12)"
+            : "rgba(255,255,255,.045)",
+        fontSize: 8,
+        fontWeight: 900,
+        letterSpacing: ".08em",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function EvidenceCard({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: "17px 18px",
+        borderRadius: 16,
+        background:
+          strong
+            ? "rgba(173,134,68,.14)"
+            : "rgba(255,255,255,.045)",
+        border:
+          strong
+            ? "1px solid rgba(217,180,111,.22)"
+            : "1px solid rgba(255,255,255,.08)",
+      }}
+    >
+      <small
+        style={{
+          display: "block",
+          color:
+            strong
+              ? "#d4b675"
+              : "#958779",
+          fontSize: 7,
+          fontWeight: 900,
+          letterSpacing: ".12em",
+        }}
+      >
+        {label}
+      </small>
+
+      <strong
+        style={{
+          display: "block",
+          marginTop: 5,
+          color: "#d7cdc2",
+          fontFamily:
+            "Georgia, serif",
+          fontSize: 17,
+          fontWeight: 500,
+        }}
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}

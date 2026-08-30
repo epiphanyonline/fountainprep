@@ -95,38 +95,46 @@ export async function getAcademySubscriptionAccess(
 
   if (!user) {
     return {
-  plan: freePlan,
-  status: "inactive",
-  subscriptionId: null,
-  learnerCovered: studentId === null,
-  currentPeriodEnd: null,
-  trialEndsAt: null,
-  cancelAtPeriodEnd: false,
-};
+      plan: freePlan,
+      status: "inactive",
+      subscriptionId: null,
+      learnerCovered: false,
+      currentPeriodEnd: null,
+      trialEndsAt: null,
+      cancelAtPeriodEnd: false,
+    };
   }
 
+  /*
+   * Only statuses that actually grant paid Academy access
+   * are considered here.
+   *
+   * incomplete = checkout started but payment/subscription
+   * was never activated, so it MUST NOT unlock content.
+   *
+   * past_due / paused are retained in the database for
+   * account management, but they also MUST NOT unlock the
+   * classroom.
+   */
   const {
-  data: subscription,
-  error: subscriptionError,
-} = await supabase
-  .from("academy_subscriptions")
-  .select(
-    `
-      id,
-      plan_id,
-      status,
-      current_period_end,
-      trial_ends_at,
-      cancel_at_period_end
-    `,
-  )
-  .eq("user_id", user.id)
+    data: subscription,
+    error: subscriptionError,
+  } = await supabase
+    .from("academy_subscriptions")
+    .select(
+      `
+        id,
+        plan_id,
+        status,
+        current_period_end,
+        trial_ends_at,
+        cancel_at_period_end
+      `,
+    )
+    .eq("user_id", user.id)
     .in("status", [
       "trialing",
       "active",
-      "past_due",
-      "paused",
-      "incomplete",
     ])
     .maybeSingle();
 
@@ -136,14 +144,14 @@ export async function getAcademySubscriptionAccess(
 
   if (!subscription) {
     return {
-  plan: freePlan,
-  status: "inactive",
-  subscriptionId: null,
-  learnerCovered: Boolean(studentId),
-  currentPeriodEnd: null,
-  trialEndsAt: null,
-  cancelAtPeriodEnd: false,
-};
+      plan: freePlan,
+      status: "inactive",
+      subscriptionId: null,
+      learnerCovered: false,
+      currentPeriodEnd: null,
+      trialEndsAt: null,
+      cancelAtPeriodEnd: false,
+    };
   }
 
   const subscriptionRow =
@@ -153,7 +161,7 @@ export async function getAcademySubscriptionAccess(
     subscriptionRow.plan_id,
   );
 
-  let learnerCovered = studentId === null;
+  let learnerCovered = false;
 
   if (studentId) {
     const {
@@ -162,7 +170,10 @@ export async function getAcademySubscriptionAccess(
     } = await supabase
       .from("academy_subscription_learners")
       .select("id")
-      .eq("subscription_id", subscriptionRow.id)
+      .eq(
+        "subscription_id",
+        subscriptionRow.id,
+      )
       .eq("student_id", studentId)
       .maybeSingle();
 
@@ -170,20 +181,22 @@ export async function getAcademySubscriptionAccess(
       throw learnerError;
     }
 
-    learnerCovered = Boolean(assignedLearner);
+    learnerCovered =
+      Boolean(assignedLearner);
   }
 
   return {
-  plan,
-  status: subscriptionRow.status,
-  subscriptionId: subscriptionRow.id,
-  learnerCovered,
-  currentPeriodEnd:
-    subscriptionRow.current_period_end,
-  trialEndsAt: subscriptionRow.trial_ends_at,
-  cancelAtPeriodEnd:
-    subscriptionRow.cancel_at_period_end,
-};
+    plan,
+    status: subscriptionRow.status,
+    subscriptionId: subscriptionRow.id,
+    learnerCovered,
+    currentPeriodEnd:
+      subscriptionRow.current_period_end,
+    trialEndsAt:
+      subscriptionRow.trial_ends_at,
+    cancelAtPeriodEnd:
+      subscriptionRow.cancel_at_period_end,
+  };
 }
 
 export async function getAcademyPlans(): Promise<
@@ -257,7 +270,9 @@ async function getPlanById(
     );
   }
 
-  return mapPlan(data as SubscriptionPlanRow);
+  return mapPlan(
+    data as SubscriptionPlanRow,
+  );
 }
 
 const accessTierRank: Record<

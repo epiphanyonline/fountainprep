@@ -9,13 +9,13 @@ const serviceRoleKey =
 
 if (!supabaseUrl) {
   throw new Error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL is not configured.",
   );
 }
 
 if (!serviceRoleKey) {
   throw new Error(
-    "Missing SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY is not configured.",
   );
 }
 
@@ -24,197 +24,460 @@ const supabaseAdmin = createClient(
   serviceRoleKey,
   {
     auth: {
-      autoRefreshToken: false,
       persistSession: false,
+      autoRefreshToken: false,
     },
   },
 );
 
-type FoundationAccessBody = {
+type AccessSource =
+  | "FREE_FOUNDATION"
+  | "PREMIUM_BUNDLE"
+  | "ACADEMY_SUBSCRIPTION";
+
+type RequestBody = {
   studentId?: string;
   language?: string;
+  action?: "check" | "complete";
+  runId?: string;
 };
 
-export async function GET(
-  request: Request,
-) {
+const PAID_SUBSCRIPTION_STATUSES = [
+  "trialing",
+  "active",
+];
+
+export async function POST(req: Request) {
   try {
-    const user =
-      await authenticateRequest(request);
+    /*
+     * --------------------------------------------------
+     * 1. Authenticate caller
+     * --------------------------------------------------
+     */
 
-    if (!user) {
+    const authorization =
+      req.headers.get("authorization");
+
+    const accessToken =
+      authorization?.startsWith("Bearer ")
+        ? authorization.slice(7).trim()
+        : "";
+
+    if (!accessToken) {
       return NextResponse.json(
         {
-          error:
-            "You must be logged in.",
+          error: "Authentication required.",
         },
-        { status: 401 },
-      );
-    }
-
-    const url =
-      new URL(request.url);
-
-    const studentId =
-      url.searchParams
-        .get("studentId")
-        ?.trim();
-
-    const language =
-      url.searchParams
-        .get("language")
-        ?.trim()
-        .toLowerCase();
-
-    if (!studentId || !language) {
-      return NextResponse.json(
         {
-          error:
-            "studentId and language are required.",
+          status: 401,
         },
-        { status: 400 },
-      );
-    }
-
-    const ownsLearner =
-      await userOwnsLearner(
-        user.id,
-        studentId,
-      );
-
-    if (!ownsLearner) {
-      return NextResponse.json(
-        {
-          error:
-            "Learner not found.",
-        },
-        { status: 404 },
       );
     }
 
     const {
-      data,
-      error,
-    } = await supabaseAdmin
-      .from(
-        "language_foundation_access",
-      )
-      .select(
-        `
-          completed_runs,
-          first_completed_at,
-          second_completed_at
-        `,
-      )
-      .eq(
-        "student_id",
-        studentId,
-      )
-      .eq(
-        "language",
-        language,
-      )
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    const completedRuns =
-      Number(
-        data?.completed_runs ?? 0,
-      );
-
-    return NextResponse.json({
-      completedRuns,
-      remainingFreeRuns:
-        Math.max(
-          0,
-          2 - completedRuns,
-        ),
-      freeAccessExhausted:
-        completedRuns >= 2,
-      firstCompletedAt:
-        data?.first_completed_at ??
-        null,
-      secondCompletedAt:
-        data?.second_completed_at ??
-        null,
-    });
-  } catch (error) {
-    console.error(
-      "foundation-access GET error:",
-      error,
+      data: authData,
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(
+      accessToken,
     );
 
-    return NextResponse.json(
-      {
-        error:
-          "Unable to load Foundation access.",
-      },
-      { status: 500 },
-    );
-  }
-}
-
-export async function POST(
-  request: Request,
-) {
-  try {
-    const user =
-      await authenticateRequest(request);
-
-    if (!user) {
+    if (authError || !authData.user) {
       return NextResponse.json(
         {
-          error:
-            "You must be logged in.",
+          error: "Invalid or expired session.",
         },
-        { status: 401 },
+        {
+          status: 401,
+        },
       );
     }
 
+    const user = authData.user;
+
+    /*
+     * --------------------------------------------------
+     * 2. Validate request
+     * --------------------------------------------------
+     */
+
     const body =
-      (await request.json()) as
-        FoundationAccessBody;
+      (await req.json()) as RequestBody;
 
     const studentId =
       body.studentId?.trim();
 
     const language =
-      body.language
-        ?.trim()
-        .toLowerCase();
+      body.language?.trim();
 
-    if (!studentId || !language) {
+    const action =
+      body.action ?? "check";
+
+    const runId =
+      body.runId?.trim();
+
+    if (!studentId) {
       return NextResponse.json(
         {
-          error:
-            "studentId and language are required.",
+          error: "studentId is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    const ownsLearner =
-      await userOwnsLearner(
-        user.id,
-        studentId,
+    if (!language) {
+      return NextResponse.json(
+        {
+          error: "language is required.",
+        },
+        {
+          status: 400,
+        },
       );
+    }
 
-    if (!ownsLearner) {
+    if (
+      action !== "check" &&
+      action !== "complete"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Invalid action.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (
+      action === "complete" &&
+      !runId
+    ) {
       return NextResponse.json(
         {
           error:
-            "Learner not found.",
+            "runId is required when recording a completion.",
         },
-        { status: 404 },
+        {
+          status: 400,
+        },
       );
     }
+
+    /*
+     * --------------------------------------------------
+     * 3. Resolve authenticated parent's profile
+     * --------------------------------------------------
+     */
 
     const {
-      data: existing,
-      error: existingError,
+      data: parentProfile,
+      error: parentError,
+    } = await supabaseAdmin
+      .from("parent_profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (parentError) {
+      throw parentError;
+    }
+
+    if (!parentProfile) {
+      return NextResponse.json(
+        {
+          error:
+            "A parent or learner profile could not be found.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+
+    /*
+     * --------------------------------------------------
+     * 4. Verify this learner belongs to this account
+     * --------------------------------------------------
+     */
+
+    const {
+      data: learner,
+      error: learnerError,
+    } = await supabaseAdmin
+      .from("student_profiles")
+      .select("id")
+      .eq("id", studentId)
+      .eq(
+        "parent_id",
+        parentProfile.id,
+      )
+      .maybeSingle();
+
+    if (learnerError) {
+      throw learnerError;
+    }
+
+    if (!learner) {
+      return NextResponse.json(
+        {
+          error:
+            "Learner not found or access denied.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+
+    /*
+     * --------------------------------------------------
+     * 5. PREMIUM BUNDLE CHECK
+     *
+     * Premium bundle provides AI full access for
+     * this learner + language.
+     * --------------------------------------------------
+     */
+
+    const now =
+      new Date().toISOString();
+
+    const {
+      data: premiumBundle,
+      error: premiumError,
+    } = await supabaseAdmin
+      .from(
+        "language_access_entitlements",
+      )
+      .select(
+        `
+          id,
+          ai_full_access,
+          status,
+          starts_at,
+          ends_at
+        `,
+      )
+      .eq(
+        "user_id",
+        user.id,
+      )
+      .eq(
+        "student_id",
+        studentId,
+      )
+      .ilike(
+        "language",
+        language,
+      )
+      .eq(
+        "access_source",
+        "PREMIUM_BUNDLE",
+      )
+      .eq(
+        "ai_full_access",
+        true,
+      )
+      .eq(
+        "status",
+        "ACTIVE",
+      )
+      .lte(
+        "starts_at",
+        now,
+      )
+      .gte(
+        "ends_at",
+        now,
+      )
+      .maybeSingle();
+
+    if (premiumError) {
+      throw premiumError;
+    }
+
+    if (premiumBundle) {
+      return NextResponse.json({
+        allowed: true,
+        accessType:
+          "PREMIUM_BUNDLE" satisfies AccessSource,
+
+        unlimited: true,
+
+        completedRuns: null,
+        freeRunsRemaining: null,
+
+        foundationLocked: false,
+      });
+    }
+
+    /*
+     * --------------------------------------------------
+     * 6. ACADEMY SUBSCRIPTION CHECK
+     *
+     * Subscription must:
+     * - belong to authenticated user
+     * - be genuinely paid/trialing
+     * - cover this learner
+     * - include "languages"
+     * - provide at least foundation tier
+     * --------------------------------------------------
+     */
+
+    const {
+      data: academySubscription,
+      error: subscriptionError,
+    } = await supabaseAdmin
+      .from(
+        "academy_subscriptions",
+      )
+      .select(
+        `
+          id,
+          plan_id,
+          status,
+          current_period_end,
+          trial_ends_at
+        `,
+      )
+      .eq(
+        "user_id",
+        user.id,
+      )
+      .in(
+        "status",
+        PAID_SUBSCRIPTION_STATUSES,
+      )
+      .maybeSingle();
+
+    if (subscriptionError) {
+      throw subscriptionError;
+    }
+
+    if (academySubscription) {
+      const {
+        data: learnerAssignment,
+        error: assignmentError,
+      } = await supabaseAdmin
+        .from(
+          "academy_subscription_learners",
+        )
+        .select("id")
+        .eq(
+          "subscription_id",
+          academySubscription.id,
+        )
+        .eq(
+          "student_id",
+          studentId,
+        )
+        .maybeSingle();
+
+      if (assignmentError) {
+        throw assignmentError;
+      }
+
+      if (learnerAssignment) {
+        const {
+          data: plan,
+          error: planError,
+        } = await supabaseAdmin
+          .from(
+            "academy_subscription_plans",
+          )
+          .select(
+            `
+              id,
+              access_tier,
+              academy_access
+            `,
+          )
+          .eq(
+            "id",
+            academySubscription.plan_id,
+          )
+          .eq(
+            "is_active",
+            true,
+          )
+          .maybeSingle();
+
+        if (planError) {
+          throw planError;
+        }
+
+        if (plan) {
+          const academyAccess =
+            Array.isArray(
+              plan.academy_access,
+            )
+              ? plan.academy_access.map(
+                  (value: string) =>
+                    String(
+                      value,
+                    ).toLowerCase(),
+                )
+              : [];
+
+          const accessTier =
+            String(
+              plan.access_tier ?? "",
+            ).toLowerCase();
+
+          const tierRank: Record<
+            string,
+            number
+          > = {
+            free: 0,
+            foundation: 1,
+            premium: 2,
+            professional: 3,
+          };
+
+          const hasLanguageAcademy =
+            academyAccess.includes(
+              "languages",
+            );
+
+          const hasPaidTier =
+            (tierRank[
+              accessTier
+            ] ?? 0) >= 1;
+
+          if (
+            hasLanguageAcademy &&
+            hasPaidTier
+          ) {
+            return NextResponse.json({
+              allowed: true,
+
+              accessType:
+                "ACADEMY_SUBSCRIPTION" satisfies AccessSource,
+
+              unlimited: true,
+
+              completedRuns: null,
+              freeRunsRemaining: null,
+
+              foundationLocked:
+                false,
+            });
+          }
+        }
+      }
+    }
+
+    /*
+     * --------------------------------------------------
+     * 7. FREE FOUNDATION ACCESS
+     * --------------------------------------------------
+     */
+
+    const {
+      data: foundationState,
+      error: foundationError,
     } = await supabaseAdmin
       .from(
         "language_foundation_access",
@@ -226,167 +489,158 @@ export async function POST(
         "student_id",
         studentId,
       )
-      .eq(
+      .ilike(
         "language",
         language,
       )
       .maybeSingle();
 
-    if (existingError) {
-      throw existingError;
+    if (foundationError) {
+      throw foundationError;
     }
 
-    const existingRuns =
-      Number(
-        existing?.completed_runs ?? 0,
+    const currentRuns =
+      Math.min(
+        Number(
+          foundationState
+            ?.completed_runs ?? 0,
+        ),
+        2,
       );
 
-    if (existingRuns >= 2) {
+    /*
+     * CHECK only:
+     *
+     * Do not consume anything.
+     */
+    if (action === "check") {
+      const locked =
+        currentRuns >= 2;
+
       return NextResponse.json({
-        completedRuns: 2,
-        remainingFreeRuns: 0,
-        freeAccessExhausted: true,
+        allowed: !locked,
+
+        accessType:
+          "FREE_FOUNDATION" satisfies AccessSource,
+
+        unlimited: false,
+
+        completedRuns:
+          currentRuns,
+
+        freeRunsRemaining:
+          Math.max(
+            2 - currentRuns,
+            0,
+          ),
+
+        foundationLocked:
+          locked,
       });
     }
 
+    /*
+     * --------------------------------------------------
+     * 8. COMPLETE FREE FOUNDATION RUN
+     *
+     * Database RPC performs idempotent recording.
+     * --------------------------------------------------
+     */
+
     const {
-      data: completedRuns,
-      error: incrementError,
+      data: completionRows,
+      error: completionError,
     } = await supabaseAdmin.rpc(
-      "increment_language_foundation_run",
+      "record_language_foundation_completion",
       {
         p_student_id:
           studentId,
 
         p_language:
           language,
+
+        p_run_id:
+          runId,
       },
     );
 
-    if (incrementError) {
-      throw incrementError;
+    if (completionError) {
+      throw completionError;
     }
 
-    const runCount =
+    const completion =
+      Array.isArray(
+        completionRows,
+      )
+        ? completionRows[0]
+        : completionRows;
+
+    const completedRuns =
       Number(
-        completedRuns ?? 0,
+        completion?.completed_runs ??
+          currentRuns,
+      );
+
+    const freeRunsRemaining =
+      Number(
+        completion
+          ?.free_access_remaining ??
+          Math.max(
+            2 - completedRuns,
+            0,
+          ),
+      );
+
+    const foundationLocked =
+      Boolean(
+        completion
+          ?.foundation_locked ??
+          completedRuns >= 2,
       );
 
     return NextResponse.json({
-      completedRuns:
-        runCount,
+      /*
+       * The run that just finished was valid,
+       * so completion succeeds.
+       *
+       * foundationLocked tells the client that
+       * another Foundation run may NOT start.
+       */
+      allowed: true,
 
-      remainingFreeRuns:
-        Math.max(
-          0,
-          2 - runCount,
+      accessType:
+        "FREE_FOUNDATION" satisfies AccessSource,
+
+      unlimited: false,
+
+      completedRuns,
+
+      freeRunsRemaining,
+
+      foundationLocked,
+
+      alreadyRecorded:
+        Boolean(
+          completion
+            ?.already_recorded,
         ),
-
-      freeAccessExhausted:
-        runCount >= 2,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(
-      "foundation-access POST error:",
+      "foundation-access error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Unable to record Foundation completion.",
+          error instanceof Error
+            ? error.message
+            : "Unable to determine FountainTalk access.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
-}
-
-async function authenticateRequest(
-  request: Request,
-) {
-  const authorization =
-    request.headers.get(
-      "authorization",
-    );
-
-  const accessToken =
-    authorization?.startsWith(
-      "Bearer ",
-    )
-      ? authorization
-          .slice(
-            "Bearer ".length,
-          )
-          .trim()
-      : "";
-
-  if (!accessToken) {
-    return null;
-  }
-
-  const {
-    data,
-    error,
-  } =
-    await supabaseAdmin.auth.getUser(
-      accessToken,
-    );
-
-  if (
-    error ||
-    !data.user
-  ) {
-    return null;
-  }
-
-  return data.user;
-}
-
-async function userOwnsLearner(
-  userId: string,
-  studentId: string,
-) {
-  const {
-    data: parent,
-    error: parentError,
-  } = await supabaseAdmin
-    .from("parent_profiles")
-    .select("id")
-    .eq(
-      "user_id",
-      userId,
-    )
-    .maybeSingle();
-
-  if (
-    parentError ||
-    !parent
-  ) {
-    return false;
-  }
-
-  const {
-    data: learner,
-    error: learnerError,
-  } = await supabaseAdmin
-    .from("student_profiles")
-    .select("id")
-    .eq(
-      "id",
-      studentId,
-    )
-    .eq(
-      "parent_id",
-      parent.id,
-    )
-    .maybeSingle();
-
-  if (
-    learnerError ||
-    !learner
-  ) {
-    return false;
-  }
-
-  return true;
 }

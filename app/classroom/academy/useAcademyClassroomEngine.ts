@@ -143,33 +143,77 @@ export function useAcademyClassroomEngine({
 
     setRows(progressRows);
 
-    const explicitRow = requestedLessonId
-      ? progressRows.find(
-          (row) => row.lesson_id === requestedLessonId,
-        )
-      : null;
-
-    const inProgressRow = progressRows.find(
-      (row) => row.status === "in_progress",
-    );
-
     const completedIds = new Set(
-      progressRows
-        .filter((row) => row.status === "completed")
-        .map((row) => row.lesson_id),
-    );
+  progressRows
+    .filter(
+      (row) =>
+        row.status === "completed",
+    )
+    .map(
+      (row) =>
+        row.lesson_id,
+    ),
+);
 
-    const nextIncomplete = baseSelection.allLessons.find(
-      (lesson) => !completedIds.has(lesson.id),
-    );
+/*
+ * activeLessonId is allowed to control the
+ * current session.
+ *
+ * requestedLessonId is only used to initialise
+ * activeLessonId when the hook first opens.
+ *
+ * This prevents a deep-linked lesson from
+ * forcing the classroom back to that lesson
+ * after it has been completed.
+ */
+const activeRow =
+  activeLessonId
+    ? progressRows.find(
+        (row) =>
+          row.lesson_id ===
+          activeLessonId,
+      )
+    : null;
 
-    const resolvedLessonId =
-      explicitRow?.lesson_id ??
-      requestedLessonId ??
-      inProgressRow?.lesson_id ??
-      nextIncomplete?.id ??
-      baseSelection.allLessons.at(-1)?.id ??
-      baseSelection.lesson.id;
+/*
+ * Ignore stale in-progress rows for lessons
+ * that also have a completed record.
+ */
+const inProgressRow =
+  progressRows
+    .filter(
+      (row) =>
+        row.status ===
+          "in_progress" &&
+        !completedIds.has(
+          row.lesson_id,
+        ),
+    )
+    .sort(
+      (a, b) =>
+        new Date(
+          b.last_studied_at,
+        ).getTime() -
+        new Date(
+          a.last_studied_at,
+        ).getTime(),
+    )[0];
+
+const nextIncomplete =
+  baseSelection.allLessons.find(
+    (lesson) =>
+      !completedIds.has(
+        lesson.id,
+      ),
+  );
+
+const resolvedLessonId =
+  activeRow?.lesson_id ??
+  activeLessonId ??
+  inProgressRow?.lesson_id ??
+  nextIncomplete?.id ??
+  baseSelection.allLessons.at(-1)?.id ??
+  baseSelection.lesson.id;
 
     const restoredRow = progressRows.find(
       (row) => row.lesson_id === resolvedLessonId,
@@ -185,11 +229,11 @@ export function useAcademyClassroomEngine({
         : "ready",
     );
   }, [
-    academyCode,
-    baseSelection,
-    requestedLessonId,
-    studentId,
-  ]);
+  academyCode,
+  activeLessonId,
+  baseSelection,
+  studentId,
+]);
 
   useEffect(() => {
     void loadProgress();
@@ -321,17 +365,73 @@ export function useAcademyClassroomEngine({
       }
 
       const nextLesson =
-        selection.allLessons[selection.lessonIndex + 1];
+  selection.allLessons[selection.lessonIndex + 1];
 
-      await loadProgress();
+if (nextLesson) {
+  setRows((currentRows) => {
+    const completedRow: AcademyProgressRow = {
+      id:
+        currentRows.find(
+          (row) =>
+            row.lesson_id === selection.lesson.id,
+        )?.id ?? selection.lesson.id,
+      student_id: studentId,
+      academy_code: academyCode,
+      programme_id: selection.programme.id,
+      course_id: selection.course.id,
+      unit_id: selection.unit.id,
+      lesson_id: selection.lesson.id,
+      status: "completed",
+      current_activity_index: safeActivityIndex,
+      points_earned: awardedPoints,
+      score: null,
+      started_at:
+        currentRows.find(
+          (row) =>
+            row.lesson_id === selection.lesson.id,
+        )?.started_at ?? new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      last_studied_at: new Date().toISOString(),
+    };
 
-      if (nextLesson) {
-        setActiveLessonId(nextLesson.id);
-        setActivityIndex(0);
-        setStatus("ready");
-      } else {
-        setStatus("completed");
-      }
+    const existingIndex = currentRows.findIndex(
+      (row) =>
+        row.lesson_id === selection.lesson.id,
+    );
+
+    if (existingIndex === -1) {
+      return [...currentRows, completedRow];
+    }
+
+    return currentRows.map((row, index) =>
+      index === existingIndex
+        ? {
+            ...row,
+            status: "completed",
+            current_activity_index:
+              safeActivityIndex,
+            points_earned:
+              alreadyCompleted
+                ? row.points_earned
+                : awardedPoints,
+            completed_at:
+              row.completed_at ??
+              new Date().toISOString(),
+            last_studied_at:
+              new Date().toISOString(),
+          }
+        : row,
+    );
+  });
+
+  setActiveLessonId(nextLesson.id);
+  setActivityIndex(0);
+  setStatus("ready");
+  return;
+}
+
+await loadProgress();
+setStatus("completed");
     } catch (error) {
       setErrorMessage(
         error instanceof Error

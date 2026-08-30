@@ -125,6 +125,106 @@ export async function POST(
       );
     }
 
+    if (isProfessionalPlan(plan)) {
+      return NextResponse.json(
+        {
+          error:
+            "Professional Academy access is not available for purchase yet.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const account =
+      await getAccountContext(user.id);
+
+    if (!account) {
+      return NextResponse.json(
+        {
+          error:
+            "Your FountainPrep account profile is incomplete.",
+        },
+        { status: 409 },
+      );
+    }
+
+    let resolvedStudentId =
+      studentId;
+
+    if (isIndividualPlan(plan)) {
+      if (
+        account.accountType !==
+        "ADULT_LEARNER"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Premium Individual is only available to an Individual Learner account. Family accounts should choose the Family plan.",
+          },
+          { status: 403 },
+        );
+      }
+
+      const selfLearner =
+        await getSelfLearner(
+          account.parentProfileId,
+        );
+
+      if (!selfLearner) {
+        return NextResponse.json(
+          {
+            error:
+              "Your Individual Learner profile is not ready yet. Please complete your learner account before subscribing.",
+          },
+          { status: 409 },
+        );
+      }
+
+      if (
+        resolvedStudentId &&
+        resolvedStudentId !==
+          selfLearner.id
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Premium Individual can only be assigned to your own learner profile.",
+          },
+          { status: 403 },
+        );
+      }
+
+      resolvedStudentId =
+        selfLearner.id;
+    }
+
+    if (isFamilyPlan(plan)) {
+      if (
+        account.accountType ===
+        "ADULT_LEARNER"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The Family plan requires a Parent or Guardian account.",
+          },
+          { status: 403 },
+        );
+      }
+
+      /*
+       * Do not block checkout because the parent account
+       * contains more learner profiles than the Family plan
+       * includes. The plan limit applies to learners assigned
+       * to academy_subscription_learners, not to historical
+       * student_profiles on the family account.
+       *
+       * The subscription-learners API remains the authority
+       * that enforces plan.included_learner_count when seats
+       * are assigned after purchase.
+       */
+    }
+
     if (!plan.stripe_price_id) {
       return NextResponse.json(
         {
@@ -135,11 +235,11 @@ export async function POST(
       );
     }
 
-    if (studentId) {
+    if (resolvedStudentId) {
       const ownsLearner =
         await userOwnsLearner(
           user.id,
-          studentId,
+          resolvedStudentId,
         );
 
       if (!ownsLearner) {
@@ -152,6 +252,16 @@ export async function POST(
         );
       }
     }
+
+    /*
+     * A previous Stripe Checkout can leave a local
+     * "incomplete" row when the customer never completes
+     * payment. That is not an active subscription and must
+     * not prevent a fresh checkout.
+     */
+    await retireIncompleteSubscriptions(
+      user.id,
+    );
 
     const existingSubscription =
       await getExistingSubscription(
@@ -172,14 +282,15 @@ export async function POST(
       buildClassroomSuccessPath({
         academyId,
         programmeId,
-        studentId,
+        studentId: resolvedStudentId,
       });
 
     const cancelPath =
       buildPricingCancelPath({
         academyId,
         programmeId,
-        studentId,
+        studentId: resolvedStudentId,
+        planId: plan.id,
       });
 
     const session =
@@ -212,7 +323,7 @@ export async function POST(
           user_id: user.id,
           plan_id: plan.id,
           student_id:
-            studentId || "",
+            resolvedStudentId || "",
           academy_id:
             academyId || "",
           programme_id:
@@ -226,7 +337,7 @@ export async function POST(
             user_id: user.id,
             plan_id: plan.id,
             student_id:
-              studentId || "",
+              resolvedStudentId || "",
             academy_id:
               academyId || "",
             programme_id:
@@ -292,11 +403,46 @@ function buildClassroomSuccessPath({
   studentId: string | null;
 }) {
   /*
+   * A Family subscription can be purchased before a child
+   * is selected. In that case return to the academy start
+   * orchestrator so the parent can add/select a learner.
+   */
+  if (!studentId) {
+    const query =
+      new URLSearchParams({
+        subscription: "success",
+        session_id:
+          "{CHECKOUT_SESSION_ID}",
+      });
+
+    if (academyId) {
+      query.set("academy", academyId);
+    }
+
+    if (programmeId) {
+      query.set(
+        "programme",
+        programmeId,
+      );
+    }
+
+    return (
+      `/academies/financial-literacy/start?` +
+      query
+        .toString()
+        .replace(
+          "%7BCHECKOUT_SESSION_ID%7D",
+          "{CHECKOUT_SESSION_ID}",
+        )
+    );
+  }
+
+  /*
    * Language lessons use the existing
    * FountainTalk classroom.
    */
   if (
-    academyId === "language"
+    academyId === "languages"
   ) {
     const query =
       new URLSearchParams({
@@ -312,7 +458,15 @@ function buildClassroomSuccessPath({
       );
     }
 
-    return `/classroom?${query.toString()}`;
+    return (
+  `/classroom?` +
+  query
+    .toString()
+    .replace(
+      "%7BCHECKOUT_SESSION_ID%7D",
+      "{CHECKOUT_SESSION_ID}",
+    )
+);
   }
 
   const query =
@@ -362,15 +516,18 @@ function buildPricingCancelPath({
   academyId,
   programmeId,
   studentId,
+  planId,
 }: {
   academyId: string | null;
   programmeId: string | null;
   studentId: string | null;
+  planId: string;
 }) {
   const query =
     new URLSearchParams({
       product: "academies",
       subscription: "cancelled",
+      plan: planId,
     });
 
   if (studentId) {
@@ -515,6 +672,32 @@ async function userOwnsLearner(
   return Boolean(learner);
 }
 
+async function retireIncompleteSubscriptions(
+  userId: string,
+) {
+  const {
+    error,
+  } = await supabaseAdmin
+    .from(
+      "academy_subscriptions",
+    )
+    .update({
+      status: "cancelled",
+    })
+    .eq(
+      "user_id",
+      userId,
+    )
+    .eq(
+      "status",
+      "incomplete",
+    );
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function getExistingSubscription(
   userId: string,
 ) {
@@ -535,7 +718,6 @@ async function getExistingSubscription(
       "active",
       "past_due",
       "paused",
-      "incomplete",
     ])
     .maybeSingle();
 
@@ -544,6 +726,109 @@ async function getExistingSubscription(
   }
 
   return data;
+}
+
+type AccountContext = {
+  parentProfileId: string;
+  accountType:
+    | "PARENT"
+    | "ADULT_LEARNER";
+};
+
+async function getAccountContext(
+  userId: string,
+): Promise<AccountContext | null> {
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from("parent_profiles")
+    .select("id, account_type")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    parentProfileId: data.id,
+    accountType:
+      data.account_type ===
+      "ADULT_LEARNER"
+        ? "ADULT_LEARNER"
+        : "PARENT",
+  };
+}
+
+async function getSelfLearner(
+  parentProfileId: string,
+): Promise<{ id: string } | null> {
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from("student_profiles")
+    .select("id")
+    .eq(
+      "parent_id",
+      parentProfileId,
+    )
+    .eq(
+      "is_self_learner",
+      true,
+    )
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+function normalisePlanIdentity(
+  plan: PlanRow,
+) {
+  return `${plan.id} ${plan.name}`
+    .trim()
+    .toLowerCase();
+}
+
+function isIndividualPlan(
+  plan: PlanRow,
+) {
+  const identity =
+    normalisePlanIdentity(plan);
+
+  return (
+    identity.includes(
+      "premium_individual",
+    ) ||
+    identity.includes(
+      "premium individual",
+    )
+  );
+}
+
+function isFamilyPlan(
+  plan: PlanRow,
+) {
+  return normalisePlanIdentity(
+    plan,
+  ).includes("family");
+}
+
+function isProfessionalPlan(
+  plan: PlanRow,
+) {
+  return normalisePlanIdentity(
+    plan,
+  ).includes("professional");
 }
 
 function normalisedAppUrl() {
@@ -564,14 +849,18 @@ function canonicalAcademyCode(
     academyId.toLowerCase();
 
   if (
-    normalised === "wealth" ||
-    normalised ===
-      "financial-literacy"
-  ) {
-    return "personal-finance";
-  }
+  normalised === "wealth" ||
+  normalised ===
+    "financial-literacy"
+) {
+  return "personal-finance";
+}
 
-  return normalised;
+if (normalised === "language") {
+  return "languages";
+}
+
+return normalised;
 }
 
 function defaultProgrammeId(
@@ -605,7 +894,7 @@ function defaultProgrammeId(
     case "science":
       return "science-foundation";
 
-    case "language":
+    case "languages":
       return "language-foundation";
 
     default:

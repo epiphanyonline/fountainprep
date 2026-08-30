@@ -1,6 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+import { supabase } from "@/app/lib/supabase";
+import {
+  getAcademySubscriptionAccess,
+} from "@/app/fountaintalk/services/subscriptionAccess";
+
+import {
+  personalFinanceAcademy,
+} from "@/app/data/academies/personal-finance";
 
 import type {
   AcademyCode,
@@ -27,6 +38,17 @@ export default function UniversalAcademyClassroom({
   courseId,
   lessonId,
 }: Props) {
+  const searchParams =
+    useSearchParams();
+
+  const checkoutSessionId =
+    searchParams.get("session_id");
+
+  const returningFromCheckout =
+    searchParams.get("subscription") ===
+      "success" &&
+    Boolean(checkoutSessionId);
+
   const engine = useAcademyClassroomEngine({
     studentId,
     academyCode,
@@ -34,6 +56,429 @@ export default function UniversalAcademyClassroom({
     courseId,
     requestedLessonId: lessonId,
   });
+
+  const [
+    accessState,
+    setAccessState,
+  ] = useState<
+    | "checking"
+    | "allowed"
+    | "blocked"
+    | "error"
+  >(
+    academyCode === "personal-finance"
+      ? "checking"
+      : "allowed",
+  );
+
+  const [
+    accessMessage,
+    setAccessMessage,
+  ] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      academyCode !==
+      "personal-finance"
+    ) {
+      setAccessState("allowed");
+      setAccessMessage(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function reconcileCheckoutIfNeeded() {
+      if (
+        !returningFromCheckout ||
+        !checkoutSessionId
+      ) {
+        return;
+      }
+
+      const {
+        data: { session },
+      } =
+        await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error(
+          "Please sign in again so we can confirm your payment.",
+        );
+      }
+
+      /*
+       * Stripe webhooks remain the long-term source of truth,
+       * but the browser return also reconciles the completed
+       * Checkout session. This removes webhook timing races
+       * and makes localhost/test-mode checkout reliable.
+       */
+      for (
+        let attempt = 0;
+        attempt < 6;
+        attempt += 1
+      ) {
+        const response =
+          await fetch(
+            "/api/stripe/academy-subscription-confirm",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+                Authorization:
+                  `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                sessionId:
+                  checkoutSessionId,
+              }),
+            },
+          );
+
+        const result =
+          (await response.json()) as {
+            confirmed?: boolean;
+            pending?: boolean;
+            error?: string;
+          };
+
+        if (
+          response.ok &&
+          result.confirmed
+        ) {
+          return;
+        }
+
+        if (
+          response.status === 202 ||
+          result.pending
+        ) {
+          await new Promise(
+            (resolve) =>
+              window.setTimeout(
+                resolve,
+                900,
+              ),
+          );
+          continue;
+        }
+
+        throw new Error(
+          result.error ??
+            "We could not confirm the completed Stripe checkout.",
+        );
+      }
+
+      throw new Error(
+        "Your payment was received, but access is still being activated. Please refresh in a moment.",
+      );
+    }
+
+    async function checkPaidAccess() {
+      try {
+        setAccessState("checking");
+        setAccessMessage(null);
+
+        await reconcileCheckoutIfNeeded();
+
+        if (cancelled) {
+          return;
+        }
+
+        const access =
+          await getAcademySubscriptionAccess(
+            studentId,
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        const activePaidAccess =
+          access.learnerCovered &&
+          ["active", "trialing"].includes(
+            access.status,
+          ) &&
+          access.plan.accessTier !==
+            "free";
+
+        if (activePaidAccess) {
+          setAccessState("allowed");
+
+          /*
+           * Remove Stripe return parameters once access has
+           * been confirmed so refreshes do not re-run the
+           * reconciliation unnecessarily.
+           */
+          if (
+            returningFromCheckout
+          ) {
+            const clean =
+              new URL(
+                window.location.href,
+              );
+
+            clean.searchParams.delete(
+              "subscription",
+            );
+            clean.searchParams.delete(
+              "session_id",
+            );
+
+            window.history.replaceState(
+              {},
+              "",
+              clean.pathname +
+                clean.search,
+            );
+          }
+
+          return;
+        }
+
+        setAccessState("blocked");
+
+        const params =
+          new URLSearchParams({
+            product: "academies",
+            studentId,
+            academy:
+              "personal-finance",
+            programme:
+              programmeId ||
+              "money-foundation",
+          });
+
+        window.location.replace(
+          `/pricing?${params.toString()}`,
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error(
+          "Unable to verify Financial Literacy access:",
+          error,
+        );
+
+        setAccessState("error");
+        setAccessMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to verify your Academy access.",
+        );
+      }
+    }
+
+    void checkPaidAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    academyCode,
+    studentId,
+    programmeId,
+    returningFromCheckout,
+    checkoutSessionId,
+  ]);
+
+  const financialProgramme =
+  academyCode === "personal-finance"
+    ? personalFinanceAcademy.programmes.find(
+        (item) => item.id === "money-foundation",
+      ) ?? null
+    : null;
+
+const currentFinancialCourseIndex =
+  financialProgramme
+    ? financialProgramme.courses.findIndex(
+        (course) => course.id === engine.course.id,
+      )
+    : -1;
+
+const nextFinancialCourse =
+  financialProgramme &&
+  currentFinancialCourseIndex >= 0
+    ? financialProgramme.courses[
+        currentFinancialCourseIndex + 1
+      ] ?? null
+    : null;
+
+const isFinalFinancialCourseComplete =
+  academyCode === "personal-finance" &&
+  engine.status === "completed" &&
+  Boolean(financialProgramme) &&
+  currentFinancialCourseIndex >= 0 &&
+  !nextFinancialCourse;
+
+useEffect(() => {
+  if (!isFinalFinancialCourseComplete) {
+    return;
+  }
+
+  let cancelled = false;
+
+  async function checkGraduation() {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token || cancelled) {
+        return;
+      }
+
+      const response = await fetch(
+        "/api/academy/financial-literacy/graduation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            studentId,
+          }),
+        },
+      );
+
+      const result = (await response.json()) as {
+        graduated?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            "Unable to evaluate graduation.",
+        );
+      }
+
+      if (
+        result.graduated &&
+        !cancelled
+      ) {
+        window.location.href =
+          `/academies/financial-literacy/graduation?learner=${encodeURIComponent(
+            studentId,
+          )}`;
+      }
+    } catch (error) {
+      console.error(
+        "Graduation check failed:",
+        error,
+      );
+    }
+  }
+
+  void checkGraduation();
+
+  return () => {
+    cancelled = true;
+  };
+}, [
+  isFinalFinancialCourseComplete,
+  studentId,
+]);
+
+  if (
+    academyCode ===
+      "personal-finance" &&
+    accessState === "checking"
+  ) {
+    return (
+      <main className="loadingPage">
+        <div
+          style={{
+            textAlign: "center",
+            maxWidth: "620px",
+          }}
+        >
+          <strong>
+            Confirming your Financial
+            Literacy access...
+          </strong>
+          <p>
+            We’re checking that this learner
+            has an active Academy subscription.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (
+    academyCode ===
+      "personal-finance" &&
+    accessState === "blocked"
+  ) {
+    return (
+      <main className="loadingPage">
+        <div
+          style={{
+            textAlign: "center",
+            maxWidth: "620px",
+          }}
+        >
+          <strong>
+            Subscription required
+          </strong>
+          <p>
+            Redirecting you to the Financial
+            Education plans...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (
+    academyCode ===
+      "personal-finance" &&
+    accessState === "error"
+  ) {
+    return (
+      <main className="loadingPage">
+        <div
+          style={{
+            textAlign: "center",
+            maxWidth: "620px",
+          }}
+        >
+          <h1>
+            Unable to verify access
+          </h1>
+          <p>
+            {accessMessage ??
+              "Please return to Financial Education and try again."}
+          </p>
+
+          <Link
+            href="/financial-education"
+            style={{
+              marginTop: "18px",
+              minHeight: "48px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 20px",
+              borderRadius: "16px",
+              background: "#7c3aed",
+              color: "#ffffff",
+              textDecoration: "none",
+              fontWeight: 900,
+            }}
+          >
+            Financial Education
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   if (engine.status === "loading") {
     return (
@@ -57,11 +502,198 @@ export default function UniversalAcademyClassroom({
   const { state } = engine;
   const busy = engine.status === "checking";
 
+  if (
+    academyCode === "personal-finance" &&
+    engine.status === "completed" &&
+    nextFinancialCourse
+  ) {
+    const nextCourseHref =
+      "/classroom/academy?" +
+      new URLSearchParams({
+        studentId,
+        academy: "personal-finance",
+        programme:
+          financialProgramme?.id ??
+          engine.programme.id,
+        course: nextFinancialCourse.id,
+      }).toString();
+
+    return (
+      <main className="loadingPage">
+        <div
+          style={{
+            width: "min(780px, calc(100% - 32px))",
+            padding: "clamp(32px, 6vw, 56px)",
+            borderRadius: "34px",
+            background: "#ffffff",
+            border: "1px solid #eee5f8",
+            boxShadow:
+              "0 28px 90px rgba(48, 29, 82, 0.12)",
+            textAlign: "center",
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 12px",
+              color: "#6f42c1",
+              fontSize: "11px",
+              fontWeight: 950,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Stage complete
+          </p>
+
+          <h1
+            style={{
+              margin: "0 0 16px",
+              fontSize: "clamp(34px, 6vw, 56px)",
+              lineHeight: 1,
+              letterSpacing: "-0.05em",
+            }}
+          >
+            Excellent progress, {learnerName}.
+          </h1>
+
+          <p
+            style={{
+              maxWidth: "620px",
+              margin: "0 auto",
+              color: "#756985",
+              fontSize: "17px",
+              lineHeight: 1.7,
+            }}
+          >
+            You have completed{" "}
+            <strong>{engine.course.title}</strong>.
+            Your Financial Literacy journey continues
+            into the next stage.
+          </p>
+
+          <div
+            style={{
+              marginTop: "28px",
+              padding: "24px",
+              borderRadius: "24px",
+              background: "#faf7ff",
+              border: "1px solid #e9def5",
+              textAlign: "left",
+            }}
+          >
+            <span
+              style={{
+                color: "#6f42c1",
+                fontSize: "11px",
+                fontWeight: 950,
+                letterSpacing: "0.1em",
+              }}
+            >
+              UP NEXT
+            </span>
+
+            <h2
+              style={{
+                margin: "8px 0",
+                fontSize: "clamp(26px, 4vw, 38px)",
+              }}
+            >
+              {nextFinancialCourse.title}
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                color: "#756985",
+                lineHeight: 1.6,
+              }}
+            >
+              {nextFinancialCourse.description}
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              marginTop: "26px",
+            }}
+          >
+            <Link
+              href={nextCourseHref}
+              style={{
+                minHeight: "52px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 24px",
+                borderRadius: "16px",
+                color: "#ffffff",
+                background:
+                  "linear-gradient(135deg, #6f42c1, #8a5cf6)",
+                textDecoration: "none",
+                fontWeight: 900,
+              }}
+            >
+              Continue learning →
+            </Link>
+
+            <Link
+              href="/academies/financial-literacy"
+              style={{
+                minHeight: "52px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 24px",
+                borderRadius: "16px",
+                color: "#5f4378",
+                background: "#faf7ff",
+                border: "1px solid #e7def2",
+                textDecoration: "none",
+                fontWeight: 900,
+              }}
+            >
+              Return to Academy
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isFinalFinancialCourseComplete) {
+    return (
+      <main className="loadingPage">
+        <div style={{ textAlign: "center" }}>
+          <strong>
+            Checking your graduation record...
+          </strong>
+
+          <p>
+            FountainPrep is confirming completion
+            of the full Financial Literacy pathway.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="academyPage">
       <div className="shell">
         <header className="topbar">
-          <Link href="/subjects" className="exit">
+          <Link
+            href={
+              academyCode ===
+              "personal-finance"
+                ? "/financial-education"
+                : "/subjects"
+            }
+            className="exit"
+          >
             ← Exit lesson
           </Link>
 

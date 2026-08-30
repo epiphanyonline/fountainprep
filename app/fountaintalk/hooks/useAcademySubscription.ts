@@ -10,6 +10,10 @@ import {
   type AcademySubscriptionAccess,
 } from "../services/subscriptionAccess";
 
+type UseAcademySubscriptionOptions = {
+  skip?: boolean;
+};
+
 type UseAcademySubscriptionResult = {
   access: AcademySubscriptionAccess | null;
   loading: boolean;
@@ -18,11 +22,15 @@ type UseAcademySubscriptionResult = {
 
 export function useAcademySubscription(
   studentId: string | null,
+  options?: UseAcademySubscriptionOptions,
 ): UseAcademySubscriptionResult {
+  const skip = options?.skip === true;
+
   const [access, setAccess] =
     useState<AcademySubscriptionAccess | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(!skip);
 
   const [error, setError] =
     useState<string | null>(null);
@@ -30,31 +38,46 @@ export function useAcademySubscription(
   useEffect(() => {
     let cancelled = false;
 
+    if (skip) {
+      setAccess(null);
+      setLoading(false);
+      setError(null);
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
     async function loadAccess() {
       try {
         setLoading(true);
         setError(null);
 
         const result =
-          await getAcademySubscriptionAccess(studentId);
+          await getAcademySubscriptionAccess(
+            studentId,
+          );
 
         if (!cancelled) {
           setAccess(result);
         }
       } catch (loadError) {
-        console.error(
+        if (cancelled) {
+          return;
+        }
+
+        setAccess(null);
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load academy subscription access.",
+        );
+
+        console.warn(
           "Unable to load academy subscription access:",
           loadError,
         );
-
-        if (!cancelled) {
-          setAccess(null);
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Unable to load academy access.",
-          );
-        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -67,7 +90,10 @@ export function useAcademySubscription(
     return () => {
       cancelled = true;
     };
-  }, [studentId]);
+  }, [
+    skip,
+    studentId,
+  ]);
 
   return {
     access,

@@ -9,6 +9,8 @@ import {
 } from '../data/academy-routing'
 import {
   getAcademyPlans,
+  getAcademySubscriptionAccess,
+  type AcademySubscriptionAccess,
   type AcademySubscriptionPlan,
 } from '../fountaintalk/services/subscriptionAccess'
 import {
@@ -130,6 +132,44 @@ const [loadingAcademyPlans, setLoadingAcademyPlans] =
 const [academyPlanError, setAcademyPlanError] =
   useState<string | null>(null)
 
+const [
+  existingAcademyAccess,
+  setExistingAcademyAccess,
+] = useState<AcademySubscriptionAccess | null>(null)
+
+const [
+  checkingAcademyAccess,
+  setCheckingAcademyAccess,
+] = useState(false)
+
+const visibleAcademyPlans = useMemo(
+  () =>
+    academyPlans.filter((plan) => {
+      const id = plan.id.trim().toLowerCase()
+      const name = plan.name.trim().toLowerCase()
+      const tier = String(plan.accessTier ?? '')
+        .trim()
+        .toLowerCase()
+
+      const isProfessional =
+        id.includes('professional') ||
+        name.includes('professional') ||
+        tier === 'professional'
+
+      return !isProfessional
+    }),
+  [academyPlans],
+)
+
+ const hasExistingAcademySubscription =
+  Boolean(
+    existingAcademyAccess &&
+    ['active', 'trialing'].includes(
+      existingAcademyAccess.status,
+    ) &&
+    existingAcademyAccess.plan.accessTier !== 'free',
+  )
+
   const hasBookingContext = Boolean(studentId && subjectId)
 
   const subjectName = useMemo(() => {
@@ -192,6 +232,62 @@ const [academyPlanError, setAcademyPlanError] =
     cancelled = true
   }
 }, [isAcademyPricing, router])
+
+useEffect(() => {
+  let cancelled = false
+
+  async function loadExistingAcademyAccess() {
+    if (!isAcademyPricing) {
+      return
+    }
+
+    try {
+      setCheckingAcademyAccess(true)
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.user) {
+        if (!cancelled) {
+          setExistingAcademyAccess(null)
+        }
+        return
+      }
+
+      const access =
+        await getAcademySubscriptionAccess(
+          studentId,
+        )
+
+      if (!cancelled) {
+        setExistingAcademyAccess(access)
+      }
+    } catch (error) {
+      console.error(
+        'Unable to check existing Academy subscription:',
+        error,
+      )
+
+      if (!cancelled) {
+        setExistingAcademyAccess(null)
+      }
+    } finally {
+      if (!cancelled) {
+        setCheckingAcademyAccess(false)
+      }
+    }
+  }
+
+  void loadExistingAcademyAccess()
+
+  return () => {
+    cancelled = true
+  }
+}, [
+  isAcademyPricing,
+  studentId,
+])
 
 useEffect(() => {
     async function loadSubjectName() {
@@ -307,6 +403,53 @@ function getSelectedTotal(
     : 40
 }
 
+function getAcademyReturnPath(
+  planId: string,
+) {
+  const params = new URLSearchParams()
+
+  params.set('product', 'academies')
+  params.set('plan', planId)
+
+  if (studentId) {
+    params.set('studentId', studentId)
+  }
+
+  if (academyId) {
+    params.set('academy', academyId)
+  }
+
+  if (academyProgrammeId) {
+    params.set('programme', academyProgrammeId)
+  }
+
+  return `/pricing?${params.toString()}`
+}
+
+function getAcademySignupHref(
+  planId: string,
+) {
+  const normalisedPlanId =
+    planId.trim().toLowerCase()
+
+  const returnTo =
+    getAcademyReturnPath(planId)
+
+  if (
+    normalisedPlanId.includes('family')
+  ) {
+    return (
+      `/signup/parent?next=` +
+      encodeURIComponent(returnTo)
+    )
+  }
+
+  return (
+    `/signup/learner?next=` +
+    encodeURIComponent(returnTo)
+  )
+}
+
 async function handleChooseAcademyPlan(
   planId: string,
 ) {
@@ -335,12 +478,8 @@ async function handleChooseAcademyPlan(
     } = await supabase.auth.getSession()
 
     if (!session?.access_token) {
-      const redirectTo =
-        window.location.pathname +
-        window.location.search
-
       router.push(
-        `/login?redirectTo=${encodeURIComponent(redirectTo)}`,
+        getAcademySignupHref(planId),
       )
       return
     }
@@ -369,13 +508,51 @@ async function handleChooseAcademyPlan(
     }
 
     if (!response.ok || !result.url) {
-      throw new Error(
-        result.error ??
-          'Unable to start subscription checkout.',
-      )
+  const alreadySubscribed =
+    response.status === 409 &&
+    Boolean(
+      result.error
+        ?.toLowerCase()
+        .includes(
+          "already have an academy subscription",
+        ),
+    );
+
+  if (alreadySubscribed) {
+    setSelectingPlan("");
+
+    if (studentId && academyId) {
+      router.replace(
+        academyClassroomHref({
+          studentId,
+          academy: academyId,
+          programme:
+            academyProgrammeId ??
+            (academyId === "personal-finance"
+              ? "money-foundation"
+              : null),
+        }),
+      );
+
+      return;
     }
 
-    window.location.assign(result.url)
+    /*
+     * Family/account has a subscription,
+     * but we do not yet know which learner
+     * should receive the progress.
+     */
+    router.replace("/parent/students");
+    return;
+  }
+
+  throw new Error(
+    result.error ??
+      "Unable to start subscription checkout.",
+  );
+}
+
+window.location.assign(result.url);
   } catch (error) {
     console.error(
       'Unable to start academy subscription checkout:',
@@ -468,14 +645,21 @@ if (isAcademyPricing) {
 
         <p className="heroSubtitle">
           Choose the access level that fits the learner,
-          assessments, certificates, and advanced
-          professional pathways.
+          with full academy access, assessments,
+          certificates, and family options.
         </p>
 
         <div className="heroBadges">
-          <span>✓ Free introductory learning</span>
+          <span>✓ 2 complimentary experiences included</span>
           <span>✓ Cancel anytime</span>
           <span>✓ Secure payment through Stripe</span>
+        </div>
+
+        <div className="academyAccountNote">
+          <p>
+            <strong>Premium Individual</strong> is for one person learning for themselves.
+            <strong> Family</strong> is for a parent or guardian managing learning for children.
+          </p>
         </div>
       </section>
 
@@ -491,18 +675,192 @@ if (isAcademyPricing) {
           </div>
         ) : null}
 
-        {academyPlanError ? (
+        {checkingAcademyAccess ? (
           <div className="warningBox">
             <div>
-              <h3>Unable to load academy plans</h3>
-              <p role="alert">{academyPlanError}</p>
+              <h3>Checking your Academy access...</h3>
+              <p>
+                We are confirming whether this account already has an active subscription.
+              </p>
             </div>
           </div>
         ) : null}
 
+        {hasExistingAcademySubscription &&
+        existingAcademyAccess ? (
+          <div className="activeAcademyBox">
+            <div>
+              <p className="activeAcademyEyebrow">
+                SUBSCRIPTION ACTIVE
+              </p>
+
+              <h2>
+                Your {existingAcademyAccess.plan.name} plan is already active.
+              </h2>
+
+              <p>
+                You do not need to choose or pay for this plan again.
+                Continue your Financial Literacy journey using your existing access.
+              </p>
+
+              <div className="activeAcademyMeta">
+                <span>
+                  Plan: <strong>{existingAcademyAccess.plan.name}</strong>
+                </span>
+                <span>
+                  Learner places:{' '}
+                  <strong>
+                    {existingAcademyAccess.plan.includedLearnerCount ?? 'Unlimited'}
+                  </strong>
+                </span>
+              </div>
+
+              <div className="activeAcademyActions">
+                <button
+                  type="button"
+                  className="chooseButton"
+                  onClick={() => {
+                    if (
+                      studentId &&
+                      existingAcademyAccess.learnerCovered &&
+                      academyId
+                    ) {
+                      router.push(
+                        academyClassroomHref({
+                          studentId,
+                          academy: academyId,
+                          programme:
+                            academyProgrammeId ??
+                            (academyId === 'personal-finance'
+                              ? 'money-foundation'
+                              : null),
+                        }),
+                      )
+                      return
+                    }
+
+                    router.push(
+                      '/academies/financial-literacy/start',
+                    )
+                  }}
+                >
+                  {studentId &&
+                  existingAcademyAccess.learnerCovered
+                    ? 'Continue Financial Literacy →'
+                    : 'Manage learners & continue →'}
+                </button>
+
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() =>
+                    router.push('/account')
+                  }
+                >
+                  Manage subscription
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {academyPlanError ? (
+  hasExistingAcademySubscription ? (
+    <div className="warningBox">
+      <div>
+        <p
+          style={{
+            margin: '0 0 8px',
+            color: '#7c3aed',
+            fontSize: '12px',
+            fontWeight: 900,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Academy access active
+        </p>
+
+        <h3>
+          Your academy subscription is already active
+        </h3>
+
+        <p>
+          You already have access to Fountain Prep Academies.
+          Continue learning with this learner, or manage your
+          subscription from your account.
+        </p>
+
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginTop: '20px',
+          }}
+        >
+          <button
+            type="button"
+            className="chooseButton"
+            onClick={() => {
+              if (
+                studentId &&
+                academyId
+              ) {
+                router.push(
+                  academyClassroomHref({
+                    studentId,
+                    academy: academyId,
+                    programme:
+                      academyProgrammeId,
+                  }),
+                )
+
+                return
+              }
+
+              router.push(
+                '/academies',
+              )
+            }}
+          >
+            Continue learning
+          </button>
+
+          <button
+            type="button"
+            className="chooseButton"
+            onClick={() =>
+              router.push(
+                '/account',
+              )
+            }
+          >
+            Manage subscription
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="warningBox">
+      <div>
+        <h3>
+          Unable to continue
+        </h3>
+
+        <p role="alert">
+          {academyPlanError}
+        </p>
+      </div>
+    </div>
+  )
+) : null}
+
         {!loadingAcademyPlans && !academyPlanError ? (
           <div className="plansGrid">
-            {academyPlans.map((plan) => {
+            {visibleAcademyPlans
+  .filter((plan) => plan.accessTier !== 'free')
+  .map((plan) => {
               const isFree = plan.id === 'free'
 
               const price = isFree
@@ -523,7 +881,9 @@ if (isAcademyPricing) {
                       ? 'Start here'
                       : plan.id === 'premium_individual'
                         ? 'Most popular'
-                        : 'Full access'}
+                        : plan.id.toLowerCase().includes('family')
+                          ? 'Family access'
+                          : 'Full access'}
                   </div>
 
                   <h2>{plan.name}</h2>
@@ -577,10 +937,12 @@ if (isAcademyPricing) {
                     }
                   >
                     {selectingPlan === plan.id
-                      ? 'Opening secure checkout...'
-                      : isFree
-                        ? 'Start learning free'
-                        : `Choose ${plan.name}`}
+  ? 'Opening secure checkout...'
+  : plan.id.toLowerCase().includes('family')
+    ? `Choose ${plan.name} →`
+    : plan.id === 'premium_individual'
+      ? `Choose ${plan.name} →`
+      : `Choose ${plan.name}`}
                   </button>
                 </article>
               )
@@ -1000,7 +1362,7 @@ function PricingLoading() {
 const pricingStyles = `
   .pricingPage {
     min-height: 100vh;
-    padding: 46px 20px 90px;
+    padding: 118px 20px 90px;
     background:
       radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 30%),
       linear-gradient(180deg, #ffffff, #fbf8ff 48%, #f5edff);
@@ -1066,7 +1428,94 @@ const pricingStyles = `
     box-shadow: 0 12px 30px rgba(55, 35, 95, 0.05);
   }
 
+  .academyAccountNote {
+    margin-top: 22px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    color: #5f536b;
+  }
+
+  .academyAccountNote p {
+    margin: 0;
+    line-height: 1.65;
+    font-size: 14px;
+  }
+
   .contextBox,
+  .activeAcademyBox {
+    padding: 28px;
+    border-radius: 28px;
+    border: 1px solid rgba(124, 58, 237, 0.16);
+    background:
+      radial-gradient(
+        circle at top right,
+        rgba(124, 58, 237, 0.12),
+        transparent 34%
+      ),
+      #ffffff;
+    box-shadow: 0 24px 70px rgba(55, 35, 95, 0.09);
+  }
+
+  .activeAcademyEyebrow {
+    margin: 0 0 8px;
+    color: #15803d;
+    font-size: 12px;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+  }
+
+  .activeAcademyBox h2 {
+    margin: 0;
+    color: #251634;
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: -0.045em;
+  }
+
+  .activeAcademyBox > div > p:not(.activeAcademyEyebrow) {
+    max-width: 720px;
+    color: #6d647c;
+    line-height: 1.65;
+  }
+
+  .activeAcademyMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .activeAcademyMeta span {
+    padding: 9px 12px;
+    border-radius: 999px;
+    background: #f7f1ff;
+    color: #574762;
+    font-size: 13px;
+  }
+
+  .activeAcademyActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .activeAcademyActions .chooseButton,
+  .activeAcademyActions .secondaryButton {
+    min-height: 50px;
+    padding: 0 20px;
+    border-radius: 16px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .activeAcademyActions .secondaryButton {
+    border: 1px solid #e4d8f3;
+    color: #6d28d9;
+    background: #ffffff;
+  }
+
   .warningBox {
     margin-top: 34px;
     display: grid;
@@ -1320,7 +1769,7 @@ const pricingStyles = `
 
   @media (max-width: 640px) {
     .pricingPage {
-      padding: 28px 14px 70px;
+      padding: 100px 14px 70px;
     }
 
     .hero {

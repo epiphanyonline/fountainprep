@@ -10,9 +10,35 @@ type SpeechRequest = {
   text?: string;
 };
 
+const OPENAI_TTS_TIMEOUT_MS = 15000;
+
 export async function POST(request: Request) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    OPENAI_TTS_TIMEOUT_MS,
+  );
+
   try {
-    const body = (await request.json()) as SpeechRequest;
+    const rawBody = await request.text();
+
+    if (!rawBody.trim()) {
+      return NextResponse.json(
+        { error: "Narration request was empty." },
+        { status: 400 },
+      );
+    }
+
+    let body: SpeechRequest;
+
+    try {
+      body = JSON.parse(rawBody) as SpeechRequest;
+    } catch {
+      return NextResponse.json(
+        { error: "Narration request was invalid." },
+        { status: 400 },
+      );
+    }
 
     const text = body.text?.trim();
 
@@ -69,6 +95,7 @@ Use clear, natural British English pronunciation.
 The overall feeling should be an experienced, friendly private tutor sitting with the learner and guiding the lesson.
           `.trim(),
         }),
+        signal: controller.signal,
       },
     );
 
@@ -106,6 +133,25 @@ The overall feeling should be an experienced, friendly private tutor sitting wit
       },
     });
   } catch (error) {
+    if (
+      error instanceof DOMException &&
+      error.name === "AbortError"
+    ) {
+      console.error(
+        "Academy speech timed out after",
+        OPENAI_TTS_TIMEOUT_MS,
+        "ms",
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Ayo's voice is taking too long to prepare. Please try again.",
+        },
+        { status: 504 },
+      );
+    }
+
     console.error("Academy speech error:", error);
 
     return NextResponse.json(
@@ -117,5 +163,7 @@ The overall feeling should be an experienced, friendly private tutor sitting wit
       },
       { status: 500 },
     );
+  } finally {
+    clearTimeout(timeout);
   }
 }
