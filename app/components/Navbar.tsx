@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   usePathname,
   useRouter,
-  useSearchParams,
 } from "next/navigation";
 import {
   Menu,
@@ -28,8 +27,14 @@ type UserProfile = {
 
 function isFinancialEducationPath(
   pathname: string,
-  searchParams: ReturnType<typeof useSearchParams>,
+  searchString: string,
 ) {
+  const searchParams =
+    new URLSearchParams(
+      searchString.startsWith("?")
+        ? searchString.slice(1)
+        : searchString,
+    );
   if (
     pathname === "/financial-education" ||
     pathname.startsWith(
@@ -93,7 +98,11 @@ function isFinancialEducationPath(
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+
+  const [
+    currentSearch,
+    setCurrentSearch,
+  ] = useState("");
 
   const [loading, setLoading] =
     useState(true);
@@ -111,10 +120,32 @@ export default function Navbar() {
       () =>
         isFinancialEducationPath(
           pathname,
-          searchParams,
+          currentSearch,
         ),
-      [pathname, searchParams],
+      [pathname, currentSearch],
     );
+
+  useEffect(() => {
+    const syncSearch = () => {
+      setCurrentSearch(
+        window.location.search,
+      );
+    };
+
+    syncSearch();
+
+    window.addEventListener(
+      "popstate",
+      syncSearch,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        syncSearch,
+      );
+    };
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
