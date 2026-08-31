@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -83,6 +84,11 @@ export default function AcademyClassroom({
 }: AcademyClassroomProps) {
   const [raiseHandOpen, setRaiseHandOpen] = useState(false);
   const [imageFallback, setImageFallback] = useState(false);
+
+  const canGoBackRef = useRef(false);
+  const goToPreviousStepRef = useRef<() => void>(() => {});
+  const stopSpeechRef = useRef<() => void>(() => {});
+  const historyGuardArmedRef = useRef(false);
 
   const {
   learner,
@@ -164,6 +170,97 @@ availableAccessTier,
     tutorStatus === "thinking" ||
     tutorStatus === "speaking" ||
     isSubmitting;
+
+  useEffect(() => {
+    canGoBackRef.current = canGoBack;
+    goToPreviousStepRef.current = goToPreviousStep;
+    stopSpeechRef.current = stopSpeech;
+  }, [canGoBack, goToPreviousStep, stopSpeech]);
+
+  useEffect(() => {
+    if (
+      !hydrated ||
+      !lessonStarted ||
+      progress.completedAt ||
+      guestTrialComplete
+    ) {
+      return;
+    }
+
+    const guardKey = "__fountainPrepClassroomGuard";
+    const baseKey = "__fountainPrepClassroomBase";
+    const currentState =
+      window.history.state &&
+      typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+
+    if (!currentState[guardKey]) {
+      window.history.replaceState(
+        {
+          ...currentState,
+          [baseKey]: true,
+        },
+        "",
+        window.location.href,
+      );
+
+      window.history.pushState(
+        {
+          ...currentState,
+          [guardKey]: true,
+        },
+        "",
+        window.location.href,
+      );
+    }
+
+    historyGuardArmedRef.current = true;
+
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) {
+        return;
+      }
+
+      if (!canGoBackRef.current) {
+        historyGuardArmedRef.current = false;
+        return;
+      }
+
+      stopSpeechRef.current();
+      goToPreviousStepRef.current();
+
+      window.setTimeout(() => {
+        if (!historyGuardArmedRef.current) {
+          return;
+        }
+
+        window.history.pushState(
+          {
+            ...(window.history.state &&
+            typeof window.history.state === "object"
+              ? window.history.state
+              : {}),
+            [guardKey]: true,
+          },
+          "",
+          window.location.href,
+        );
+      }, 0);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      historyGuardArmedRef.current = false;
+    };
+  }, [
+    guestTrialComplete,
+    hydrated,
+    lessonStarted,
+    progress.completedAt,
+  ]);
 
   useEffect(() => {
     if (
@@ -579,6 +676,28 @@ availableAccessTier,
           </div>
 
           <div className="topbar-tools">
+            {lessonStarted && (
+              <div
+                className={`topbar-ayo-status status-${tutorStatus}`}
+                aria-live="polite"
+              >
+                <span className="status-dot" />
+                <div>
+                  <strong>AYO</strong>
+                  <small>{statusLabels[tutorStatus]}</small>
+                </div>
+
+                {tutorStatus === "speaking" && (
+                  <div className="voice-wave">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
               className={`mic-control ${
@@ -741,22 +860,6 @@ availableAccessTier,
                 />
               </div>
 
-              <div className="presenter-status">
-                <span className="status-dot" />
-                <div>
-                  <strong>AYO</strong>
-                  <small>{statusLabels[tutorStatus]}</small>
-                </div>
-
-                {tutorStatus === "speaking" && (
-                  <div className="voice-wave">
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                )}
-              </div>
             </aside>
 
             {lessonStarted && !progress.completedAt && (
@@ -1815,35 +1918,31 @@ availableAccessTier,
           to { transform: translateY(-4px) scale(1.004); }
         }
 
-        .presenter-status {
-          position: absolute;
-          right: 7%;
-          top: 10%;
-          z-index: 5;
+        .topbar-ayo-status {
+          min-height: 43px;
           display: flex;
           align-items: center;
-          gap: 9px;
-          padding: 10px 12px;
+          gap: 8px;
+          padding: 7px 10px;
           color: #292230;
-          background: rgba(255, 255, 255, 0.93);
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          border-radius: 14px;
-          box-shadow: 0 16px 38px rgba(0, 0, 0, 0.22);
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(255, 255, 255, 0.82);
+          border-radius: 13px;
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
           backdrop-filter: blur(16px);
         }
 
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          background: #22c55e;
-          border-radius: 50%;
-          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.13);
+        .topbar-ayo-status strong,
+        .topbar-ayo-status small {
+          display: block;
+          white-space: nowrap;
         }
 
-        .presenter-status strong,
-        .presenter-status small { display: block; }
-        .presenter-status strong { font-size: 9px; }
-        .presenter-status small {
+        .topbar-ayo-status strong {
+          font-size: 9px;
+        }
+
+        .topbar-ayo-status small {
           margin-top: 2px;
           color: #73717a;
           font-size: 7px;
@@ -2396,6 +2495,16 @@ availableAccessTier,
         }
 
         @media (max-width: 760px) {
+          html,
+          body {
+            overscroll-behavior-x: none;
+          }
+
+          .academy-classroom {
+            overscroll-behavior-x: none;
+            touch-action: pan-y;
+          }
+
           .classroom-shell { padding: 0 0 28px; }
 
           .classroom-topbar {
@@ -2406,6 +2515,55 @@ availableAccessTier,
 
           .classroom-brand,
           .progress-chip { display: none; }
+
+          .topbar-tools {
+            gap: 6px;
+          }
+
+          .topbar-ayo-status {
+            min-height: 40px;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: 11px;
+          }
+
+          .topbar-ayo-status .status-dot {
+            width: 6px;
+            height: 6px;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+          }
+
+          .topbar-ayo-status strong {
+            font-size: 8px;
+          }
+
+          .topbar-ayo-status small {
+            max-width: 74px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 6.5px;
+          }
+
+          .topbar-ayo-status .voice-wave {
+            display: none;
+          }
+
+          .mic-control {
+            min-height: 40px;
+            padding: 6px 8px;
+          }
+
+          .mic-control > span {
+            font-size: 15px;
+          }
+
+          .mic-control strong {
+            font-size: 8px;
+          }
+
+          .mic-control small {
+            display: none;
+          }
 
           .learning-room {
             border-left: 0;
@@ -2469,11 +2627,6 @@ availableAccessTier,
             height: 52%;
             right: -15%;
             bottom: 112px;
-          }
-
-          .presenter-status {
-            right: 12%;
-            top: 6%;
           }
 
           .conversation-bar {

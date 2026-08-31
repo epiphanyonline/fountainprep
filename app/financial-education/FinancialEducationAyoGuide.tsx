@@ -27,7 +27,7 @@ const steps: TourStep[] = [
     selector: ".fe-hero",
     title: "Welcome to Fountain Prep",
     text:
-      "Welcome to Fountain Prep Financial Education. I am Ayo, your guide. If this is your first visit,I will show you around.",
+      "Welcome to Fountain Prep Financial Education. I am Ayo, your guide. If this is your first visit, I will show you around.",
     pose: "welcome",
     desktopSide: "right",
     mobileDock: "bottom",
@@ -70,9 +70,9 @@ const steps: TourStep[] = [
   },
   {
     selector: ".fe-perspectives",
-    title: "Four strategic perspectives",
+    title: "Two core learning pathways",
     text:
-      "Fountain Prep goes beyond simulations. You can enter Financial Literacy, explore Biography of Greatness, develop Language Leverage and study Spiritual Capital. Each pathway has a different purpose, but I remain your guide throughout.",
+      "Beyond the simulations, Fountain Prep Financial Education has two core learning pathways. Enter Financial Literacy for structured learning about money, assets, markets, investing and financial decisions, or explore Biography of Greatness to study how remarkable wealth creators built businesses, allocated capital, faced setbacks and shaped their legacies.",
     pose: "open-hands",
     desktopSide: "left",
     mobileDock: "bottom",
@@ -115,6 +115,7 @@ export default function FinancialEducationAyoGuide() {
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -490,6 +491,31 @@ export default function FinancialEducationAyoGuide() {
     speaking,
   ]);
 
+  if (minimized) {
+    return (
+      <button
+        type="button"
+        className="ayoMini"
+        onClick={() => setMinimized(false)}
+        aria-label="Open Ayo guided introduction"
+      >
+        <span className={speaking ? "miniDot speaking" : "miniDot"} />
+        <span><strong>Ayo</strong><small>{speaking ? "Speaking" : completed ? "Tour complete" : "Open tour"}</small></span>
+        <b aria-hidden="true">↑</b>
+        <style jsx>{`
+          .ayoMini { position:fixed; right:12px; bottom:max(68px,calc(env(safe-area-inset-bottom) + 68px)); z-index:80; min-height:48px; display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid rgba(124,58,237,.14); border-radius:999px; color:#39204d; background:rgba(255,255,255,.97); box-shadow:0 12px 34px rgba(46,24,64,.18); backdrop-filter:blur(14px); cursor:pointer; }
+          .miniDot { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,#6d28d9,#a78bfa); }
+          .miniDot.speaking { animation:pulse 1.4s ease-in-out infinite; }
+          .ayoMini span:nth-child(2) { display:grid; text-align:left; }
+          .ayoMini strong { font-size:11px; } .ayoMini small { color:#8c8194; font-size:9px; font-weight:750; }
+          .ayoMini b { color:#7c3aed; }
+          @keyframes pulse { 50% { box-shadow:0 0 0 6px rgba(124,58,237,.09); } }
+          @media(min-width:761px){ .ayoMini{ right:20px; bottom:20px; } }
+        `}</style>
+      </button>
+    );
+  }
+
   return (
     <aside
       className={[
@@ -535,7 +561,10 @@ export default function FinancialEducationAyoGuide() {
             </strong>
           </div>
 
-          <small>{status}</small>
+          <div className="ayoTopActions">
+            <small>{status}</small>
+            <button type="button" className="minimizeButton" onClick={() => setMinimized(true)} aria-label="Minimise Ayo introduction" title="Minimise Ayo">—</button>
+          </div>
         </div>
 
         <span className="stepCount">
@@ -788,6 +817,10 @@ export default function FinancialEducationAyoGuide() {
           font-weight: 750;
         }
 
+        .ayoTopActions { display:flex; align-items:center; gap:7px; flex:0 0 auto; }
+        .minimizeButton { width:30px; height:30px; display:grid; place-items:center; flex:0 0 30px; border:1px solid #e8deef; border-radius:999px; color:#5f4770; background:#faf7fc; font-size:18px; line-height:1; font-weight:900; cursor:pointer; }
+        .minimizeButton:focus-visible { outline:3px solid rgba(124,58,237,.18); outline-offset:2px; }
+
         .stepCount {
           display: block;
           margin-top: 14px;
@@ -932,8 +965,8 @@ export default function FinancialEducationAyoGuide() {
             right: 10px;
             bottom:
               calc(100% - 2px);
-            width: 96px;
-            height: 132px;
+            width: 72px;
+            height: 96px;
           }
 
           .ayoPointerLine {
@@ -945,8 +978,8 @@ export default function FinancialEducationAyoGuide() {
             border-radius: 18px;
             max-height:
               min(
-                42vh,
-                330px
+                36vh,
+                285px
               );
             overflow-y: auto;
             box-shadow:
@@ -960,11 +993,11 @@ export default function FinancialEducationAyoGuide() {
           }
 
           .ayoTopline {
-            padding-right: 78px;
+            padding-right: 0;
           }
 
           .ayoCard h3 {
-            padding-right: 70px;
+            padding-right: 0;
             font-size: 20px;
           }
 
@@ -1006,16 +1039,16 @@ export default function FinancialEducationAyoGuide() {
           .ayoStage,
           .desktop-left .ayoStage,
           .desktop-right .ayoStage {
-            width: 82px;
-            height: 112px;
+            width: 64px;
+            height: 86px;
           }
 
           .ayoTopline {
-            padding-right: 62px;
+            padding-right: 0;
           }
 
           .ayoCard h3 {
-            padding-right: 58px;
+            padding-right: 0;
             font-size: 18px;
           }
 

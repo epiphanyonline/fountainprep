@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const categories = [
@@ -28,6 +28,26 @@ export default function SupportWidget() {
   const [sending, setSending] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [ticketNumber, setTicketNumber] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closePanel()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
 
   async function submitEnquiry() {
     setStatus('')
@@ -101,45 +121,117 @@ export default function SupportWidget() {
 
   return (
     <>
-      <button className="supportButton" onClick={() => setOpen(true)}>
-        Need help?
-      </button>
+      {!open ? (
+        <button
+          type="button"
+          className="supportButton"
+          onClick={() => setOpen(true)}
+          aria-label="Open Fountain Prep support"
+        >
+          <span className="supportIcon" aria-hidden="true">?</span>
+          <span className="supportText">Need help?</span>
+        </button>
+      ) : null}
 
       {open ? (
-        <div className="overlay">
-          <div className="panel">
+        <div
+          className="overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closePanel()
+            }
+          }}
+        >
+          <section
+            className="panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="support-heading"
+          >
             <div className="top">
               <div>
                 <p>Fountain Prep Support</p>
-                <h2>How can we help?</h2>
+                <h2 id="support-heading">How can we help?</h2>
               </div>
 
-              <button onClick={closePanel}>×</button>
+              <button
+                type="button"
+                className="closeButton"
+                onClick={closePanel}
+                aria-label="Close support"
+                title="Close support"
+              >
+                ×
+              </button>
             </div>
 
             {!submitted ? (
               <div className="form">
-                <input value={visitorName} onChange={(e) => setVisitorName(e.target.value)} placeholder="Your name" />
-                <input value={visitorEmail} onChange={(e) => setVisitorEmail(e.target.value)} placeholder="Your email" type="email" />
-                <input value={visitorPhone} onChange={(e) => setVisitorPhone(e.target.value)} placeholder="Phone number optional" type="tel" />
+                <input
+                  value={visitorName}
+                  onChange={(e) => setVisitorName(e.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                />
 
-                <select value={role} onChange={(e) => setRole(e.target.value)}>
+                <input
+                  value={visitorEmail}
+                  onChange={(e) => setVisitorEmail(e.target.value)}
+                  placeholder="Your email"
+                  type="email"
+                  autoComplete="email"
+                />
+
+                <input
+                  value={visitorPhone}
+                  onChange={(e) => setVisitorPhone(e.target.value)}
+                  placeholder="Phone number optional"
+                  type="tel"
+                  autoComplete="tel"
+                />
+
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  aria-label="Your role"
+                >
                   <option value="VISITOR">Visitor</option>
                   <option value="PARENT">Parent</option>
                   <option value="TUTOR">Tutor</option>
                 </select>
 
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="Support category"
+                >
                   {categories.map((item) => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
                   ))}
                 </select>
 
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Subject"
+                />
 
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your message..." rows={5} />
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Write your message..."
+                  rows={5}
+                />
 
-                <button className="sendBtn" onClick={submitEnquiry} disabled={sending}>
+                <button
+                  type="button"
+                  className="sendBtn"
+                  onClick={submitEnquiry}
+                  disabled={sending}
+                >
                   {sending ? 'Sending...' : 'Send Message'}
                 </button>
               </div>
@@ -147,7 +239,10 @@ export default function SupportWidget() {
               <div className="successBox">
                 <strong>Thank you for contacting Fountain Prep.</strong>
 
-                <p>Your enquiry has been received successfully and assigned a support reference number.</p>
+                <p>
+                  Your enquiry has been received successfully and assigned a
+                  support reference number.
+                </p>
 
                 {ticketNumber ? (
                   <div className="ticketBox">
@@ -156,14 +251,19 @@ export default function SupportWidget() {
                   </div>
                 ) : null}
 
-                <p>Our team typically responds within 24 hours. Please keep your reference number for future enquiries.</p>
+                <p>
+                  Our team typically responds within 24 hours. Please keep your
+                  reference number for future enquiries.
+                </p>
 
-                <button onClick={closePanel}>Close</button>
+                <button type="button" onClick={closePanel}>
+                  Close
+                </button>
               </div>
             )}
 
-            {status ? <p className="status">{status}</p> : null}
-          </div>
+            {status ? <p className="status" role="status">{status}</p> : null}
+          </section>
         </div>
       ) : null}
 
@@ -173,14 +273,38 @@ export default function SupportWidget() {
           right: 18px;
           bottom: 18px;
           z-index: 50;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          min-height: 52px;
           border: 0;
           border-radius: 999px;
-          padding: 15px 20px;
+          padding: 10px 18px 10px 10px;
           color: white;
           background: linear-gradient(135deg, #7c3aed, #6d28d9);
           font-weight: 950;
           box-shadow: 0 18px 42px rgba(124, 58, 237, 0.35);
           cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .supportIcon {
+          width: 30px;
+          height: 30px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 30px;
+          border-radius: 999px;
+          color: #6d28d9;
+          background: white;
+          font-size: 15px;
+          font-weight: 950;
+          line-height: 1;
+        }
+
+        .supportText {
+          white-space: nowrap;
         }
 
         .overlay {
@@ -191,25 +315,35 @@ export default function SupportWidget() {
           align-items: flex-end;
           justify-content: flex-end;
           padding: 18px;
-          background: rgba(32, 18, 48, 0.28);
+          background: rgba(32, 18, 48, 0.34);
+          backdrop-filter: blur(6px);
         }
 
         .panel {
           width: min(460px, 100%);
-          max-height: calc(100vh - 36px);
+          max-height: calc(100dvh - 36px);
           overflow-y: auto;
+          overscroll-behavior: contain;
           border-radius: 28px;
           padding: 22px;
           background: white;
           box-shadow: 0 28px 80px rgba(31, 18, 48, 0.28);
+          -webkit-overflow-scrolling: touch;
         }
 
         .top {
+          position: sticky;
+          top: -22px;
+          z-index: 5;
           display: flex;
           justify-content: space-between;
           gap: 16px;
           align-items: flex-start;
-          margin-bottom: 18px;
+          margin: -22px -22px 18px;
+          padding: 22px 22px 16px;
+          background: rgba(255, 255, 255, 0.98);
+          border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+          backdrop-filter: blur(12px);
         }
 
         .top p {
@@ -225,14 +359,18 @@ export default function SupportWidget() {
           letter-spacing: -0.04em;
         }
 
-        .top button {
-          width: 38px;
-          height: 38px;
+        .closeButton {
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          display: grid;
+          place-items: center;
           border: 0;
           border-radius: 999px;
           background: #f5efff;
           color: #351e55;
-          font-size: 24px;
+          font-size: 27px;
+          line-height: 1;
           cursor: pointer;
         }
 
@@ -244,10 +382,13 @@ export default function SupportWidget() {
         input,
         select,
         textarea {
+          box-sizing: border-box;
           width: 100%;
           border: 1px solid rgba(124, 58, 237, 0.16);
           border-radius: 16px;
           padding: 14px;
+          color: #261832;
+          background: white;
           font: inherit;
           outline: none;
         }
@@ -343,14 +484,81 @@ export default function SupportWidget() {
         }
 
         @media (max-width: 640px) {
+          .supportButton {
+            right: 10px;
+            bottom: max(10px, env(safe-area-inset-bottom));
+            width: 46px;
+            min-width: 46px;
+            height: 46px;
+            min-height: 46px;
+            padding: 7px;
+            box-shadow: 0 10px 28px rgba(124, 58, 237, 0.28);
+          }
+
+          .supportIcon {
+            width: 32px;
+            height: 32px;
+            flex-basis: 32px;
+          }
+
+          .supportText {
+            display: none;
+          }
+
           .overlay {
-            align-items: flex-end;
-            padding: 10px;
+            padding: 8px;
+          }
+
+          .overlay {
+            align-items: flex-start;
+            padding:
+              max(92px, calc(env(safe-area-inset-top) + 76px))
+              10px
+              max(16px, env(safe-area-inset-bottom));
           }
 
           .panel {
-            border-radius: 24px;
-            max-height: calc(100vh - 20px);
+            width: 100%;
+            max-height: min(
+              calc(100dvh - 118px - env(safe-area-inset-bottom)),
+              720px
+            );
+            border-radius: 22px;
+            padding: 16px;
+          }
+
+          .top {
+            top: -16px;
+            margin: -16px -16px 12px;
+            padding: 14px 14px 12px 16px;
+            border-radius: 22px 22px 0 0;
+          }
+
+          .top p {
+            font-size: 11px;
+          }
+
+          .top h2 {
+            margin-top: 3px;
+            font-size: 22px;
+          }
+
+          .closeButton {
+            width: 42px;
+            height: 42px;
+            flex-basis: 42px;
+            color: #ffffff;
+            background: #6d28d9;
+            border: 2px solid #ffffff;
+            box-shadow: 0 7px 18px rgba(109, 40, 217, 0.28);
+            font-size: 27px;
+          }
+
+          input,
+          select,
+          textarea {
+            padding: 13px;
+            font-size: 16px;
           }
         }
       `}</style>

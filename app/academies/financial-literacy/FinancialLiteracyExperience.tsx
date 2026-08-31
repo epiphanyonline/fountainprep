@@ -317,37 +317,75 @@ export default function FinancialLiteracyExperience() {
               <b>8 stages</b>
             </div>
 
+            <div className="journeyStartPrompt">
+              <div>
+                <span>YOUR FIRST STEP IS OPEN</span>
+                <strong>Start Financial Literacy</strong>
+                <small>First lesson free · No card required</small>
+              </div>
+
+              <Link href={startHref} className="journeyStartButton">
+                Start now
+                <b aria-hidden="true">→</b>
+              </Link>
+            </div>
+
             <div className="heroJourney">
-  {[
-    ["01", "Money Is a Game — Know the Rules", "Free"],
-["02", "High Income Is Not Wealth", "Premium"],
-    [
-      "03",
-      "The Asset Classes That Create Wealth & Financial Independence",
-      "Premium",
-    ],
-    ["04", "Build Your Financial Foundation", "Premium"],
-    ["05", "How Financial Markets Really Work", "Premium"],
-    ["06", "Build & Manage Your Investment Portfolio", "Premium"],
-    ["07", "Design Your Path to Financial Freedom", "Premium"],
-    ["08", "Build, Protect & Transfer Wealth", "Premium"],
-  ].map(([number, label, access]) => (
-    <div className="heroJourneyRow" key={number}>
-      <span className="journeyNumber">
-        {number}
-      </span>
+              {[
+                ["01", "Money Is a Game — Know the Rules", "Free"],
+                ["02", "High Income Is Not Wealth", "Premium"],
+                [
+                  "03",
+                  "The Asset Classes That Create Wealth & Financial Independence",
+                  "Premium",
+                ],
+                ["04", "Build Your Financial Foundation", "Premium"],
+                ["05", "How Financial Markets Really Work", "Premium"],
+                ["06", "Build & Manage Your Investment Portfolio", "Premium"],
+                ["07", "Design Your Path to Financial Freedom", "Premium"],
+                ["08", "Build, Protect & Transfer Wealth", "Premium"],
+              ].map(([number, label, access], journeyIndex) => {
+                const rowContent = (
+                  <>
+                    <span className="journeyNumber">
+                      {number}
+                    </span>
 
-      <div>
-        <strong>{label}</strong>
-        <small>{access}</small>
-      </div>
+                    <div>
+                      <strong>{label}</strong>
+                      <small>
+                        {journeyIndex === 0
+                          ? "Free · Tap to start"
+                          : access}
+                      </small>
+                    </div>
 
-      <span className="journeyArrow">
-        →
-      </span>
-    </div>
-  ))}
-</div>
+                    <span className="journeyArrow">
+                      {journeyIndex === 0 ? "→" : "🔒"}
+                    </span>
+                  </>
+                );
+
+                return journeyIndex === 0 ? (
+                  <Link
+                    href={startHref}
+                    className="heroJourneyRow heroJourneyLink"
+                    aria-label="Start Money Is a Game — Know the Rules"
+                    key={number}
+                  >
+                    {rowContent}
+                  </Link>
+                ) : (
+                  <div
+                    className="heroJourneyRow heroJourneyLocked"
+                    aria-label={`${label} — Premium`}
+                    key={number}
+                  >
+                    {rowContent}
+                  </div>
+                );
+              })}
+            </div>
 
             <div className="heroVisualFooter">
               <span>
@@ -1120,8 +1158,8 @@ export default function FinancialLiteracyExperience() {
       <div className="mobileCta">
         <Link href={startHref}>
           <span>
-            <strong>Start Free Foundation</strong>
-            <small>No card required</small>
+            <strong>Start Financial Literacy</strong>
+            <small>First lesson free · No card required</small>
           </span>
           <b aria-hidden="true">→</b>
         </Link>
@@ -1518,6 +1556,86 @@ export default function FinancialLiteracyExperience() {
           font-size:11px;
         }
 
+        .journeyStartPrompt {
+          position:relative;
+          z-index:2;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:16px;
+          margin-top:22px;
+          padding:14px 15px;
+          border:1px solid rgba(22,163,74,.15);
+          border-radius:18px;
+          background:
+            linear-gradient(
+              135deg,
+              #f3fff6,
+              #eafff0
+            );
+          box-shadow:0 12px 30px rgba(21,128,61,.07);
+        }
+
+        .journeyStartPrompt > div {
+          min-width:0;
+          display:flex;
+          flex-direction:column;
+        }
+
+        .journeyStartPrompt span {
+          color:#15803d;
+          font-size:8px;
+          font-weight:950;
+          letter-spacing:.1em;
+        }
+
+        .journeyStartPrompt strong {
+          margin-top:3px;
+          color:#213b29;
+          font-size:14px;
+          line-height:1.2;
+        }
+
+        .journeyStartPrompt small {
+          margin-top:3px;
+          color:#68816f;
+          font-size:9px;
+          font-weight:760;
+        }
+
+        .journeyStartButton {
+          min-height:42px;
+          display:inline-flex;
+          align-items:center;
+          gap:10px;
+          flex:0 0 auto;
+          padding:0 8px 0 13px;
+          border-radius:13px;
+          color:#fff;
+          background:linear-gradient(135deg,#22c55e,#15803d);
+          box-shadow:0 9px 22px rgba(21,128,61,.18);
+          text-decoration:none;
+          font-size:10px;
+          font-weight:950;
+          transition:transform .18s ease, box-shadow .18s ease;
+        }
+
+        .journeyStartButton b {
+          width:29px;
+          height:29px;
+          display:grid;
+          place-items:center;
+          border-radius:9px;
+          color:#166534;
+          background:#fff;
+          font-size:13px;
+        }
+
+        .journeyStartButton:hover {
+          transform:translateY(-2px);
+          box-shadow:0 13px 28px rgba(21,128,61,.23);
+        }
+
         .heroJourney {
           position:relative;
           z-index:2;
@@ -1548,6 +1666,38 @@ export default function FinancialLiteracyExperience() {
               #f3fff6,
               #e9fff0
             );
+        }
+
+        .heroJourneyLink {
+          color:inherit;
+          text-decoration:none;
+          cursor:pointer;
+          border:1px solid rgba(22,163,74,.12);
+          box-shadow:0 8px 22px rgba(21,128,61,.06);
+          transition:
+            transform .18s ease,
+            box-shadow .18s ease,
+            border-color .18s ease;
+        }
+
+        .heroJourneyLink:hover {
+          transform:translateY(-2px);
+          border-color:rgba(22,163,74,.26);
+          box-shadow:0 13px 28px rgba(21,128,61,.11);
+        }
+
+        .heroJourneyLink:focus-visible {
+          outline:3px solid rgba(34,197,94,.22);
+          outline-offset:3px;
+        }
+
+        .heroJourneyLocked {
+          cursor:default;
+        }
+
+        .heroJourneyLocked .journeyArrow {
+          opacity:.52;
+          font-size:10px;
         }
 
         .journeyNumber {
@@ -3243,6 +3393,20 @@ export default function FinancialLiteracyExperience() {
           .heroVisual {
             padding:16px;
             border-radius:27px;
+          }
+
+          .journeyStartPrompt {
+            align-items:stretch;
+            flex-direction:column;
+            margin-top:18px;
+          }
+
+          .journeyStartButton {
+            width:100%;
+            min-height:48px;
+            justify-content:space-between;
+            box-sizing:border-box;
+            font-size:11px;
           }
 
           .heroJourneyRow {
