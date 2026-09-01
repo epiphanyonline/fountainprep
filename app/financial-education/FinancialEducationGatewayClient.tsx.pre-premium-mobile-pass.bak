@@ -97,114 +97,99 @@ export default function FinancialEducationGatewayClient() {
         </div>
 
         <div className="fe-heroVisual">
-          <div className="fe-simulatorShell">
-            <div className="fe-simulatorHeader">
+          <div className="fe-screen fe-gameScreen">
+            <div className="fe-screenTop">
               <div>
-                <small>FOUNTAIN PREP · FINANCIAL SIMULATIONS</small>
-                <h2>Choose a simulation</h2>
+                <small>FOUNTAIN PREP MONEY GAMES</small>
+                <strong>Learn by making decisions.</strong>
+              </div>
+
+              <span className="fe-liveChip">● PLAY NOW</span>
+            </div>
+
+            <div className="fe-gameCanvas">
+              <div className="fe-gameIntro">
+                <span>INTERACTIVE FINANCIAL SIMULATIONS</span>
+                <h2>
+                  Make the decision.
+                  <br />
+                  <em>See what happens.</em>
+                </h2>
                 <p>
-                  Practise financial decisions with fictional money. Pick a
-                  game below to begin.
+                  Use fictional money, experience consequences and learn from
+                  the outcome.
                 </p>
               </div>
 
-              <span className="fe-simulatorCount">2 GAMES</span>
-            </div>
-
-            <div className="fe-gameChoices">
-              <Link
-                href="/academies/financial-literacy/investment-lab"
-                className="fe-gameChoice fe-investGame"
-              >
-                <div className="fe-gameChoiceTop">
-                  <span>GAME 01</span>
-                  <small>INVESTING &amp; MARKETS</small>
-                </div>
-
-                <div className="fe-gameTitleRow fe-investTitleRow">
-                  <div className="fe-gameIcon fe-investIcon" aria-hidden="true">
-                    <span>↗</span>
+              <div className="fe-gameChoices">
+                <Link
+                  href="/academies/financial-literacy/investment-lab"
+                  className="fe-gameChoice fe-investGame"
+                >
+                  <div className="fe-gameChoiceTop">
+                    <span>01</span>
+                    <small>INVESTMENT LAB</small>
                   </div>
 
-                  <div className="fe-gameTitleCopy">
-                    <small className="fe-gameCategory">INTERACTIVE INVESTMENT GAME</small>
-                    <h3>Investment Simulator</h3>
-                    <span className="fe-gameSubline">Build · Invest · Respond · Compare</span>
-                  </div>
-                </div>
-
-                <p className="fe-gamePurpose">
-                  Build a portfolio, respond to market events and test your
-                  investment decisions across 12 episodes.
-                </p>
-
-                <div className="fe-gameKeyFigure">
-                  <small>STARTING CAPITAL</small>
                   <strong>FC100,000</strong>
-                </div>
+                  <h3>Can you invest it?</h3>
+                  <p>
+                    Build a portfolio, face market shocks, buy, sell, hold and
+                    compare your choices with your Financial Twin.
+                  </p>
 
-                <div className="fe-gameMeta">
-                  <span>12 market episodes</span>
-                  <span>Portfolio decisions</span>
-                  <span>Investor score</span>
-                </div>
-
-                <div className="fe-gameAction fe-investAction">
-                  <span className="fe-actionPlay">▶</span>
-                  <strong>Start Investment Game</strong>
-                  <span aria-hidden="true">→</span>
-                </div>
-              </Link>
-
-              <Link
-                href="/academies/financial-literacy/wealth-simulator"
-                className="fe-gameChoice fe-lifeGame fe-lifeWealth"
-              >
-                <div className="fe-gameChoiceTop">
-                  <span>GAME 02</span>
-                  <small>PERSONAL FINANCE</small>
-                </div>
-
-                <div className="fe-gameTitleRow fe-lifeTitleRow">
-                  <div className="fe-gameIcon fe-lifeIcon" aria-hidden="true">
-                    <span>£</span>
+                  <div className="fe-gameMeta">
+                    <span>12 market episodes</span>
+                    <span>Investor score</span>
                   </div>
 
-                  <div className="fe-gameTitleCopy">
-                    <small className="fe-gameCategory">PERSONAL FINANCE GAME</small>
-                    <h3>Personal Finance Simulator</h3>
-                    <span className="fe-gameSubline">Earn · Spend · Save · Invest</span>
+                  <b>▶ PLAY INVESTMENT GAME</b>
+                </Link>
+
+                <Link
+                  href="/academies/financial-literacy/wealth-simulator"
+                  className="fe-gameChoice fe-lifeGame fe-lifeWealth"
+                >
+                  <div className="fe-gameChoiceTop">
+                    <span>02</span>
+                    <small>LIFE &amp; WEALTH</small>
                   </div>
-                </div>
 
-                <p className="fe-gamePurpose">
-                  Make decisions about income, housing, lifestyle, saving and
-                  investing across ten simulated years.
-                </p>
-
-                <div className="fe-gameKeyFigure">
-                  <small>SIMULATION PERIOD</small>
                   <strong>10 YEARS</strong>
-                </div>
+                  <h3>Where will your choices take you?</h3>
+                  <p>
+                    Navigate income, housing, lifestyle, saving, investing and
+                    unexpected events across ten simulated years.
+                  </p>
 
-                <div className="fe-gameMeta">
-                  <span>Real-life trade-offs</span>
-                  <span>Unexpected events</span>
-                  <span>Financial Twin</span>
-                </div>
+                  <div className="fe-gameMeta">
+                    <span>Year 01 → 10</span>
+                    <span>Financial Twin</span>
+                  </div>
 
-                <div className="fe-gameAction fe-lifeAction">
-                  <span className="fe-actionPlay">▶</span>
-                  <strong>Start Personal Finance Game</strong>
-                  <span aria-hidden="true">→</span>
-                </div>
-              </Link>
+                  <b>▶ PLAY LIFE &amp; WEALTH</b>
+                </Link>
+              </div>
             </div>
 
-            <div className="fe-simulatorFooter">
-              <span>No real money is used.</span>
-              <span>Educational simulations · Not financial advice.</span>
+            <div className="fe-screenFooter">
+              <span>FICTIONAL MONEY. REAL DECISIONS.</span>
+              <div className="fe-progressTrack">
+                <i />
+              </div>
+              <span>CHOOSE A GAME ↑</span>
             </div>
+          </div>
+
+          <div className="fe-floatingCard fe-floatingOne">
+            <small>YOUR FINANCIAL TWIN</small>
+            <strong>Same start. Different decisions.</strong>
+            <span>Who finishes stronger?</span>
+          </div>
+
+          <div className="fe-floatingCard fe-floatingTwo">
+            <small>YOU&apos;RE IN CONTROL</small>
+            <strong>Every decision changes the outcome.</strong>
           </div>
         </div>
       </section>
@@ -568,6 +553,10 @@ export default function FinancialEducationGatewayClient() {
       </section>
 
       <section className="fe-ayo fe-final">
+        <div className="fe-ayoAvatar">
+          <span>A</span>
+        </div>
+
         <div className="fe-ayoCopy">
           <span>MEET YOUR AI GUIDE</span>
 
@@ -805,177 +794,102 @@ export default function FinancialEducationGatewayClient() {
         .fe-heroVisual {
           position: relative;
           min-width: 0;
-          width: 100%;
         }
 
-        .fe-simulatorShell {
-          width: 100%;
-          min-width: 0;
+        .fe-screen {
           overflow: hidden;
-          border: 1px solid #e4ded7;
-          border-radius: 28px;
+          border: 1px solid rgba(255,255,255,.12);
+          border-radius: 30px;
+          color: white;
           background:
-            linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,245,241,.98)),
-            #faf8f5;
-          box-shadow:
-            0 28px 70px rgba(42, 29, 47, .12),
-            inset 0 1px 0 rgba(255,255,255,.92);
-          box-sizing: border-box;
+            radial-gradient(circle at 20% 0%, rgba(124,58,237,.28), transparent 34%),
+            linear-gradient(145deg, #17111d, #281732 60%, #1e1524);
+          box-shadow: 0 40px 90px rgba(30,17,39,.28);
         }
 
-        .fe-simulatorHeader {
+        .fe-screenTop,
+        .fe-screenFooter {
           display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 24px;
-          padding: 24px 26px 22px;
-          border-bottom: 1px solid #e9e3dc;
-          background:
-            radial-gradient(circle at 90% 10%, rgba(109,40,217,.055), transparent 28%),
-            rgba(255,255,255,.72);
-        }
-
-        .fe-simulatorHeader > div {
-          min-width: 0;
-        }
-
-        .fe-simulatorHeader small {
-          display: block;
-          color: #725a3a;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .13em;
-        }
-
-        .fe-simulatorHeader h2 {
-          margin: 8px 0 6px;
-          color: #241d28;
-          font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-          font-size: clamp(26px, 2.9vw, 36px);
-          line-height: 1;
-          font-weight: 900;
-          letter-spacing: -.04em;
-        }
-
-        .fe-simulatorHeader p {
-          max-width: 600px;
-          margin: 0;
-          color: #706672;
-          font-size: 11px;
-          line-height: 1.6;
-        }
-
-        .fe-simulatorCount {
-          flex: 0 0 auto;
-          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          min-height: 34px;
-          padding: 0 12px;
-          border: 1px solid #ddd4ca;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 18px 22px;
+          border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+
+        .fe-screenTop div {
+          display: grid;
+          gap: 3px;
+        }
+
+        .fe-screenTop small,
+        .fe-screenFooter,
+        .fe-gameIntro > span {
+          color: #b9a7c4;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: .12em;
+        }
+
+        .fe-screenTop strong {
+          font-size: 14px;
+        }
+
+        .fe-liveChip {
+          padding: 7px 10px;
           border-radius: 999px;
-          color: #5d505e;
-          background: #fff;
-          font-size: 8px;
+          color: #d9c8ff;
+          background: rgba(124,58,237,.15);
+          font-size: 9px;
           font-weight: 950;
-          letter-spacing: .1em;
+        }
+
+        .fe-gameCanvas {
+          padding: 26px;
+        }
+
+        .fe-gameIntro h2 {
+          margin: 9px 0 6px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(30px, 4vw, 52px);
+          line-height: 1;
+          font-weight: 500;
+        }
+
+        .fe-gameIntro h2 em {
+          color: #c4a9ff;
+          font-weight: 500;
+        }
+
+        .fe-gameIntro p {
+          margin: 0;
+          color: #bcaec3;
+          font-size: 12px;
         }
 
         .fe-gameChoices {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 32px;
-          padding: 28px;
-          background: #f4f1ed;
-          box-sizing: border-box;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 24px;
         }
 
         .fe-gameChoice {
-          position: relative;
           min-width: 0;
-          min-height: 440px;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          padding: 24px;
-          border-radius: 24px;
+          display: block;
+          padding: 18px;
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 20px;
+          color: white;
+          background: rgba(255,255,255,.055);
           text-decoration: none;
-          box-sizing: border-box;
-          isolation: isolate;
-          transition:
-            transform 180ms ease,
-            box-shadow 180ms ease,
-            border-color 180ms ease;
+          transition: transform .2s ease, border-color .2s ease, background .2s ease;
         }
 
-        .fe-gameChoice::before {
-          content: "";
-          position: absolute;
-          inset: 0 0 auto;
-          height: 6px;
-          z-index: 2;
-        }
-
-        .fe-investGame {
-          color: #352819;
-          border: 2px solid #cfae78;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(184,138,70,.19), transparent 34%),
-            linear-gradient(145deg, #fff9ed 0%, #f2dfbf 100%);
-          box-shadow:
-            0 18px 38px rgba(105,78,42,.16),
-            inset 0 1px 0 rgba(255,255,255,.86);
-        }
-
-        .fe-investGame::before {
-          background: linear-gradient(90deg, #a97734, #dfc08b);
-        }
-
-        .fe-lifeGame {
-          color: #1b2b3b;
-          border: 2px solid #859fb5;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(72,101,132,.17), transparent 34%),
-            linear-gradient(145deg, #eef5f9 0%, #cfdee9 100%);
-          box-shadow:
-            0 18px 38px rgba(38,65,88,.16),
-            inset 0 1px 0 rgba(255,255,255,.86);
-        }
-
-        .fe-lifeGame::before {
-          background: linear-gradient(90deg, #496985, #9fb8cb);
-        }
-
-        @media (hover: hover) and (pointer: fine) {
-          .fe-gameChoice:hover {
-            transform: translateY(-5px);
-          }
-
-          .fe-investGame:hover {
-            border-color: #b68a4a;
-            box-shadow: 0 26px 46px rgba(105,78,42,.2);
-          }
-
-          .fe-lifeGame:hover {
-            border-color: #728da5;
-            box-shadow: 0 26px 46px rgba(38,65,88,.2);
-          }
-
-          .fe-gameChoice:hover .fe-gameAction {
-            transform: translateY(-1px);
-          }
-        }
-
-        .fe-gameChoice:focus-visible {
-          outline: 3px solid rgba(109,40,217,.22);
-          outline-offset: 4px;
+        .fe-gameChoice:hover {
+          transform: translateY(-3px);
+          border-color: rgba(196,169,255,.4);
+          background: rgba(255,255,255,.08);
         }
 
         .fe-gameChoiceTop {
@@ -983,178 +897,33 @@ export default function FinancialEducationGatewayClient() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding-bottom: 14px;
-          border-bottom: 1px solid currentColor;
-          opacity: .68;
-          font-size: 8px;
-          font-weight: 950;
+          color: #c9b8d2;
+          font-size: 9px;
+          font-weight: 900;
           letter-spacing: .1em;
         }
 
-        .fe-gameChoiceTop small {
-          color: inherit;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .09em;
-        }
-
-        .fe-gameTitleRow {
-          position: relative;
-          display: grid;
-          grid-template-columns: 82px minmax(0, 1fr);
-          gap: 18px;
-          align-items: center;
-          margin-top: 22px;
-          padding: 17px;
-          border-radius: 18px;
-          overflow: hidden;
-          box-sizing: border-box;
-        }
-
-        .fe-investTitleRow {
-          border: 1px solid rgba(137,94,38,.28);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,.62), rgba(232,205,160,.46));
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.72),
-            0 12px 24px rgba(105,78,42,.08);
-        }
-
-        .fe-lifeTitleRow {
-          border: 1px solid rgba(55,88,116,.26);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,.65), rgba(176,201,220,.42));
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.72),
-            0 12px 24px rgba(38,65,88,.08);
-        }
-
-        .fe-gameIcon {
-          position: relative;
-          width: 82px;
-          height: 82px;
-          display: grid;
-          place-items: center;
-          border-radius: 20px;
-          color: white;
-          font-size: 32px;
-          line-height: 1;
-          font-weight: 950;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.24),
-            0 12px 25px rgba(0,0,0,.17);
-        }
-
-        .fe-gameIcon::after {
-          content: "";
-          position: absolute;
-          inset: 6px;
-          border: 1px solid rgba(255,255,255,.22);
-          border-radius: 15px;
-          pointer-events: none;
-        }
-
-        .fe-investIcon {
-          background:
-            radial-gradient(circle at 28% 20%, rgba(255,255,255,.18), transparent 35%),
-            linear-gradient(145deg, #6f522d, #3c2c19);
-        }
-
-        .fe-lifeIcon {
-          background:
-            radial-gradient(circle at 28% 20%, rgba(255,255,255,.18), transparent 35%),
-            linear-gradient(145deg, #4a7192, #273f55);
-        }
-
-        .fe-gameTitleCopy {
-          min-width: 0;
-        }
-
-        .fe-gameCategory {
-          display: inline-flex;
-          align-items: center;
-          min-height: 22px;
-          margin-bottom: 7px;
-          padding: 0 8px;
-          border-radius: 999px;
-          color: inherit;
-          font-size: 7px;
-          font-weight: 950;
-          letter-spacing: .105em;
-        }
-
-        .fe-investTitleRow .fe-gameCategory {
-          border: 1px solid rgba(123,83,32,.24);
-          background: rgba(255,248,235,.72);
-          color: #75501f;
-        }
-
-        .fe-lifeTitleRow .fe-gameCategory {
-          border: 1px solid rgba(45,74,100,.23);
-          background: rgba(241,248,252,.76);
-          color: #365a77;
+        .fe-gameChoice > strong {
+          display: block;
+          margin-top: 17px;
+          color: #d8c3ff;
+          font-size: 26px;
+          letter-spacing: -.035em;
         }
 
         .fe-gameChoice h3 {
-          margin: 0;
-          color: inherit;
-          font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-          font-size: clamp(25px, 2vw, 31px);
-          line-height: 1;
-          font-weight: 950;
-          letter-spacing: -.045em;
+          margin: 4px 0 7px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 21px;
+          font-weight: 500;
         }
 
-        .fe-gameSubline {
-          display: block;
-          margin-top: 8px;
-          color: inherit;
-          opacity: .66;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .045em;
-        }
-
-        .fe-gamePurpose {
+        .fe-gameChoice p {
           min-height: 58px;
-          margin: 19px 2px 0;
-          color: inherit;
-          opacity: .78;
-          font-size: 11.5px;
-          line-height: 1.6;
-        }
-
-        .fe-gameKeyFigure {
-          display: grid;
-          gap: 4px;
-          margin-top: 20px;
-          padding: 13px 14px;
-          border: 1px solid currentColor;
-          border-radius: 12px;
-          background: rgba(255,255,255,.42);
-          opacity: .92;
-        }
-
-        .fe-gameKeyFigure small {
-          color: inherit;
-          opacity: .56;
-          font-size: 7px;
-          font-weight: 950;
-          letter-spacing: .1em;
-        }
-
-        .fe-gameKeyFigure strong {
-          color: inherit;
-          font-size: 22px;
-          font-weight: 950;
-          letter-spacing: -.03em;
+          margin: 0;
+          color: #baaec0;
+          font-size: 11px;
+          line-height: 1.5;
         }
 
         .fe-gameMeta {
@@ -1165,144 +934,85 @@ export default function FinancialEducationGatewayClient() {
         }
 
         .fe-gameMeta span {
-          padding: 6px 8px;
-          border: 1px solid currentColor;
-          border-radius: 8px;
-          color: inherit;
-          background: rgba(255,255,255,.46);
-          opacity: .68;
-          font-size: 8px;
-          font-weight: 850;
-        }
-
-        .fe-gameAction {
-          width: 100%;
-          min-height: 56px;
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          gap: 11px;
-          margin-top: auto;
-          padding: 0 15px;
-          border-radius: 13px;
-          color: white;
-          box-sizing: border-box;
-          transition: transform 180ms ease;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.12),
-            0 11px 24px rgba(0,0,0,.15);
-        }
-
-        .fe-investAction {
-          border: 2px solid #4b3821;
-          background: #4b3821;
-        }
-
-        .fe-lifeAction {
-          border: 2px solid #2e4b64;
-          background: #2e4b64;
-        }
-
-        .fe-actionPlay {
-          width: 28px;
-          height: 28px;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(255,255,255,.36);
-          border-radius: 8px;
-          background: rgba(255,255,255,.08);
-          font-size: 9px;
-        }
-
-        .fe-gameAction strong {
-          color: white;
-          font-size: 10.5px;
-          font-weight: 950;
-          letter-spacing: .035em;
-          text-transform: uppercase;
-        }
-
-        .fe-simulatorFooter {
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
-          padding: 13px 24px;
-          border-top: 1px solid #e9e3dc;
-          color: #817783;
-          background: #fff;
+          padding: 5px 7px;
+          border-radius: 999px;
+          color: #c5b4cd;
+          background: rgba(255,255,255,.06);
           font-size: 8px;
           font-weight: 800;
         }
 
-        /* Remove the old decorative floating callouts from the simulator hero.
-           They made the two products feel like one busy promotional panel. */
-        .fe-floatingCard {
-          display: none;
+        .fe-gameChoice b {
+          display: block;
+          margin-top: 18px;
+          color: #e5d9eb;
+          font-size: 9px;
+          letter-spacing: .08em;
         }
 
-        @media (max-width: 760px) {
-          .fe-simulatorShell {
-            border-radius: 22px;
-          }
+        .fe-screenFooter {
+          border-top: 1px solid rgba(255,255,255,.08);
+          border-bottom: 0;
+        }
 
-          .fe-simulatorHeader {
-            padding: 20px 18px 18px;
-          }
+        .fe-progressTrack {
+          width: 32%;
+          height: 3px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: rgba(255,255,255,.08);
+        }
 
-          .fe-simulatorHeader h2 {
-            font-size: 30px;
-          }
+        .fe-progressTrack i {
+          display: block;
+          width: 62%;
+          height: 100%;
+          background: linear-gradient(90deg, #7c3aed, #d8c3ff);
+        }
 
-          .fe-simulatorCount {
-            display: none;
-          }
+        .fe-floatingCard {
+          position: absolute;
+          width: 220px;
+          padding: 14px;
+          border: 1px solid rgba(124,58,237,.12);
+          border-radius: 16px;
+          background: rgba(255,255,255,.96);
+          box-shadow: 0 18px 48px rgba(49,27,62,.15);
+          backdrop-filter: blur(12px);
+        }
 
-          .fe-gameChoices {
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding: 16px;
-          }
+        .fe-floatingCard small,
+        .fe-floatingCard strong,
+        .fe-floatingCard span {
+          display: block;
+        }
 
-          .fe-gameChoice {
-            min-height: 390px;
-            padding: 20px;
-          }
+        .fe-floatingCard small {
+          color: var(--purple);
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: .1em;
+        }
 
-          .fe-gameTitleRow {
-            grid-template-columns: 68px minmax(0, 1fr);
-            gap: 14px;
-            padding: 14px;
-          }
+        .fe-floatingCard strong {
+          margin-top: 5px;
+          font-size: 11px;
+        }
 
-          .fe-gameIcon {
-            width: 68px;
-            height: 68px;
-            border-radius: 17px;
-            font-size: 27px;
-          }
+        .fe-floatingCard span {
+          margin-top: 3px;
+          color: #8a7e91;
+          font-size: 9px;
+        }
 
-          .fe-gameChoice h3 {
-            font-size: 24px;
-          }
+        .fe-floatingOne {
+          left: -48px;
+          bottom: -40px;
+        }
 
-          .fe-gameSubline {
-            font-size: 7.5px;
-          }
-
-          .fe-gameChoice h3 {
-            font-size: 24px;
-          }
-
-          .fe-gamePurpose {
-            min-height: 0;
-            font-size: 12px;
-          }
-
-          .fe-simulatorFooter {
-            display: grid;
-            gap: 4px;
-            padding: 13px 18px;
-          }
+        .fe-floatingTwo {
+          right: -25px;
+          top: -36px;
         }
 
         .fe-topicRail {
@@ -2088,13 +1798,34 @@ export default function FinancialEducationGatewayClient() {
         }
 
         .fe-ayo {
-          grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+          grid-template-columns: 160px 1fr .8fr;
           color: white;
           background:
             radial-gradient(circle at 10% 30%, rgba(124,58,237,.25), transparent 30%),
             linear-gradient(135deg, #1c1223, #2b1837);
         }
 
+        .fe-ayoAvatar {
+          width: 140px;
+          height: 140px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(255,255,255,.14);
+          border-radius: 50%;
+          background: rgba(255,255,255,.06);
+        }
+
+        .fe-ayoAvatar span {
+          display: grid;
+          place-items: center;
+          width: 92px;
+          height: 92px;
+          border-radius: 50%;
+          color: #2d1a38;
+          background: #d7c0ff;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 52px;
+        }
 
         .fe-ayoCopy > span {
           display: block;
@@ -2181,24 +1912,6 @@ export default function FinancialEducationGatewayClient() {
           margin-top: 28px;
         }
 
-        .fe-heroCopy,
-        .fe-heroVisual,
-        .fe-gameScreen,
-        .fe-gameCanvas,
-        .fe-gameChoices,
-        .fe-gameChoice {
-          min-width: 0;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-
-        .fe-heroVisual, .fe-gameScreen { width: 100%; }
-        .fe-gameChoice > * { min-width: 0; max-width: 100%; }
-
-        @supports (overflow: clip) {
-          .fe-page { overflow-x: clip; overflow-y: visible; }
-        }
-
         @media (max-width: 1050px) {
           .fe-hero {
             grid-template-columns: 1fr;
@@ -2216,11 +1929,11 @@ export default function FinancialEducationGatewayClient() {
           }
 
           .fe-ayo {
-            grid-template-columns: 1fr;
+            grid-template-columns: 110px 1fr;
           }
 
           .fe-ayoDialogue {
-            grid-column: auto;
+            grid-column: 1 / -1;
           }
 
           .fe-floatingOne {
@@ -2273,61 +1986,16 @@ export default function FinancialEducationGatewayClient() {
             align-items: flex-start;
           }
 
-          .fe-heroVisual {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            margin: 0;
-            overflow: hidden;
-            border-radius: 24px;
-            isolation: isolate;
-          }
-
-          .fe-gameScreen {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            margin: 0;
-            overflow: hidden;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-          }
-
           .fe-gameCanvas {
-            width: 100%;
-            max-width: 100%;
-            padding: 18px 14px 16px;
-            box-sizing: border-box;
+            padding: 18px;
           }
 
           .fe-gameChoices {
-            width: 100%;
-            max-width: 100%;
             grid-template-columns: 1fr;
-            gap: 14px;
           }
 
-          .fe-gameChoice {
-            width: 100%;
+          .fe-gameChoice p {
             min-height: 0;
-            padding: 20px 18px;
-            border-radius: 22px;
-          }
-
-          .fe-gamePlayIcon {
-            top: 52px;
-            right: 18px;
-            width: 44px;
-            height: 44px;
-          }
-
-          .fe-gameMeta {
-            margin-top: 16px;
-          }
-
-          .fe-gameMeta span {
-            padding: 7px 9px;
-            font-size: 9px;
           }
 
           .fe-screenTop,
@@ -2414,8 +2082,19 @@ export default function FinancialEducationGatewayClient() {
           }
 
           .fe-ayo {
-            grid-template-columns: 1fr;
-            gap: 24px;
+            grid-template-columns: 72px 1fr;
+            gap: 18px;
+          }
+
+          .fe-ayoAvatar {
+            width: 72px;
+            height: 72px;
+          }
+
+          .fe-ayoAvatar span {
+            width: 52px;
+            height: 52px;
+            font-size: 30px;
           }
 
           .fe-ayoCopy h2 {
@@ -2425,19 +2104,11 @@ export default function FinancialEducationGatewayClient() {
 
         @media (max-width: 430px) {
           .fe-screen {
-            width: 100%;
-            max-width: 100%;
             border-radius: 22px;
           }
 
           .fe-gameIntro h2 {
             font-size: 30px;
-            line-height: 1;
-          }
-
-          .fe-gameIntro p {
-            font-size: 12px;
-            line-height: 1.55;
           }
 
           .fe-labCopy h2,

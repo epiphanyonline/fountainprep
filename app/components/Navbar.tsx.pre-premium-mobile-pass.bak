@@ -52,19 +52,6 @@ function isFinancialEducationPath(
     return true;
   }
 
-  // Keep the Financial Education product navigation throughout both
-  // complimentary Financial Literacy classroom experiences.
-  if (
-    pathname.startsWith(
-      "/fountaintalk/classroom/wealth",
-    ) ||
-    pathname.startsWith(
-      "/classroom/academy/guest-finance",
-    )
-  ) {
-    return true;
-  }
-
   if (
     pathname === "/pricing" &&
     searchParams.get("product") ===
@@ -594,8 +581,6 @@ export default function Navbar() {
                 0.12
               );
             backdrop-filter:
-              blur(18px);
-            -webkit-backdrop-filter:
               blur(18px);
           }
 
