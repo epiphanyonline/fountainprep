@@ -36,10 +36,7 @@ export default function FinancialEducationGatewayClient() {
             <em className="serifAccent">for families around the world.</em>
           </h1>
           <p>
-            Learn how asset classes, enterprise, investment options, risk, and
-            capital allocation work — then build lasting confidence through guided
-            interactive simulations.
-          </p>
+                 </p>
         </header>
 
         <div className="choiceGrid">
@@ -81,8 +78,8 @@ export default function FinancialEducationGatewayClient() {
             </div>
 
             <p className="cardDesc">
-              Learn how money, assets, investing, risk, and decisions work
-              through a structured classroom journey guided by Ayo.
+              Learn how asset classes, enterprise, investment options, risk, and
+            capital allocation work.
             </p>
 
             <div className="choiceFacts">
