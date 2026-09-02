@@ -35,8 +35,6 @@ export default function FinancialEducationGatewayClient() {
             The financial literacy partner <br className="heroBreak" />
             <em className="serifAccent">for families around the world.</em>
           </h1>
-          <p>
-                 </p>
         </header>
 
         <div className="choiceGrid">
@@ -304,8 +302,8 @@ export default function FinancialEducationGatewayClient() {
           max-width: 1220px;
           display: flex;
           flex-direction: column;
-          gap: 30px;
-          padding: 38px 44px 42px;
+          gap: 22px;
+          padding: 32px 44px 36px;
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 32px;
           background: rgba(22, 15, 36, 0.65);
@@ -373,7 +371,7 @@ export default function FinancialEducationGatewayClient() {
           text-transform: uppercase;
         }
         .intro h1 {
-          margin: 0 0 14px;
+          margin: 0;
           font-size: clamp(46px, 5.2vw, 74px);
           line-height: 0.98;
           font-weight: 800;
@@ -387,14 +385,6 @@ export default function FinancialEducationGatewayClient() {
           background: linear-gradient(135deg, #e9d5ff 0%, #a78bfa 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-        }
-        .intro p {
-          max-width: 760px;
-          margin: 0 auto;
-          color: #aaa0b5;
-          font-size: clamp(15px, 1.35vw, 17px);
-          line-height: 1.6;
-          font-weight: 400;
         }
 
         /* Responsive Choice Grid */
@@ -692,7 +682,7 @@ export default function FinancialEducationGatewayClient() {
         @media (max-width: 840px) {
           .experienceShell {
             padding: 24px;
-            gap: 22px;
+            gap: 18px;
             border-radius: 24px;
           }
           .choiceGrid {
@@ -714,15 +704,12 @@ export default function FinancialEducationGatewayClient() {
           }
           .experienceShell {
             padding: 16px;
-            gap: 18px;
+            gap: 15px;
             border-radius: 20px;
           }
           .intro h1 {
             font-size: 36px;
             line-height: .98;
-          }
-          .intro p {
-            font-size: 13px;
           }
           .choiceIcon {
             width: 54px;
