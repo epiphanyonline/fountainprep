@@ -29,7 +29,7 @@ export default function FinancialEducationGatewayClient() {
           <span className="brandSub">FINANCIAL EDUCATION</span>
         </div>
 
-        <header className="intro">
+        <header className="intro ayoTourIntro">
           <span className="eyebrow">WELCOME TO FOUNTAIN PREP ACADEMY</span>
           <h1>
             The financial literacy partner <br className="heroBreak" />
@@ -41,7 +41,7 @@ export default function FinancialEducationGatewayClient() {
           {/* Card 01: Structured Learning */}
           <Link
             href="/academies/financial-literacy"
-            className="choiceCard learnCard"
+            className="choiceCard learnCard ayoTourLearning"
           >
             <div className="cardHighlight" />
             <div className="choiceTop">
@@ -108,7 +108,7 @@ export default function FinancialEducationGatewayClient() {
           {/* Card 02: Simulations */}
           <Link
             href="/academies/financial-literacy/investment-lab"
-            className="choiceCard gameCard"
+            className="choiceCard gameCard ayoTourSimulation"
           >
             <div className="cardHighlight" />
             <div className="choiceTop">
@@ -172,7 +172,7 @@ export default function FinancialEducationGatewayClient() {
         </div>
 
         {/* Biography Link Banner */}
-        <Link href="/academies/biography" className="biographyLink">
+        <Link href="/academies/biography" className="biographyLink ayoTourBiography">
           <div className="bioBadgeContainer">
             <span className="bioTag">OPTIONAL</span>
           </div>
@@ -203,6 +203,33 @@ export default function FinancialEducationGatewayClient() {
         <FinancialEducationAyoFlow
           title="I’ll guide you from here."
           text="Choose Financial Literacy if you want structured learning now. Choose the simulation games if you want to learn by making decisions first. Whichever route you choose, I’ll show you exactly what comes next."
+          tourSteps={[
+            {
+              selector: ".ayoTourIntro",
+              title: "Welcome to Fountain Prep Financial Education.",
+              text: "Hello, and welcome to Fountain Prep Financial Education. I’m Ayo, and I’m really pleased to have you here. We created this experience around one important belief: financial knowledge should not be reserved for people who already have wealth. Whether you’re learning for yourself or building that knowledge as a family, I’ll be here to guide you. Come with me — let me show you around.",
+            },
+            {
+              selector: ".ayoTourLearning",
+              title: "Build a strong financial foundation.",
+              text: "This is where I recommend you begin. Financial Literacy is our structured learning journey. We’ll go beyond simply saving money. Together, we’ll explore how money works, how assets create value, how businesses build wealth, how investments behave, and how thoughtful people make decisions about risk and capital. Your first lesson is complimentary, so you can experience the classroom before deciding whether to continue.",
+            },
+            {
+              selector: ".ayoTourSimulation",
+              title: "Turn knowledge into experience.",
+              text: "And this is where knowledge becomes experience. In our simulations, you won’t just read about financial decisions — you’ll make them. You’ll begin with fictional capital in the Investment Simulator and see the consequences of your choices. Then we’ll move into Personal Finance, where everyday decisions about income, spending, saving and investing start to shape your financial future. There’s no real money at risk here — this is your place to experiment, make mistakes and learn.",
+            },
+            {
+              selector: ".ayoTourBiography",
+              title: "Learn from extraordinary journeys.",
+              text: "There’s one more experience I’d like you to know about. Biography of Greatness takes us behind extraordinary outcomes to examine the decisions that created them — where people started, what they owned, the risks they took, how they allocated capital and what they built over time. It’s optional, but it can completely change the way you think about wealth.",
+            },
+            {
+              selector: ".ayoTourLearning",
+              title: "I’m ready when you are.",
+              text: "That’s your Financial Education experience. You don’t need to know everything before you begin — that’s why I’m here. If you want a structured foundation, start with Financial Literacy. If you’d rather learn by making decisions, begin with the simulations. Choose the path that feels right for you, and I’ll meet you inside.",
+            },
+          ]}
         />
       </section>
 

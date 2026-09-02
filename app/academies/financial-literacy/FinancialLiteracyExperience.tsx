@@ -30,7 +30,7 @@ export default function FinancialLiteracyExperience() {
           <strong>FINANCIAL LITERACY</strong>
         </div>
 
-        <header className="journeyIntro">
+        <header className="journeyIntro ayoLiteracyIntro">
           <span>YOUR FINANCIAL LITERACY JOURNEY</span>
           <h1>
             Learn the rules.
@@ -44,7 +44,7 @@ export default function FinancialLiteracyExperience() {
         </header>
 
         <div className="pathGrid">
-          <Link href={startHref} className="pathCard primaryPath">
+          <Link href={startHref} className="pathCard primaryPath ayoLiteracyClassroom">
             <div className="cardGlow" />
 
             <div className="pathTop">
@@ -95,7 +95,7 @@ export default function FinancialLiteracyExperience() {
             </div>
           </Link>
 
-          <Link href="/academies/biography" className="pathCard biographyPath">
+          <Link href="/academies/biography" className="pathCard biographyPath ayoLiteracyBiography">
             <div className="cardGlow" />
 
             <div className="pathTop">
@@ -149,6 +149,28 @@ export default function FinancialLiteracyExperience() {
         <FinancialEducationAyoFlow
           title="You’re one step away from the classroom."
           text="I recommend starting Financial Literacy now. Your first Foundation experience is open, and I’ll guide you through it. If you want to explore Biography of Greatness first, you can do that too — I’ll still show you what comes next."
+          tourSteps={[
+            {
+              selector: ".ayoLiteracyIntro",
+              title: "Welcome inside Financial Literacy.",
+              text: "From here, you can proceed to the financial education classroom or spend some time to study the biography of greatness. we’re going to start building the foundation for understanding investment and wealth building asset classes. I’ll be with you throughout the journey.",
+            },
+            {
+              selector: ".ayoLiteracyClassroom",
+              title: "Let’s begin with the foundation.",
+              text: "This is the route I recommend. Your first Foundation experience is called Money Is a Game — Know the Rules. We’ll start by looking at some of the basic rules behind money, value and financial decisions before gradually moving into assets, investing and wealth creation. Your first experience is open, with no payment details required. When you enter the classroom, I’ll meet you there and guide the lesson.",
+            },
+            {
+              selector: ".ayoLiteracyBiography",
+              title: "Or begin with some inspiration.",
+              text: "If you’d prefer some inspiration before the classroom, you can explore Biography of Greatness first. We’ll examine real wealth-building journeys — not simply how much someone became worth, but what they built, what they owned, the important decisions they made and how they used capital along the way. When you finish, I’ll bring you back to your learning journey.",
+            },
+            {
+              selector: ".ayoLiteracyClassroom",
+              title: "I’m ready when you are.",
+              text: "So, you’re ready. My recommendation is to start Financial Literacy and let’s build from the foundation together. Or, if Biography has caught your attention, explore that first. There’s no wrong door here — whichever one you choose, I’ll show you what comes next.",
+            },
+          ]}
         />
       </section>
 
