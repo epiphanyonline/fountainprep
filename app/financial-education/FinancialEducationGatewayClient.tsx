@@ -1,2461 +1,758 @@
 "use client";
 
 import Link from "next/link";
-
-import FinancialEducationAyoGuide from "./FinancialEducationAyoGuide";
-
-
-
-const pillars = [
-  {
-    number: "01",
-    eyebrow: "FINANCIAL LITERACY",
-    title: "Understand money, assets and wealth-building decisions.",
-    description:
-      "Explore money, cash flow, saving, enterprise, assets, investing, risk, ownership, diversification and the decisions that shape financial life.",
-    href: "/academies/financial-literacy",
-    cta: "Explore Financial Literacy",
-    tone: "finance",
-  },
-  {
-    number: "02",
-    eyebrow: "BIOGRAPHY OF GREATNESS",
-    title: "Study the lives behind extraordinary wealth creation.",
-    description:
-      "Study remarkable wealth creators across countries: where they started, the businesses and assets behind their fortunes, pivotal decisions, setbacks, capital allocation and legacy.",
-    href: "/academies/biography",
-    cta: "Explore Biography of Greatness",
-    tone: "biography",
-  },
-] as const;
-
-const topics = [
-  "Money & Cash Flow",
-  "Asset Classes",
-  "Business Ownership",
-  "Investing",
-  "Risk",
-  "Capital Allocation",
-  "Financial Decisions",
-  "Legacy",
-];
+import FinancialEducationAyoFlow from "./FinancialEducationAyoFlow";
+import FinancialEducationFlowProgress from "./FinancialEducationFlowProgress";
 
 export default function FinancialEducationGatewayClient() {
   return (
-    <main className="fe-page">
-      <FinancialEducationAyoGuide />
+    <main className="flowPage">
+      {/* Background Decorative Ambient Flares */}
+      <div className="ambientGlow glowPrimary" aria-hidden="true" />
+      <div className="ambientGlow glowSecondary" aria-hidden="true" />
+      <div className="meshGrid" aria-hidden="true" />
 
-      <section className="fe-hero">
-        <div className="fe-heroGlow fe-glowOne" />
-        <div className="fe-heroGlow fe-glowTwo" />
+      <section className="experienceShell">
+        <FinancialEducationFlowProgress
+          steps={[
+            { label: "Welcome", state: "current" },
+            { label: "Experience", state: "upcoming" },
+            { label: "Learn", state: "upcoming" },
+            { label: "Graduate", state: "upcoming" },
+          ]}
+          nextLabel="Choose how you want to begin"
+        />
 
-        <div className="fe-heroCopy">
-          <div className="fe-kicker">
-            <span />
-            FOUNTAIN PREP FINANCIAL EDUCATION
-          </div>
+        <div className="brandLine">
+          <span className="brandTag">FOUNTAIN PREP</span>
+          <span className="brandDot" />
+          <span className="brandSub">FINANCIAL EDUCATION</span>
+        </div>
 
+        <header className="intro">
+          <span className="eyebrow">WELCOME TO FOUNTAIN PREP ACADEMY</span>
           <h1>
-            Upgrade your
-            <br />
-            <em>financial literacy.</em>
+            The financial literacy partner <br className="heroBreak" />
+            <em className="serifAccent">for families around the world.</em>
           </h1>
-
-          <p className="fe-heroLead">
-            Learn how money, assets, enterprise, investing and capital
-            allocation work — then study the lives and decisions behind
-            extraordinary wealth creation.
-          </p>
-
-          <div className="fe-heroActions">
-            <Link
-              href="/academies/financial-literacy"
-              className="fe-primary"
-            >
-              Start Financial Literacy
-              <span>→</span>
-            </Link>
-
-            <a href="#explore" className="fe-secondary">
-              Explore the two learning pathways
-            </a>
-          </div>
-
-          <div className="fe-freeNote">
-            <div className="fe-freeIcon">✦</div>
-
-            <div>
-              <strong>
-                Experience Fountain Prep before you subscribe.
-              </strong>
-              <span>
-                Complimentary learning experiences are available without
-                entering payment details.
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="fe-heroVisual">
-          <div className="fe-simulatorShell">
-            <div className="fe-simulatorHeader">
-              <div>
-                <small>FOUNTAIN PREP · FINANCIAL SIMULATIONS</small>
-                <h2>Choose a simulation</h2>
-                <p>
-                  Practise financial decisions with fictional money. Pick a
-                  game below to begin.
-                </p>
-              </div>
-
-              <span className="fe-simulatorCount">2 GAMES</span>
-            </div>
-
-            <div className="fe-gameChoices">
-              <Link
-                href="/academies/financial-literacy/investment-lab"
-                className="fe-gameChoice fe-investGame"
-              >
-                <div className="fe-gameChoiceTop">
-                  <span>GAME 01</span>
-                  <small>INVESTING &amp; MARKETS</small>
-                </div>
-
-                <div className="fe-gameTitleRow fe-investTitleRow">
-                  <div className="fe-gameIcon fe-investIcon" aria-hidden="true">
-                    <span>↗</span>
-                  </div>
-
-                  <div className="fe-gameTitleCopy">
-                    <small className="fe-gameCategory">INTERACTIVE INVESTMENT GAME</small>
-                    <h3>Investment Simulator</h3>
-                    <span className="fe-gameSubline">Build · Invest · Respond · Compare</span>
-                  </div>
-                </div>
-
-                <p className="fe-gamePurpose">
-                  Build a portfolio, respond to market events and test your
-                  investment decisions across 12 episodes.
-                </p>
-
-                <div className="fe-gameKeyFigure">
-                  <small>STARTING CAPITAL</small>
-                  <strong>FC100,000</strong>
-                </div>
-
-                <div className="fe-gameMeta">
-                  <span>12 market episodes</span>
-                  <span>Portfolio decisions</span>
-                  <span>Investor score</span>
-                </div>
-
-                <div className="fe-gameAction fe-investAction">
-                  <span className="fe-actionPlay">▶</span>
-                  <strong>Start Investment Game</strong>
-                  <span aria-hidden="true">→</span>
-                </div>
-              </Link>
-
-              <Link
-                href="/academies/financial-literacy/wealth-simulator"
-                className="fe-gameChoice fe-lifeGame fe-lifeWealth"
-              >
-                <div className="fe-gameChoiceTop">
-                  <span>GAME 02</span>
-                  <small>PERSONAL FINANCE</small>
-                </div>
-
-                <div className="fe-gameTitleRow fe-lifeTitleRow">
-                  <div className="fe-gameIcon fe-lifeIcon" aria-hidden="true">
-                    <span>£</span>
-                  </div>
-
-                  <div className="fe-gameTitleCopy">
-                    <small className="fe-gameCategory">PERSONAL FINANCE GAME</small>
-                    <h3>Personal Finance Simulator</h3>
-                    <span className="fe-gameSubline">Earn · Spend · Save · Invest</span>
-                  </div>
-                </div>
-
-                <p className="fe-gamePurpose">
-                  Make decisions about income, housing, lifestyle, saving and
-                  investing across ten simulated years.
-                </p>
-
-                <div className="fe-gameKeyFigure">
-                  <small>SIMULATION PERIOD</small>
-                  <strong>10 YEARS</strong>
-                </div>
-
-                <div className="fe-gameMeta">
-                  <span>Real-life trade-offs</span>
-                  <span>Unexpected events</span>
-                  <span>Financial Twin</span>
-                </div>
-
-                <div className="fe-gameAction fe-lifeAction">
-                  <span className="fe-actionPlay">▶</span>
-                  <strong>Start Personal Finance Game</strong>
-                  <span aria-hidden="true">→</span>
-                </div>
-              </Link>
-            </div>
-
-            <div className="fe-simulatorFooter">
-              <span>No real money is used.</span>
-              <span>Educational simulations · Not financial advice.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-topicRail" aria-label="Financial education topics">
-        <div className="fe-topicRailInner">
-          {topics.map((topic) => (
-            <span key={topic}>{topic}</span>
-          ))}
-        </div>
-      </section>
-
-      <section className="fe-investmentLab">
-        <div className="fe-labGlow" />
-
-        <div className="fe-labCopy">
-          <div className="fe-sectionEyebrow">
-            FOUNTAIN PREP INVESTMENT LAB
-          </div>
-
-          <h2>
-            Could you successfully invest
-            <br />
-            <span>FC100,000?</span>
-          </h2>
-
-          <p className="fe-labLead">
-            Build a fictional portfolio, experience changing markets and make
-            the decisions real investors face — without risking real money.
-          </p>
-
-          <div className="fe-labFeatures">
-            <span>12 market episodes</span>
-            <span>Market events</span>
-            <span>Portfolio decisions</span>
-            <span>Investor score</span>
-          </div>
-
-          <div className="fe-labActions">
-            <Link
-              href="/academies/financial-literacy/investment-lab"
-              className="fe-labPrimary"
-            >
-              Enter the Investment Lab
-              <span>→</span>
-            </Link>
-
-            <Link
-              href="/academies/financial-literacy"
-              className="fe-labSecondary"
-            >
-              Explore Financial Literacy
-            </Link>
-          </div>
-
-          <small className="fe-labDisclaimer">
-            A fictional learning simulation. No real money is invested and
-            nothing shown is investment advice.
-          </small>
-        </div>
-
-        <div className="fe-labVisual" aria-hidden="true">
-          <div className="fe-labTerminal">
-            <div className="fe-labTerminalTop">
-              <div>
-                <small>INVESTMENT LAB</small>
-                <strong>Portfolio Simulation</strong>
-              </div>
-              <span>EPISODE 01 / 12</span>
-            </div>
-
-            <div className="fe-labCapital">
-              <small>STARTING CAPITAL</small>
-              <strong>FC100,000</strong>
-              <span>Build your starting portfolio</span>
-            </div>
-
-            <div className="fe-labAllocation">
-              <div>
-                <span>Equities</span>
-                <strong>35%</strong>
-                <i style={{ width: "35%" }} />
-              </div>
-              <div>
-                <span>Fixed Income</span>
-                <strong>30%</strong>
-                <i style={{ width: "30%" }} />
-              </div>
-              <div>
-                <span>Property</span>
-                <strong>15%</strong>
-                <i style={{ width: "15%" }} />
-              </div>
-              <div>
-                <span>Cash</span>
-                <strong>20%</strong>
-                <i style={{ width: "20%" }} />
-              </div>
-            </div>
-
-            <div className="fe-labEvent">
-              <small>MARKET EVENT</small>
-              <strong>Markets fall sharply.</strong>
-              <p>What would you do?</p>
-              <div>
-                <span>Sell</span>
-                <span>Hold</span>
-                <span>Rebalance</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="fe-labScore">
-            <small>INVESTOR SCORE</small>
-            <strong>82</strong>
-            <span>/ 100</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-lifeSection">
-        <div className="fe-lifeCopy">
-          <div className="fe-sectionEyebrow">
-            LIFE &amp; WEALTH SIMULATOR
-          </div>
-
-          <h2>
-            Same starting point.
-            <br />
-            <span>Ten years of decisions.</span>
-          </h2>
-
           <p>
-            Salary is only the beginning. Navigate take-home pay, housing,
-            transport, lifestyle, saving, investing and unexpected events —
-            then compare your outcome with your Financial Twin.
+            Learn how asset classes, enterprise, investment options, risk, and
+            capital allocation work — then build lasting confidence through guided
+            interactive simulations.
           </p>
+        </header>
 
-          <div className="fe-lifeStats">
-            <article>
-              <small>SIMULATION</small>
-              <strong>10 years</strong>
-            </article>
-            <article>
-              <small>DECISIONS</small>
-              <strong>Real-life trade-offs</strong>
-            </article>
-            <article>
-              <small>COMPARISON</small>
-              <strong>Your Financial Twin</strong>
-            </article>
-          </div>
-
-          <Link
-            href="/academies/financial-literacy/wealth-simulator"
-            className="fe-lifeButton"
-          >
-            Enter Life &amp; Wealth
-            <span>→</span>
-          </Link>
-        </div>
-
-        <div className="fe-lifeBoard" aria-hidden="true">
-          <div className="fe-lifeYear">
-            <small>YEAR</small>
-            <strong>01</strong>
-          </div>
-
-          <div className="fe-lifeRoute">
-            <span />
-            <i />
-            <span />
-            <i />
-            <span />
-          </div>
-
-          <div className="fe-lifeYear">
-            <small>YEAR</small>
-            <strong>10</strong>
-          </div>
-
-          <div className="fe-lifeOutcome">
-            <small>THE QUESTION</small>
-            <strong>
-              What happens when the same income is allocated differently?
-            </strong>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-manifesto">
-        <div className="fe-sectionEyebrow">
-          A BROADER VIEW OF FINANCIAL LITERACY
-        </div>
-
-        <div className="fe-manifestoGrid">
-          <h2>
-            Money is important.
-            <br />
-            <span>Understanding value is even broader.</span>
-          </h2>
-
-          <div className="fe-manifestoCopy">
-            <p>
-              A person may earn well and understand little about assets,
-              ownership, risk or capital allocation. Income alone does not
-              create financial understanding.
-            </p>
-
-            <p>
-              Fountain Prep combines structured financial learning with the
-              study of real wealth-building journeys — without promising
-              shortcuts, formulas or guaranteed financial outcomes.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-perspectives" id="explore">
-        <div className="fe-perspectiveHeading">
-          <div>
-            <span>EXPLORE</span>
-            <h2>
-              Two learning pathways.
-              <br />
-              One richer financial understanding.
-            </h2>
-          </div>
-
-          <p>
-            Build financial capability through structured learning, then deepen
-            that understanding through the stories, decisions and setbacks of
-            remarkable wealth creators.
-          </p>
-        </div>
-
-        <div className="fe-pillarGrid">
-          {pillars.map((pillar) => (
-            <article
-              key={pillar.number}
-              className={`fe-pillar fe-${pillar.tone}`}
-            >
-              <div className="fe-pillarTop">
-                <span className="fe-pillarNumber">{pillar.number}</span>
-                <span className="fe-pillarEyebrow">{pillar.eyebrow}</span>
-              </div>
-
-              <div className="fe-pillarVisual">
-                {pillar.tone === "finance" ? (
-                  <div className="fe-financeVisual">
-                    <div>
-                      <small>CASH</small>
-                      <strong>01</strong>
-                    </div>
-                    <span>→</span>
-                    <div>
-                      <small>ASSETS</small>
-                      <strong>02</strong>
-                    </div>
-                    <span>→</span>
-                    <div>
-                      <small>WEALTH</small>
-                      <strong>03</strong>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="fe-biographyVisual">
-                    <div className="fe-miniPortrait one" />
-                    <div className="fe-miniPortrait two" />
-                    <div className="fe-miniPortrait three" />
-                    <span>STUDY THE JOURNEY</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="fe-pillarContent">
-                <h3>{pillar.title}</h3>
-                <p>{pillar.description}</p>
-
-                <Link href={pillar.href} className="fe-pillarPrimary">
-                  {pillar.cta}
-                  <span>↗</span>
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="fe-feature fe-biographyFeature">
-        <div className="fe-featureCopy">
-          <span className="fe-featureEyebrow">
-            BIOGRAPHY OF GREATNESS
-          </span>
-
-          <h2>
-            Don&apos;t just study fortunes.
-            <br />
-            <em>Study the journey behind them.</em>
-          </h2>
-
-          <p>
-            Explore notable wealth creators country by country — their
-            beginnings, first opportunities, ownership, pivotal decisions,
-            business interests, setbacks, publicly known capital allocation
-            and approaches to legacy.
-          </p>
-
-          <div className="fe-featureFlow">
-            <span>Origins</span>
-            <i>→</i>
-            <span>First Capital</span>
-            <i>→</i>
-            <span>Ownership</span>
-            <i>→</i>
-            <span>Allocation</span>
-            <i>→</i>
-            <span>Legacy</span>
-          </div>
-
-          <Link
-            href="/academies/biography"
-            className="fe-darkButton"
-          >
-            Enter Biography of Greatness
-            <span>→</span>
-          </Link>
-        </div>
-
-        <div className="fe-biographyStage" aria-hidden="true">
-          <div className="fe-countryHeader">
-            <small>COUNTRY STUDY</small>
-            <strong>NIGERIA</strong>
-            <span>01 / GLOBAL SERIES</span>
-          </div>
-
-          <div className="fe-portraitDeck">
-            <div className="fe-portrait fe-portraitBack">
-              <span>03</span>
-            </div>
-
-            <div className="fe-portrait fe-portraitMid">
-              <span>02</span>
-            </div>
-
-            <div className="fe-portrait fe-portraitFront">
-              <div className="fe-portraitSilhouette">
-                <div />
-              </div>
-
-              <div className="fe-portraitInfo">
-                <small>CASE STUDY</small>
-                <strong>
-                  The journey behind extraordinary ownership
-                </strong>
-                <span>Business • Assets • Allocation • Legacy</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-ayo fe-final">
-        <div className="fe-ayoCopy">
-          <span>MEET YOUR AI GUIDE</span>
-
-          <h2>
-            Learn with AYO.
-            <br />
-            <em>Not another static course.</em>
-          </h2>
-
-          <p>
-            AYO guides the learning experience through questions, stories,
-            visual scenes, comparisons, challenges and reflection — designed
-            to feel closer to an interactive masterclass than scrolling
-            through a textbook.
-          </p>
-        </div>
-
-        <div className="fe-ayoDialogue">
-          <small>AYO</small>
-          <p>
-            “If you owned one share of a company, what exactly would you own?”
-          </p>
-
-          <div className="fe-dialogueOptions">
-            <span>Ownership</span>
-            <span>Risk</span>
-            <span>Return</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="fe-finalCta">
-        <small>READY TO BEGIN?</small>
-        <h2>Start with the financial foundations.</h2>
-        <p>
-          Learn the language of money, understand assets and begin building the
-          reasoning required for better financial decisions.
-        </p>
-
-        <div>
+        <div className="choiceGrid">
+          {/* Card 01: Structured Learning */}
           <Link
             href="/academies/financial-literacy"
-            className="fe-finalPrimary"
+            className="choiceCard learnCard"
           >
-            Start Financial Literacy
-            <span>→</span>
+            <div className="cardHighlight" />
+            <div className="choiceTop">
+              <span className="choiceBadge badgePurple">
+                <span className="badgePulse" />
+                RECOMMENDED
+              </span>
+              <b className="stepNumber">01</b>
+            </div>
+
+            <div className="choiceVisual">
+              <div className="choiceIcon iconPurple">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  <circle cx="12" cy="10" r="2" />
+                </svg>
+              </div>
+              <div className="visualText">
+                <small>STRUCTURED LEARNING</small>
+                <h2>Start Financial Literacy</h2>
+              </div>
+            </div>
+
+            <p className="cardDesc">
+              Learn how money, assets, investing, risk, and decisions work
+              through a structured classroom journey guided by Ayo.
+            </p>
+
+            <div className="choiceFacts">
+              <span className="factPill">Guided journey</span>
+              <span className="factPill">First lesson free</span>
+              <span className="factPill">No card required</span>
+            </div>
+
+            <div className="choiceAction actionPurple">
+              <strong>CONTINUE TO LEARNING</strong>
+              <svg
+                className="arrowIcon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </div>
           </Link>
 
+          {/* Card 02: Simulations */}
           <Link
-            href="/academies/biography"
-            className="fe-finalSecondary"
+            href="/academies/financial-literacy/investment-lab"
+            className="choiceCard gameCard"
           >
-            Explore Biography of Greatness
+            <div className="cardHighlight" />
+            <div className="choiceTop">
+              <span className="choiceBadge badgeGold">
+                <span className="badgePulse goldPulse" />
+                LEARN BY DOING
+              </span>
+              <b className="stepNumber">02</b>
+            </div>
+
+            <div className="choiceVisual">
+              <div className="choiceIcon iconGold">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+              <div className="visualText">
+                <small>FINANCIAL SIMULATIONS</small>
+                <h2>Try the Simulation Games</h2>
+              </div>
+            </div>
+
+            <p className="cardDesc">
+              Begin with the Investment Simulator. Fountain Prep will seamlessly
+              transition you to the Personal Finance Simulator next.
+            </p>
+
+            <div className="choiceFacts">
+              <span className="factPill">Fictional money</span>
+              <span className="factPill">Guided decisions</span>
+              <span className="factPill">2 connected games</span>
+            </div>
+
+            <div className="choiceAction actionGold">
+              <strong>START FIRST GAME</strong>
+              <svg
+                className="arrowIcon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </div>
           </Link>
         </div>
+
+        {/* Biography Link Banner */}
+        <Link href="/academies/biography" className="biographyLink">
+          <div className="bioBadgeContainer">
+            <span className="bioTag">OPTIONAL</span>
+          </div>
+          <div className="bioContent">
+            <strong>Explore Biography of Greatness</strong>
+            <small>
+              Study the decisions, ownership, and capital allocation behind
+              extraordinary wealth creation.
+            </small>
+          </div>
+          <div className="bioArrow">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </div>
+        </Link>
+
+        <FinancialEducationAyoFlow
+          title="I’ll guide you from here."
+          text="Choose Financial Literacy if you want structured learning now. Choose the simulation games if you want to learn by making decisions first. Whichever route you choose, I’ll show you exactly what comes next."
+        />
       </section>
 
       <style jsx>{`
-        .fe-page {
-          --purple: #6d28d9;
-          --purple-deep: #3b176d;
-          --ink: #211529;
-          --muted: #6f6576;
-          --line: rgba(79, 51, 97, 0.12);
+        /* Global & Reset Safeguards */
+        :global(html) {
+          -webkit-text-size-adjust: 100%;
+          scroll-behavior: smooth;
+        }
+        :global(body) {
+          margin: 0;
+          background: #0d0814;
+          color: #f3effa;
+          overflow-x: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+            "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Container & Ambient Backgrounds */
+        .flowPage {
+          position: relative;
           min-height: 100vh;
-          overflow: hidden;
-          color: var(--ink);
-          background:
-            radial-gradient(circle at 0% 0%, rgba(124, 58, 237, 0.09), transparent 30%),
-            linear-gradient(180deg, #fff, #fbf9fd 62%, #fff);
-          font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-        }
-
-        .fe-hero {
-          position: relative;
-          display: grid;
-          grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
-          gap: clamp(40px, 6vw, 90px);
+          min-height: 100dvh;
+          display: flex;
           align-items: center;
-          min-height: 820px;
-          padding: clamp(80px, 9vw, 130px) clamp(28px, 7vw, 110px) 82px;
-          isolation: isolate;
+          justify-content: center;
+          padding: max(env(safe-area-inset-top), 28px)
+            max(env(safe-area-inset-right), 16px)
+            max(env(safe-area-inset-bottom), 40px)
+            max(env(safe-area-inset-left), 16px);
+          background: radial-gradient(
+              circle at 50% 0%,
+              #1e1035 0%,
+              #0d0814 70%,
+              #050308 100%
+            );
+          box-sizing: border-box;
+          overflow: hidden;
         }
 
-        .fe-heroGlow {
+        .ambientGlow {
           position: absolute;
-          z-index: -1;
-          width: 470px;
-          height: 470px;
           border-radius: 50%;
-          filter: blur(90px);
+          filter: blur(100px);
           pointer-events: none;
+          z-index: 0;
+          opacity: 0.6;
+          will-change: transform;
+        }
+        .glowPrimary {
+          width: 500px;
+          height: 500px;
+          top: -100px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: radial-gradient(
+            circle,
+            rgba(139, 92, 246, 0.25) 0%,
+            transparent 70%
+          );
+        }
+        .glowSecondary {
+          width: 400px;
+          height: 400px;
+          bottom: -100px;
+          right: -50px;
+          background: radial-gradient(
+            circle,
+            rgba(217, 119, 6, 0.15) 0%,
+            transparent 70%
+          );
+        }
+        .meshGrid {
+          position: absolute;
+          inset: 0;
+          background-image: radial-gradient(
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 1px
+          );
+          background-size: 32px 32px;
+          pointer-events: none;
+          z-index: 0;
+          mask-image: radial-gradient(
+            circle at 50% 30%,
+            black 30%,
+            transparent 80%
+          );
         }
 
-        .fe-glowOne {
-          left: -180px;
-          top: 30px;
-          background: rgba(124, 58, 237, 0.12);
-        }
-
-        .fe-glowTwo {
-          right: -200px;
-          bottom: 0;
-          background: rgba(244, 196, 109, 0.15);
-        }
-
-        .fe-kicker,
-        .fe-sectionEyebrow {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: var(--purple);
-          font-size: 11px;
-          font-weight: 950;
-          letter-spacing: 0.14em;
-        }
-
-        .fe-kicker > span {
-          width: 24px;
-          height: 2px;
-          background: var(--purple);
-        }
-
-        .fe-hero h1 {
-          margin: 22px 0 22px;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(52px, 6.2vw, 92px);
-          line-height: 0.92;
-          letter-spacing: -0.055em;
-          font-weight: 500;
-        }
-
-        .fe-hero h1 em {
-          color: var(--purple);
-          font-weight: 500;
-        }
-
-        .fe-heroLead {
-          max-width: 650px;
-          margin: 0;
-          color: var(--muted);
-          font-size: clamp(17px, 1.5vw, 21px);
-          line-height: 1.65;
-        }
-
-        .fe-heroActions,
-        .fe-labActions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          margin-top: 30px;
-        }
-
-        .fe-primary,
-        .fe-labPrimary,
-        .fe-lifeButton,
-        .fe-finalPrimary {
-          min-height: 54px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-          padding: 0 22px;
-          border-radius: 999px;
-          color: white;
-          background: linear-gradient(135deg, #6d28d9, #8b5cf6);
-          text-decoration: none;
-          font-weight: 900;
-          box-shadow: 0 18px 42px rgba(109, 40, 217, 0.2);
-        }
-
-        .fe-secondary,
-        .fe-labSecondary,
-        .fe-finalSecondary {
-          min-height: 54px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0 18px;
-          border-radius: 999px;
-          color: #5c4967;
-          border: 1px solid rgba(79, 51, 97, 0.14);
-          background: rgba(255,255,255,.7);
-          text-decoration: none;
-          font-weight: 800;
-        }
-
-        .fe-freeNote {
-          width: fit-content;
-          max-width: 610px;
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          margin-top: 28px;
-          padding: 13px 16px;
-          border: 1px solid rgba(124,58,237,.1);
-          border-radius: 16px;
-          background: rgba(255,255,255,.78);
-          box-shadow: 0 10px 34px rgba(54,32,68,.06);
-        }
-
-        .fe-freeIcon {
-          width: 36px;
-          height: 36px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 36px;
-          border-radius: 50%;
-          color: var(--purple);
-          background: #f2eaff;
-        }
-
-        .fe-freeNote strong,
-        .fe-freeNote span {
-          display: block;
-        }
-
-        .fe-freeNote strong {
-          font-size: 12px;
-        }
-
-        .fe-freeNote span {
-          margin-top: 3px;
-          color: #85788d;
-          font-size: 11px;
-        }
-
-        .fe-heroVisual {
+        /* Glass Shell Layout */
+        .experienceShell {
           position: relative;
-          min-width: 0;
+          z-index: 1;
           width: 100%;
-        }
-
-        .fe-simulatorShell {
-          width: 100%;
-          min-width: 0;
-          overflow: hidden;
-          border: 1px solid #e4ded7;
-          border-radius: 28px;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,245,241,.98)),
-            #faf8f5;
-          box-shadow:
-            0 28px 70px rgba(42, 29, 47, .12),
-            inset 0 1px 0 rgba(255,255,255,.92);
-          box-sizing: border-box;
-        }
-
-        .fe-simulatorHeader {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 24px;
-          padding: 24px 26px 22px;
-          border-bottom: 1px solid #e9e3dc;
-          background:
-            radial-gradient(circle at 90% 10%, rgba(109,40,217,.055), transparent 28%),
-            rgba(255,255,255,.72);
-        }
-
-        .fe-simulatorHeader > div {
-          min-width: 0;
-        }
-
-        .fe-simulatorHeader small {
-          display: block;
-          color: #725a3a;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .13em;
-        }
-
-        .fe-simulatorHeader h2 {
-          margin: 8px 0 6px;
-          color: #241d28;
-          font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-          font-size: clamp(26px, 2.9vw, 36px);
-          line-height: 1;
-          font-weight: 900;
-          letter-spacing: -.04em;
-        }
-
-        .fe-simulatorHeader p {
-          max-width: 600px;
-          margin: 0;
-          color: #706672;
-          font-size: 11px;
-          line-height: 1.6;
-        }
-
-        .fe-simulatorCount {
-          flex: 0 0 auto;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 34px;
-          padding: 0 12px;
-          border: 1px solid #ddd4ca;
-          border-radius: 999px;
-          color: #5d505e;
-          background: #fff;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .1em;
-        }
-
-        .fe-gameChoices {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 32px;
-          padding: 28px;
-          background: #f4f1ed;
-          box-sizing: border-box;
-        }
-
-        .fe-gameChoice {
-          position: relative;
-          min-width: 0;
-          min-height: 440px;
+          max-width: 1220px;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
-          padding: 24px;
-          border-radius: 24px;
+          gap: 30px;
+          padding: 38px 44px 42px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 32px;
+          background: rgba(22, 15, 36, 0.65);
+          box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          animation: shellEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes shellEntrance {
+          from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        /* Brand Identification Bar */
+        .brandLine {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          align-self: center;
+          padding: 6px 14px;
+          border-radius: 100px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .brandTag {
+          color: #a78bfa;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+        }
+        .brandDot {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+        }
+        .brandSub {
+          color: #a195b0;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+        }
+
+        /* Header / Typography */
+        .intro {
+          max-width: 960px;
+          margin: 2px auto 0;
+          text-align: center;
+        }
+        .eyebrow {
+          display: block;
+          color: #c4b5fd;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          margin-bottom: 12px;
+          text-transform: uppercase;
+        }
+        .intro h1 {
+          margin: 0 0 14px;
+          font-size: clamp(46px, 5.2vw, 74px);
+          line-height: 0.98;
+          font-weight: 800;
+          letter-spacing: -0.055em;
+          color: #ffffff;
+        }
+        .serifAccent {
+          font-family: Georgia, "Times New Roman", serif;
+          font-style: italic;
+          font-weight: 400;
+          background: linear-gradient(135deg, #e9d5ff 0%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .intro p {
+          max-width: 760px;
+          margin: 0 auto;
+          color: #aaa0b5;
+          font-size: clamp(15px, 1.35vw, 17px);
+          line-height: 1.6;
+          font-weight: 400;
+        }
+
+        /* Responsive Choice Grid */
+        .choiceGrid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 24px;
+        }
+
+        /* Modernized Dynamic Cards */
+        .choiceCard {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          min-height: 390px;
+          padding: 30px;
+          border-radius: 26px;
           text-decoration: none;
-          box-sizing: border-box;
-          isolation: isolate;
-          transition:
-            transform 180ms ease,
-            box-shadow 180ms ease,
-            border-color 180ms ease;
+          color: #ffffff;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.35s ease, box-shadow 0.35s ease,
+            background-color 0.35s ease;
+          -webkit-tap-highlight-color: transparent;
         }
 
-        .fe-gameChoice::before {
-          content: "";
+        .cardHighlight {
           position: absolute;
-          inset: 0 0 auto;
-          height: 6px;
-          z-index: 2;
+          inset: 0;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.35s ease;
         }
 
-        .fe-investGame {
-          color: #352819;
-          border: 2px solid #cfae78;
+        .learnCard {
           background:
-            radial-gradient(circle at 100% 0%, rgba(184,138,70,.19), transparent 34%),
-            linear-gradient(145deg, #fff9ed 0%, #f2dfbf 100%);
-          box-shadow:
-            0 18px 38px rgba(105,78,42,.16),
-            inset 0 1px 0 rgba(255,255,255,.86);
+            radial-gradient(circle at 8% 4%, rgba(139,92,246,.18), transparent 34%),
+            linear-gradient(145deg, rgba(76,29,149,.23), rgba(255,255,255,.025));
+          border-color: rgba(167,139,250,.28);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 42px rgba(76,29,149,.13);
         }
-
-        .fe-investGame::before {
-          background: linear-gradient(90deg, #a97734, #dfc08b);
-        }
-
-        .fe-lifeGame {
-          color: #1b2b3b;
-          border: 2px solid #859fb5;
+        .gameCard {
           background:
-            radial-gradient(circle at 100% 0%, rgba(72,101,132,.17), transparent 34%),
-            linear-gradient(145deg, #eef5f9 0%, #cfdee9 100%);
-          box-shadow:
-            0 18px 38px rgba(38,65,88,.16),
-            inset 0 1px 0 rgba(255,255,255,.86);
+            radial-gradient(circle at 8% 4%, rgba(245,158,11,.17), transparent 34%),
+            linear-gradient(145deg, rgba(120,53,15,.22), rgba(255,255,255,.025));
+          border-color: rgba(245,190,90,.28);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 42px rgba(120,53,15,.13);
         }
-
-        .fe-lifeGame::before {
-          background: linear-gradient(90deg, #496985, #9fb8cb);
+        .learnCard .cardHighlight {
+          background: radial-gradient(
+            800px circle at top left,
+            rgba(167, 139, 250, 0.12),
+            transparent 40%
+          );
+        }
+        .gameCard .cardHighlight {
+          background: radial-gradient(
+            800px circle at top left,
+            rgba(245, 158, 11, 0.12),
+            transparent 40%
+          );
         }
 
         @media (hover: hover) and (pointer: fine) {
-          .fe-gameChoice:hover {
-            transform: translateY(-5px);
+          .choiceCard:hover {
+            transform: translateY(-4px) scale(1.005);
           }
-
-          .fe-investGame:hover {
-            border-color: #b68a4a;
-            box-shadow: 0 26px 46px rgba(105,78,42,.2);
+          .choiceCard:hover .cardHighlight {
+            opacity: 1;
           }
-
-          .fe-lifeGame:hover {
-            border-color: #728da5;
-            box-shadow: 0 26px 46px rgba(38,65,88,.2);
+          .learnCard:hover {
+            border-color: rgba(167, 139, 250, 0.4);
+            box-shadow: 0 20px 40px -15px rgba(124, 58, 237, 0.25);
           }
-
-          .fe-gameChoice:hover .fe-gameAction {
-            transform: translateY(-1px);
+          .gameCard:hover {
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 20px 40px -15px rgba(217, 119, 6, 0.25);
+          }
+          .choiceCard:hover .arrowIcon {
+            transform: translateX(4px);
           }
         }
 
-        .fe-gameChoice:focus-visible {
-          outline: 3px solid rgba(109,40,217,.22);
-          outline-offset: 4px;
+        .choiceCard:active {
+          transform: translateY(-1px) scale(0.99);
         }
 
-        .fe-gameChoiceTop {
+        /* Top Badges & Step Counter */
+        .choiceTop {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          padding-bottom: 14px;
-          border-bottom: 1px solid currentColor;
-          opacity: .68;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .1em;
+          margin-bottom: 20px;
         }
-
-        .fe-gameChoiceTop small {
-          color: inherit;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .09em;
-        }
-
-        .fe-gameTitleRow {
+        .choiceBadge {
           position: relative;
-          display: grid;
-          grid-template-columns: 82px minmax(0, 1fr);
-          gap: 18px;
-          align-items: center;
-          margin-top: 22px;
-          padding: 17px;
-          border-radius: 18px;
-          overflow: hidden;
-          box-sizing: border-box;
-        }
-
-        .fe-investTitleRow {
-          border: 1px solid rgba(137,94,38,.28);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,.62), rgba(232,205,160,.46));
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.72),
-            0 12px 24px rgba(105,78,42,.08);
-        }
-
-        .fe-lifeTitleRow {
-          border: 1px solid rgba(55,88,116,.26);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,.65), rgba(176,201,220,.42));
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.72),
-            0 12px 24px rgba(38,65,88,.08);
-        }
-
-        .fe-gameIcon {
-          position: relative;
-          width: 82px;
-          height: 82px;
-          display: grid;
-          place-items: center;
-          border-radius: 20px;
-          color: white;
-          font-size: 32px;
-          line-height: 1;
-          font-weight: 950;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.24),
-            0 12px 25px rgba(0,0,0,.17);
-        }
-
-        .fe-gameIcon::after {
-          content: "";
-          position: absolute;
-          inset: 6px;
-          border: 1px solid rgba(255,255,255,.22);
-          border-radius: 15px;
-          pointer-events: none;
-        }
-
-        .fe-investIcon {
-          background:
-            radial-gradient(circle at 28% 20%, rgba(255,255,255,.18), transparent 35%),
-            linear-gradient(145deg, #6f522d, #3c2c19);
-        }
-
-        .fe-lifeIcon {
-          background:
-            radial-gradient(circle at 28% 20%, rgba(255,255,255,.18), transparent 35%),
-            linear-gradient(145deg, #4a7192, #273f55);
-        }
-
-        .fe-gameTitleCopy {
-          min-width: 0;
-        }
-
-        .fe-gameCategory {
           display: inline-flex;
           align-items: center;
-          min-height: 22px;
-          margin-bottom: 7px;
-          padding: 0 8px;
-          border-radius: 999px;
-          color: inherit;
-          font-size: 7px;
-          font-weight: 950;
-          letter-spacing: .105em;
+          gap: 6px;
+          padding: 5px 10px;
+          border-radius: 100px;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+        }
+        .badgePulse {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 8px currentColor;
         }
 
-        .fe-investTitleRow .fe-gameCategory {
-          border: 1px solid rgba(123,83,32,.24);
-          background: rgba(255,248,235,.72);
-          color: #75501f;
+        .badgePurple {
+          color: #c4b5fd;
+          background: rgba(139, 92, 246, 0.15);
+          border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        .badgeGold {
+          color: #fde68a;
+          background: rgba(217, 119, 6, 0.15);
+          border: 1px solid rgba(217, 119, 6, 0.3);
         }
 
-        .fe-lifeTitleRow .fe-gameCategory {
-          border: 1px solid rgba(45,74,100,.23);
-          background: rgba(241,248,252,.76);
-          color: #365a77;
+        .stepNumber {
+          color: rgba(255, 255, 255, 0.25);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
         }
 
-        .fe-gameChoice h3 {
-          margin: 0;
-          color: inherit;
-          font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-          font-size: clamp(25px, 2vw, 31px);
-          line-height: 1;
-          font-weight: 950;
-          letter-spacing: -.045em;
+        /* Card Visual & Icon Headers */
+        .choiceVisual {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+        .choiceIcon {
+          width: 64px;
+          height: 64px;
+          min-width: 64px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .iconPurple {
+          background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);
+          color: #ffffff;
+          box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+        }
+        .iconGold {
+          background: linear-gradient(135deg, #d97706 0%, #78350f 100%);
+          color: #ffffff;
+          box-shadow: 0 8px 20px rgba(217, 119, 6, 0.3);
         }
 
-        .fe-gameSubline {
+        .visualText small {
           display: block;
-          margin-top: 8px;
-          color: inherit;
-          opacity: .66;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .045em;
+          color: #a195b0;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          margin-bottom: 2px;
+        }
+        .choiceCard h2 {
+          margin: 0;
+          font-size: 25px;
+          font-weight: 750;
+          letter-spacing: -0.02em;
+          line-height: 1.2;
+          color: #ffffff;
         }
 
-        .fe-gamePurpose {
-          min-height: 58px;
-          margin: 19px 2px 0;
-          color: inherit;
-          opacity: .78;
-          font-size: 11.5px;
-          line-height: 1.6;
+        /* Description & Pills */
+        .cardDesc {
+          margin: 0 0 20px;
+          color: #9ca3af;
+          font-size: 14px;
+          line-height: 1.62;
+          flex-grow: 1;
         }
 
-        .fe-gameKeyFigure {
-          display: grid;
-          gap: 4px;
-          margin-top: 20px;
-          padding: 13px 14px;
-          border: 1px solid currentColor;
-          border-radius: 12px;
-          background: rgba(255,255,255,.42);
-          opacity: .92;
-        }
-
-        .fe-gameKeyFigure small {
-          color: inherit;
-          opacity: .56;
-          font-size: 7px;
-          font-weight: 950;
-          letter-spacing: .1em;
-        }
-
-        .fe-gameKeyFigure strong {
-          color: inherit;
-          font-size: 22px;
-          font-weight: 950;
-          letter-spacing: -.03em;
-        }
-
-        .fe-gameMeta {
+        .choiceFacts {
           display: flex;
           flex-wrap: wrap;
           gap: 6px;
-          margin-top: 15px;
+          margin-bottom: 24px;
         }
-
-        .fe-gameMeta span {
-          padding: 6px 8px;
-          border: 1px solid currentColor;
+        .factPill {
+          padding: 5px 10px;
           border-radius: 8px;
-          color: inherit;
-          background: rgba(255,255,255,.46);
-          opacity: .68;
-          font-size: 8px;
-          font-weight: 850;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          color: #d1d5db;
+          font-size: 10px;
+          font-weight: 600;
         }
 
-        .fe-gameAction {
-          width: 100%;
-          min-height: 56px;
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          gap: 11px;
-          margin-top: auto;
-          padding: 0 15px;
-          border-radius: 13px;
-          color: white;
-          box-sizing: border-box;
-          transition: transform 180ms ease;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.12),
-            0 11px 24px rgba(0,0,0,.15);
-        }
-
-        .fe-investAction {
-          border: 2px solid #4b3821;
-          background: #4b3821;
-        }
-
-        .fe-lifeAction {
-          border: 2px solid #2e4b64;
-          background: #2e4b64;
-        }
-
-        .fe-actionPlay {
-          width: 28px;
-          height: 28px;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(255,255,255,.36);
-          border-radius: 8px;
-          background: rgba(255,255,255,.08);
-          font-size: 9px;
-        }
-
-        .fe-gameAction strong {
-          color: white;
-          font-size: 10.5px;
-          font-weight: 950;
-          letter-spacing: .035em;
-          text-transform: uppercase;
-        }
-
-        .fe-simulatorFooter {
+        /* Action Buttons */
+        .choiceAction {
+          height: 58px;
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          gap: 18px;
-          padding: 13px 24px;
-          border-top: 1px solid #e9e3dc;
-          color: #817783;
-          background: #fff;
-          font-size: 8px;
-          font-weight: 800;
-        }
-
-        /* Remove the old decorative floating callouts from the simulator hero.
-           They made the two products feel like one busy promotional panel. */
-        .fe-floatingCard {
-          display: none;
-        }
-
-        @media (max-width: 760px) {
-          .fe-simulatorShell {
-            border-radius: 22px;
-          }
-
-          .fe-simulatorHeader {
-            padding: 20px 18px 18px;
-          }
-
-          .fe-simulatorHeader h2 {
-            font-size: 30px;
-          }
-
-          .fe-simulatorCount {
-            display: none;
-          }
-
-          .fe-gameChoices {
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding: 16px;
-          }
-
-          .fe-gameChoice {
-            min-height: 390px;
-            padding: 20px;
-          }
-
-          .fe-gameTitleRow {
-            grid-template-columns: 68px minmax(0, 1fr);
-            gap: 14px;
-            padding: 14px;
-          }
-
-          .fe-gameIcon {
-            width: 68px;
-            height: 68px;
-            border-radius: 17px;
-            font-size: 27px;
-          }
-
-          .fe-gameChoice h3 {
-            font-size: 24px;
-          }
-
-          .fe-gameSubline {
-            font-size: 7.5px;
-          }
-
-          .fe-gameChoice h3 {
-            font-size: 24px;
-          }
-
-          .fe-gamePurpose {
-            min-height: 0;
-            font-size: 12px;
-          }
-
-          .fe-simulatorFooter {
-            display: grid;
-            gap: 4px;
-            padding: 13px 18px;
-          }
-        }
-
-        .fe-topicRail {
-          overflow: hidden;
-          border-top: 1px solid var(--line);
-          border-bottom: 1px solid var(--line);
-          background: rgba(255,255,255,.8);
-        }
-
-        .fe-topicRailInner {
-          display: flex;
-          gap: 0;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .fe-topicRailInner::-webkit-scrollbar {
-          display: none;
-        }
-
-        .fe-topicRailInner span {
-          flex: 0 0 auto;
-          padding: 18px 24px;
-          color: #6c5e74;
-          border-right: 1px solid var(--line);
-          font-size: 10px;
-          font-weight: 850;
-          letter-spacing: .05em;
-        }
-
-        .fe-investmentLab,
-        .fe-lifeSection,
-        .fe-feature,
-        .fe-ayo {
-          position: relative;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: clamp(38px, 6vw, 86px);
-          align-items: center;
-          padding: clamp(76px, 9vw, 125px) clamp(28px, 7vw, 110px);
-        }
-
-        .fe-investmentLab {
-          color: white;
-          background:
-            radial-gradient(circle at 10% 40%, rgba(124,58,237,.18), transparent 28%),
-            linear-gradient(135deg, #151019, #21142b 65%, #18101d);
-        }
-
-        .fe-labGlow {
-          position: absolute;
-          inset: auto 12% -20% auto;
-          width: 420px;
-          height: 420px;
-          border-radius: 50%;
-          background: rgba(124,58,237,.12);
-          filter: blur(80px);
-        }
-
-        .fe-investmentLab .fe-sectionEyebrow {
-          color: #cbb6ff;
-        }
-
-        .fe-labCopy h2,
-        .fe-lifeCopy h2 {
-          margin: 18px 0 16px;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(42px, 5vw, 70px);
-          line-height: .98;
-          letter-spacing: -.045em;
-          font-weight: 500;
-        }
-
-        .fe-labCopy h2 span,
-        .fe-lifeCopy h2 span {
-          color: #aa82ff;
-        }
-
-        .fe-labLead,
-        .fe-lifeCopy > p {
-          max-width: 620px;
-          margin: 0;
-          color: #b9adbF;
-          font-size: 17px;
-          line-height: 1.65;
-        }
-
-        .fe-labFeatures {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 22px;
-        }
-
-        .fe-labFeatures span {
-          padding: 8px 10px;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 999px;
-          color: #cec0d5;
-          background: rgba(255,255,255,.04);
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        .fe-labSecondary {
-          color: #e4d9ea;
-          border-color: rgba(255,255,255,.11);
-          background: rgba(255,255,255,.04);
-        }
-
-        .fe-labDisclaimer {
-          display: block;
-          max-width: 600px;
-          margin-top: 22px;
-          color: #82758a;
-          line-height: 1.5;
-        }
-
-        .fe-labVisual {
-          position: relative;
-        }
-
-        .fe-labTerminal {
-          padding: 22px;
-          border: 1px solid rgba(255,255,255,.1);
-          border-radius: 26px;
-          background: rgba(255,255,255,.045);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-        }
-
-        .fe-labTerminalTop {
-          display: flex;
-          justify-content: space-between;
-          gap: 16px;
-          align-items: flex-start;
-          padding-bottom: 17px;
-          border-bottom: 1px solid rgba(255,255,255,.08);
-        }
-
-        .fe-labTerminalTop div,
-        .fe-labCapital {
-          display: grid;
-          gap: 4px;
-        }
-
-        .fe-labTerminalTop small,
-        .fe-labCapital small,
-        .fe-labScore small,
-        .fe-labEvent small {
-          color: #9d8ea6;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .12em;
-        }
-
-        .fe-labTerminalTop span {
-          color: #9b89a6;
-          font-size: 9px;
-          font-weight: 850;
-        }
-
-        .fe-labCapital {
-          padding: 22px 0;
-        }
-
-        .fe-labCapital strong {
-          color: #cfb9ff;
-          font-size: 38px;
-        }
-
-        .fe-labCapital span {
-          color: #887c90;
-          font-size: 10px;
-        }
-
-        .fe-labAllocation {
-          display: grid;
-          gap: 12px;
-        }
-
-        .fe-labAllocation div {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 6px 16px;
-          align-items: center;
-        }
-
-        .fe-labAllocation span,
-        .fe-labAllocation strong {
-          font-size: 10px;
-        }
-
-        .fe-labAllocation i {
-          grid-column: 1 / -1;
-          height: 5px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, #7c3aed, #b899ff);
-        }
-
-        .fe-labEvent {
-          margin-top: 24px;
-          padding: 16px;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 17px;
-          background: rgba(0,0,0,.13);
-        }
-
-        .fe-labEvent strong,
-        .fe-labEvent p {
-          display: block;
-          margin: 5px 0 0;
-        }
-
-        .fe-labEvent p {
-          color: #978a9f;
-          font-size: 10px;
-        }
-
-        .fe-labEvent > div {
-          display: flex;
-          gap: 7px;
-          margin-top: 11px;
-        }
-
-        .fe-labEvent > div span {
-          padding: 7px 9px;
-          border-radius: 9px;
-          background: rgba(255,255,255,.06);
-          font-size: 9px;
-        }
-
-        .fe-labScore {
-          position: absolute;
-          right: -24px;
-          bottom: -28px;
-          padding: 14px 18px;
-          border: 1px solid rgba(255,255,255,.1);
-          border-radius: 17px;
-          background: #2a1935;
-          box-shadow: 0 18px 40px rgba(0,0,0,.28);
-        }
-
-        .fe-labScore strong {
-          margin-left: 8px;
-          color: #d2bdff;
-          font-size: 27px;
-        }
-
-        .fe-labScore span {
-          color: #8e8098;
-          font-size: 10px;
-        }
-
-        .fe-lifeSection {
-          background:
-            radial-gradient(circle at 90% 20%, rgba(124,58,237,.08), transparent 30%),
-            #fff;
-        }
-
-        .fe-lifeCopy .fe-sectionEyebrow {
-          color: var(--purple);
-        }
-
-        .fe-lifeCopy h2 {
-          color: var(--ink);
-        }
-
-        .fe-lifeCopy > p {
-          color: var(--muted);
-        }
-
-        .fe-lifeStats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          margin-top: 24px;
-        }
-
-        .fe-lifeStats article {
-          padding: 14px;
-          border: 1px solid var(--line);
+          padding: 0 18px;
           border-radius: 15px;
-          background: #fcfafd;
-        }
-
-        .fe-lifeStats small,
-        .fe-lifeStats strong {
-          display: block;
-        }
-
-        .fe-lifeStats small {
-          color: #9b8fa2;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .09em;
-        }
-
-        .fe-lifeStats strong {
-          margin-top: 5px;
-          font-size: 11px;
-        }
-
-        .fe-lifeButton {
-          margin-top: 24px;
-        }
-
-        .fe-lifeBoard {
-          position: relative;
-          display: grid;
-          grid-template-columns: 90px 1fr 90px;
-          gap: 18px;
-          align-items: center;
-          min-height: 340px;
-          padding: 34px;
-          border: 1px solid var(--line);
-          border-radius: 28px;
-          background:
-            linear-gradient(145deg, rgba(124,58,237,.05), transparent 55%),
-            #fbf9fd;
-          box-shadow: 0 28px 70px rgba(50,29,63,.08);
-        }
-
-        .fe-lifeYear {
-          display: grid;
-          place-items: center;
-          padding: 18px 10px;
-          border-radius: 18px;
-          background: #fff;
-          box-shadow: 0 12px 30px rgba(50,29,63,.08);
-        }
-
-        .fe-lifeYear small {
-          color: #9889a1;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .1em;
-        }
-
-        .fe-lifeYear strong {
-          margin-top: 4px;
-          color: var(--purple);
-          font-size: 31px;
-        }
-
-        .fe-lifeRoute {
-          display: flex;
-          align-items: center;
-        }
-
-        .fe-lifeRoute span {
-          width: 14px;
-          height: 14px;
-          flex: 0 0 14px;
-          border: 4px solid #f2eaff;
-          border-radius: 50%;
-          background: var(--purple);
-        }
-
-        .fe-lifeRoute i {
-          flex: 1;
-          height: 3px;
-          background: linear-gradient(90deg, #d8c5ff, #7c3aed);
-        }
-
-        .fe-lifeOutcome {
-          position: absolute;
-          left: 50%;
-          bottom: 32px;
-          width: min(380px, calc(100% - 48px));
-          transform: translateX(-50%);
-          padding: 15px;
-          border-radius: 15px;
-          color: white;
-          background: #2c1b35;
-          text-align: center;
-        }
-
-        .fe-lifeOutcome small,
-        .fe-lifeOutcome strong {
-          display: block;
-        }
-
-        .fe-lifeOutcome small {
-          color: #b6a2c1;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .1em;
-        }
-
-        .fe-lifeOutcome strong {
-          margin-top: 5px;
-          font-size: 11px;
-          line-height: 1.45;
-        }
-
-        .fe-manifesto,
-        .fe-perspectives {
-          padding: clamp(76px, 9vw, 125px) clamp(28px, 7vw, 110px);
-        }
-
-        .fe-manifesto {
-          background: #f7f3fa;
-        }
-
-        .fe-manifestoGrid {
-          display: grid;
-          grid-template-columns: .95fr 1.05fr;
-          gap: clamp(36px, 7vw, 110px);
-          margin-top: 30px;
-        }
-
-        .fe-manifesto h2,
-        .fe-perspectiveHeading h2,
-        .fe-featureCopy h2,
-        .fe-ayoCopy h2,
-        .fe-finalCta h2 {
-          margin: 0;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(40px, 4.8vw, 70px);
-          line-height: 1;
-          letter-spacing: -.045em;
-          font-weight: 500;
-        }
-
-        .fe-manifesto h2 span {
-          color: var(--purple);
-        }
-
-        .fe-manifestoCopy {
-          display: grid;
-          gap: 18px;
-          align-content: start;
-        }
-
-        .fe-manifestoCopy p,
-        .fe-perspectiveHeading p,
-        .fe-featureCopy p,
-        .fe-ayoCopy p,
-        .fe-finalCta p {
-          margin: 0;
-          color: var(--muted);
-          font-size: 16px;
-          line-height: 1.7;
-        }
-
-        .fe-perspectiveHeading {
-          display: grid;
-          grid-template-columns: 1fr .85fr;
-          gap: 40px;
-          align-items: end;
-        }
-
-        .fe-perspectiveHeading > div > span {
-          display: block;
-          margin-bottom: 14px;
-          color: var(--purple);
-          font-size: 10px;
-          font-weight: 950;
-          letter-spacing: .14em;
-        }
-
-        .fe-pillarGrid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 18px;
-          margin-top: 42px;
-        }
-
-        .fe-pillar {
-          overflow: hidden;
-          border: 1px solid var(--line);
-          border-radius: 26px;
-          background: white;
-          box-shadow: 0 20px 60px rgba(49,28,62,.06);
-        }
-
-        .fe-pillarTop {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 18px 20px 12px;
-        }
-
-        .fe-pillarNumber {
-          color: #a090aa;
-          font-size: 10px;
-          font-weight: 900;
-        }
-
-        .fe-pillarEyebrow {
-          color: var(--purple);
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: .1em;
-        }
-
-        .fe-pillarVisual {
-          min-height: 170px;
-          padding: 20px;
-        }
-
-        .fe-financeVisual {
-          display: grid;
-          grid-template-columns: 1fr auto 1fr auto 1fr;
-          gap: 12px;
-          align-items: center;
-          height: 130px;
-          padding: 18px;
-          border-radius: 18px;
-          background:
-            radial-gradient(circle at 70% 20%, rgba(196,169,255,.18), transparent 32%),
-            #1e1426;
-        }
-
-        .fe-financeVisual div {
-          display: grid;
-          gap: 4px;
-          text-align: center;
-        }
-
-        .fe-financeVisual small {
-          color: #a995b3;
-          font-size: 7px;
-          font-weight: 900;
-          letter-spacing: .09em;
-        }
-
-        .fe-financeVisual strong {
-          color: #d6c1ff;
-          font-size: 22px;
-        }
-
-        .fe-financeVisual > span {
-          color: #8f79a0;
-        }
-
-        .fe-biographyVisual {
-          position: relative;
-          height: 130px;
-          overflow: hidden;
-          border-radius: 18px;
-          background: linear-gradient(145deg, #ede4f6, #faf7fd);
-        }
-
-        .fe-miniPortrait {
-          position: absolute;
-          bottom: 0;
-          width: 76px;
-          border-radius: 30px 30px 0 0;
-          background: linear-gradient(180deg, #9f88ad, #5a4068);
-        }
-
-        .fe-miniPortrait.one {
-          left: 15%;
-          height: 95px;
-        }
-
-        .fe-miniPortrait.two {
-          left: 42%;
-          height: 115px;
-          background: linear-gradient(180deg, #775b87, #3e294a);
-        }
-
-        .fe-miniPortrait.three {
-          right: 14%;
-          height: 82px;
-          background: linear-gradient(180deg, #b19abc, #6e537a);
-        }
-
-        .fe-biographyVisual > span {
-          position: absolute;
-          left: 14px;
-          top: 13px;
-          color: #6d5876;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: .12em;
-        }
-
-        .fe-pillarContent {
-          padding: 8px 22px 24px;
-        }
-
-        .fe-pillarContent h3 {
-          margin: 0;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: 28px;
-          line-height: 1.05;
-          font-weight: 500;
-        }
-
-        .fe-pillarContent p {
-          min-height: 100px;
-          margin: 12px 0 19px;
-          color: var(--muted);
-          font-size: 13px;
-          line-height: 1.65;
-        }
-
-        .fe-pillarPrimary,
-        .fe-darkButton {
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-          min-height: 46px;
-          padding: 0 16px;
-          border-radius: 999px;
-          color: white;
-          background: #2a1833;
-          text-decoration: none;
-          font-size: 11px;
-          font-weight: 900;
-        }
-
-        .fe-biographyFeature {
-          color: white;
-          background: linear-gradient(145deg, #2b1a35, #171019);
-        }
-
-        .fe-featureEyebrow {
-          display: block;
-          margin-bottom: 16px;
-          color: #cbb6ff;
-          font-size: 10px;
-          font-weight: 950;
-          letter-spacing: .14em;
-        }
-
-        .fe-featureCopy h2 em,
-        .fe-ayoCopy h2 em {
-          color: #cbb6ff;
-          font-weight: 500;
-        }
-
-        .fe-featureCopy p {
-          max-width: 650px;
-          margin-top: 20px;
-          color: #bcaec3;
-        }
-
-        .fe-featureFlow {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 9px;
-          align-items: center;
-          margin-top: 26px;
-        }
-
-        .fe-featureFlow span {
-          padding: 7px 9px;
-          border-radius: 999px;
-          color: #cec0d5;
-          background: rgba(255,255,255,.06);
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        .fe-featureFlow i {
-          color: #7e6b88;
-          font-style: normal;
-        }
-
-        .fe-darkButton {
-          margin-top: 27px;
-          color: #261a2c;
-          background: #e9ddff;
-        }
-
-        .fe-biographyStage {
-          padding: 24px;
-          border: 1px solid rgba(255,255,255,.1);
-          border-radius: 26px;
-          background: rgba(255,255,255,.045);
-        }
-
-        .fe-countryHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding-bottom: 17px;
-          border-bottom: 1px solid rgba(255,255,255,.08);
-        }
-
-        .fe-countryHeader small,
-        .fe-countryHeader span {
-          color: #93869b;
-          font-size: 8px;
-          font-weight: 850;
-          letter-spacing: .1em;
-        }
-
-        .fe-countryHeader strong {
-          font-size: 11px;
-        }
-
-        .fe-portraitDeck {
-          position: relative;
-          height: 340px;
-          margin-top: 22px;
-        }
-
-        .fe-portrait {
-          position: absolute;
-          overflow: hidden;
-          width: 62%;
-          height: 88%;
-          border-radius: 22px;
-          background: #34243d;
-          box-shadow: 0 20px 45px rgba(0,0,0,.18);
-        }
-
-        .fe-portraitBack {
-          right: 0;
-          top: 0;
-          transform: rotate(6deg);
-          opacity: .45;
-        }
-
-        .fe-portraitMid {
-          right: 15%;
-          top: 5%;
-          transform: rotate(2deg);
-          opacity: .72;
-        }
-
-        .fe-portraitFront {
-          left: 3%;
-          bottom: 0;
-          background: linear-gradient(155deg, #4b3458, #201726);
-        }
-
-        .fe-portrait > span {
-          position: absolute;
-          right: 12px;
-          top: 10px;
-          color: rgba(255,255,255,.34);
-          font-size: 10px;
-          font-weight: 900;
-        }
-
-        .fe-portraitSilhouette {
-          height: 63%;
-          display: grid;
-          place-items: end center;
-        }
-
-        .fe-portraitSilhouette div {
-          width: 54%;
-          height: 82%;
-          border-radius: 48% 48% 12% 12%;
-          background: linear-gradient(180deg, #897195, #392843);
-        }
-
-        .fe-portraitInfo {
-          padding: 14px;
-        }
-
-        .fe-portraitInfo small,
-        .fe-portraitInfo strong,
-        .fe-portraitInfo span {
-          display: block;
-        }
-
-        .fe-portraitInfo small {
-          color: #a993b4;
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: .1em;
-        }
-
-        .fe-portraitInfo strong {
-          margin-top: 6px;
           font-size: 12px;
-          line-height: 1.35;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          transition: background-color 0.2s ease;
+        }
+        .actionPurple {
+          background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+          color: #ffffff;
+          box-shadow: 0 4px 15px rgba(109, 40, 217, 0.3);
+        }
+        .actionGold {
+          background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+          color: #ffffff;
+          box-shadow: 0 4px 15px rgba(180, 83, 9, 0.3);
         }
 
-        .fe-portraitInfo span {
-          margin-top: 6px;
-          color: #897b91;
-          font-size: 8px;
+        .arrowIcon {
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .fe-ayo {
-          grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
-          color: white;
-          background:
-            radial-gradient(circle at 10% 30%, rgba(124,58,237,.25), transparent 30%),
-            linear-gradient(135deg, #1c1223, #2b1837);
-        }
-
-
-        .fe-ayoCopy > span {
-          display: block;
-          margin-bottom: 14px;
-          color: #cbb6ff;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: .13em;
-        }
-
-        .fe-ayoCopy h2 {
-          font-size: clamp(38px, 4vw, 62px);
-        }
-
-        .fe-ayoCopy p {
-          margin-top: 18px;
-          color: #bbaec1;
-        }
-
-        .fe-ayoDialogue {
-          padding: 22px;
-          border: 1px solid rgba(255,255,255,.1);
-          border-radius: 20px;
-          background: rgba(255,255,255,.055);
-        }
-
-        .fe-ayoDialogue small {
-          color: #bda4f4;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: .11em;
-        }
-
-        .fe-ayoDialogue p {
-          margin: 12px 0 0;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: 21px;
-          line-height: 1.35;
-        }
-
-        .fe-dialogueOptions {
+        /* Banner Link Component */
+        .biographyLink {
           display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-          margin-top: 16px;
+          align-items: center;
+          gap: 16px;
+          padding: 13px 18px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          text-decoration: none;
+          color: #ffffff;
+          transition: all 0.25s ease;
+          -webkit-tap-highlight-color: transparent;
         }
-
-        .fe-dialogueOptions span {
-          padding: 6px 8px;
-          border-radius: 999px;
-          color: #c7b8cf;
-          background: rgba(255,255,255,.07);
-          font-size: 8px;
+        .biographyLink:hover {
+          background: rgba(255, 255, 255, 0.04);
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .bioBadgeContainer {
+          flex-shrink: 0;
+        }
+        .bioTag {
+          padding: 4px 8px;
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.08);
+          color: #9ca3af;
+          font-size: 9px;
           font-weight: 800;
+          letter-spacing: 0.1em;
         }
-
-        .fe-finalCta {
-          padding: clamp(78px, 9vw, 120px) clamp(28px, 7vw, 110px);
-          text-align: center;
-          background: white;
-        }
-
-        .fe-finalCta > small {
-          color: var(--purple);
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: .14em;
-        }
-
-        .fe-finalCta h2 {
-          margin-top: 14px;
-        }
-
-        .fe-finalCta p {
-          max-width: 650px;
-          margin: 18px auto 0;
-        }
-
-        .fe-finalCta > div {
+        .bioContent {
           display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex-grow: 1;
+        }
+        .bioContent strong {
+          font-size: 13px;
+          font-weight: 600;
+          color: #f3effa;
+        }
+        .bioContent small {
+          color: #8b8398;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+        .bioArrow {
+          color: #a78bfa;
+          display: flex;
+          align-items: center;
           justify-content: center;
-          flex-wrap: wrap;
-          gap: 12px;
-          margin-top: 28px;
+          transition: transform 0.2s ease;
+        }
+        .biographyLink:hover .bioArrow {
+          transform: translateX(3px);
         }
 
-        .fe-heroCopy,
-        .fe-heroVisual,
-        .fe-gameScreen,
-        .fe-gameCanvas,
-        .fe-gameChoices,
-        .fe-gameChoice {
-          min-width: 0;
-          max-width: 100%;
-          box-sizing: border-box;
+        /* Adaptive Mobile and Tablet Breakpoints */
+        @media (min-width: 1080px) {
+          .choiceVisual { gap: 18px; }
+          .cardDesc { min-height: 68px; }
         }
 
-        .fe-heroVisual, .fe-gameScreen { width: 100%; }
-        .fe-gameChoice > * { min-width: 0; max-width: 100%; }
-
-        @supports (overflow: clip) {
-          .fe-page { overflow-x: clip; overflow-y: visible; }
-        }
-
-        @media (max-width: 1050px) {
-          .fe-hero {
-            grid-template-columns: 1fr;
-            min-height: 0;
-          }
-
-          .fe-heroVisual {
-            max-width: 800px;
-          }
-
-          .fe-investmentLab,
-          .fe-lifeSection,
-          .fe-feature {
-            grid-template-columns: 1fr;
-          }
-
-          .fe-ayo {
-            grid-template-columns: 1fr;
-          }
-
-          .fe-ayoDialogue {
-            grid-column: auto;
-          }
-
-          .fe-floatingOne {
-            left: 10px;
-          }
-
-          .fe-floatingTwo {
-            right: 10px;
-          }
-        }
-
-        @media (max-width: 760px) {
-          .fe-hero,
-          .fe-investmentLab,
-          .fe-lifeSection,
-          .fe-manifesto,
-          .fe-perspectives,
-          .fe-feature,
-          .fe-ayo,
-          .fe-finalCta {
-            padding-left: 18px;
-            padding-right: 18px;
-          }
-
-          .fe-hero {
-            padding-top: 72px;
-            padding-bottom: 64px;
-            gap: 42px;
-          }
-
-          .fe-hero h1 {
-            font-size: clamp(48px, 15vw, 67px);
-          }
-
-          .fe-heroLead {
-            font-size: 16px;
-          }
-
-          .fe-heroActions {
-            display: grid;
-          }
-
-          .fe-primary,
-          .fe-secondary {
-            width: 100%;
-            box-sizing: border-box;
-          }
-
-          .fe-freeNote {
-            align-items: flex-start;
-          }
-
-          .fe-heroVisual {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            margin: 0;
-            overflow: hidden;
+        @media (max-width: 840px) {
+          .experienceShell {
+            padding: 24px;
+            gap: 22px;
             border-radius: 24px;
-            isolation: isolate;
           }
-
-          .fe-gameScreen {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            margin: 0;
-            overflow: hidden;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-          }
-
-          .fe-gameCanvas {
-            width: 100%;
-            max-width: 100%;
-            padding: 18px 14px 16px;
-            box-sizing: border-box;
-          }
-
-          .fe-gameChoices {
-            width: 100%;
-            max-width: 100%;
+          .choiceGrid {
             grid-template-columns: 1fr;
-            gap: 14px;
+            gap: 16px;
           }
-
-          .fe-gameChoice {
-            width: 100%;
-            min-height: 0;
-            padding: 20px 18px;
-            border-radius: 22px;
+          .choiceCard {
+            padding: 22px;
           }
-
-          .fe-gamePlayIcon {
-            top: 52px;
-            right: 18px;
-            width: 44px;
-            height: 44px;
-          }
-
-          .fe-gameMeta {
-            margin-top: 16px;
-          }
-
-          .fe-gameMeta span {
-            padding: 7px 9px;
-            font-size: 9px;
-          }
-
-          .fe-screenTop,
-          .fe-screenFooter {
-            padding: 14px;
-          }
-
-          .fe-screenFooter {
-            gap: 8px;
-          }
-
-          .fe-screenFooter span {
-            font-size: 7px;
-          }
-
-          .fe-floatingCard {
+          .heroBreak {
             display: none;
-          }
-
-          .fe-investmentLab,
-          .fe-lifeSection,
-          .fe-feature,
-          .fe-ayo {
-            padding-top: 74px;
-            padding-bottom: 74px;
-          }
-
-          .fe-labVisual {
-            margin-top: 12px;
-          }
-
-          .fe-labScore {
-            position: static;
-            width: fit-content;
-            margin: 12px 0 0 auto;
-          }
-
-          .fe-lifeStats {
-            grid-template-columns: 1fr;
-          }
-
-          .fe-lifeBoard {
-            min-height: 300px;
-            grid-template-columns: 68px 1fr 68px;
-            padding: 20px;
-          }
-
-          .fe-lifeOutcome {
-            bottom: 20px;
-          }
-
-          .fe-manifestoGrid,
-          .fe-perspectiveHeading {
-            grid-template-columns: 1fr;
-          }
-
-          .fe-pillarGrid {
-            grid-template-columns: 1fr;
-          }
-
-          .fe-pillarContent p {
-            min-height: 0;
-          }
-
-          .fe-financeVisual {
-            grid-template-columns: 1fr auto 1fr;
-          }
-
-          .fe-financeVisual div:nth-of-type(3),
-          .fe-financeVisual > span:nth-of-type(2) {
-            display: none;
-          }
-
-          .fe-featureFlow {
-            gap: 6px;
-          }
-
-          .fe-biographyStage {
-            padding: 16px;
-          }
-
-          .fe-portraitDeck {
-            height: 300px;
-          }
-
-          .fe-ayo {
-            grid-template-columns: 1fr;
-            gap: 24px;
-          }
-
-          .fe-ayoCopy h2 {
-            font-size: 37px;
           }
         }
 
-        @media (max-width: 430px) {
-          .fe-screen {
-            width: 100%;
-            max-width: 100%;
-            border-radius: 22px;
+        @media (max-width: 480px) {
+          .flowPage {
+            padding: max(env(safe-area-inset-top), 12px) 10px
+              max(env(safe-area-inset-bottom), 24px) 10px;
           }
-
-          .fe-gameIntro h2 {
-            font-size: 30px;
-            line-height: 1;
+          .experienceShell {
+            padding: 16px;
+            gap: 18px;
+            border-radius: 20px;
           }
-
-          .fe-gameIntro p {
-            font-size: 12px;
-            line-height: 1.55;
+          .intro h1 {
+            font-size: 36px;
+            line-height: .98;
           }
-
-          .fe-labCopy h2,
-          .fe-lifeCopy h2,
-          .fe-manifesto h2,
-          .fe-perspectiveHeading h2,
-          .fe-featureCopy h2,
-          .fe-finalCta h2 {
-            font-size: 38px;
+          .intro p {
+            font-size: 13px;
           }
-
-          .fe-lifeBoard {
-            grid-template-columns: 60px 1fr 60px;
-            gap: 8px;
+          .choiceIcon {
+            width: 54px;
+            height: 54px;
+            min-width: 54px;
+            border-radius: 15px;
           }
+          .choiceCard h2 {
+            font-size: 22px;
+          }
+          .biographyLink {
+            padding: 14px;
+            gap: 12px;
+          }
+          .bioContent small {
+            display: none; /* Auto-truncate secondary text on small mobile screens */
+          }
+        }
 
-          .fe-countryHeader {
-            flex-wrap: wrap;
+        /* Accessibility: Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+          .experienceShell,
+          .choiceCard,
+          .arrowIcon,
+          .biographyLink {
+            animation: none !important;
+            transition: none !important;
           }
         }
       `}</style>
