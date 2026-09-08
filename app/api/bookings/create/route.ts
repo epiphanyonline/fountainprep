@@ -557,14 +557,16 @@ async function validateTutorWeeklyEligibility(
     await supabaseAdmin
       .from('tutor_weekly_availability')
       .select(`
-        id,
-        tutor_id,
-        subject_id,
-        learning_level_id,
-        day_of_week,
-        start_time,
-        is_active
-      `)
+  id,
+  tutor_id,
+  subject_id,
+  learning_level_id,
+  day_of_week,
+  start_time,
+  end_time,
+  ends_next_day,
+  is_active
+`)
       .eq('tutor_id', tutorId)
       .in('subject_id', eligibleSubjectIds)
       .eq('is_active', true)
@@ -572,14 +574,16 @@ async function validateTutorWeeklyEligibility(
   if (error) throw error
 
   const rows = (weeklyRows ?? []) as {
-    id: string
-    tutor_id: string
-    subject_id: string
-    learning_level_id: string | null
-    day_of_week: number
-    start_time: string
-    is_active: boolean
-  }[]
+  id: string
+  tutor_id: string
+  subject_id: string
+  learning_level_id: string | null
+  day_of_week: number
+  start_time: string
+  end_time: string
+  ends_next_day: boolean | null
+  is_active: boolean
+}[]
 
   if (rows.length === 0) {
     throw new RequestError(
@@ -625,6 +629,68 @@ async function validateTutorWeeklyEligibility(
     }
   }
 
+  function timeToMinutes(value: string) {
+  const [hours, minutes] = String(value)
+    .slice(0, 5)
+    .split(':')
+    .map(Number)
+
+  return hours * 60 + minutes
+}
+
+function slotMatchesWeeklyPattern(
+  slot: SlotRow,
+  pattern: {
+    day_of_week: number
+    start_time: string
+    end_time: string
+    ends_next_day: boolean | null
+  }
+) {
+  const slotTime = timeToMinutes(slot.start_time)
+  const patternStart = timeToMinutes(pattern.start_time)
+
+  let patternEnd = timeToMinutes(pattern.end_time)
+
+  if (
+    pattern.ends_next_day ||
+    patternEnd <= patternStart
+  ) {
+    patternEnd += 24 * 60
+  }
+
+  const slotDay = new Date(
+    `${slot.slot_date}T12:00:00Z`
+  ).getUTCDay()
+
+  // Same-day portion.
+  if (
+    slotDay === pattern.day_of_week &&
+    slotTime >= patternStart &&
+    slotTime < Math.min(patternEnd, 1440)
+  ) {
+    return true
+  }
+
+  // Overnight portion after midnight.
+  if (patternEnd > 1440) {
+    const nextDay =
+      (pattern.day_of_week + 1) % 7
+
+    const overnightEnd =
+      patternEnd - 1440
+
+    if (
+      slotDay === nextDay &&
+      slotTime < overnightEnd
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
   for (const slot of seedSlots) {
     const slotDay =
       new Date(
@@ -635,33 +701,30 @@ async function validateTutorWeeklyEligibility(
       normaliseTime(slot.start_time)
 
     const matchingPattern = rows.some((row) => {
-      const sameDay =
-        row.day_of_week === slotDay
+  const withinWeeklyAvailability =
+    slotMatchesWeeklyPattern(slot, row)
 
-      const sameTime =
-        normaliseTime(row.start_time) === slotTime
+  if (!withinWeeklyAvailability) {
+    return false
+  }
 
-      if (!sameDay || !sameTime) {
-        return false
-      }
+  if (isLanguage) {
+    return true
+  }
 
-      if (isLanguage) {
-        return true
-      }
+  if (!row.learning_level_id) {
+    return true
+  }
 
-      if (!row.learning_level_id) {
-        return true
-      }
+  if (!studentLevelId) {
+    return true
+  }
 
-      if (!studentLevelId) {
-        return true
-      }
-
-      return (
-        row.learning_level_id === studentLevelId ||
-        allAgesIds.has(row.learning_level_id)
-      )
-    })
+  return (
+    row.learning_level_id === studentLevelId ||
+    allAgesIds.has(row.learning_level_id)
+  )
+})
 
     console.log('weekly-eligibility-debug', {
   requestedSubjectId,
