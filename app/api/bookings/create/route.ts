@@ -498,6 +498,70 @@ async function validateTutorWeeklyEligibility(
 
   const tutorId = tutorIds[0]
 
+    const isLanguage =
+    String(subjectCategory || '').toLowerCase() === 'language'
+
+  let eligibleSubjectIds = [requestedSubjectId]
+
+  if (isLanguage) {
+    const { data: requestedSubject, error: requestedSubjectError } =
+      await supabaseAdmin
+        .from('subjects')
+        .select('id, name, code, category')
+        .eq('id', requestedSubjectId)
+        .maybeSingle()
+
+    if (requestedSubjectError) {
+      throw requestedSubjectError
+    }
+
+    if (requestedSubject) {
+      const subjectName = String(requestedSubject.name || '')
+        .trim()
+        .toLowerCase()
+
+      const subjectCode = String(requestedSubject.code || '')
+        .trim()
+        .toLowerCase()
+
+      const { data: matchingSubjects, error: matchingSubjectsError } =
+        await supabaseAdmin
+          .from('subjects')
+          .select('id, name, code, category')
+          .eq('category', 'language')
+
+      if (matchingSubjectsError) {
+        throw matchingSubjectsError
+      }
+
+      eligibleSubjectIds = Array.from(
+        new Set(
+          (matchingSubjects ?? [])
+            .filter((subject) => {
+              const name = String(subject.name || '')
+                .trim()
+                .toLowerCase()
+
+              const code = String(subject.code || '')
+                .trim()
+                .toLowerCase()
+
+              return (
+                subject.id === requestedSubjectId ||
+                (subjectName && name === subjectName) ||
+                (subjectCode && code === subjectCode)
+              )
+            })
+            .map((subject) => subject.id)
+        )
+      )
+
+      if (!eligibleSubjectIds.includes(requestedSubjectId)) {
+        eligibleSubjectIds.push(requestedSubjectId)
+      }
+    }
+  }
+
   const { data: weeklyRows, error } =
     await supabaseAdmin
       .from('tutor_weekly_availability')
@@ -511,7 +575,7 @@ async function validateTutorWeeklyEligibility(
         is_active
       `)
       .eq('tutor_id', tutorId)
-      .eq('subject_id', requestedSubjectId)
+      .in('subject_id', eligibleSubjectIds)
       .eq('is_active', true)
 
   if (error) throw error
@@ -569,10 +633,6 @@ async function validateTutorWeeklyEligibility(
       )
     }
   }
-
-  const isLanguage =
-    String(subjectCategory || '').toLowerCase() ===
-    'language'
 
   for (const slot of seedSlots) {
     const slotDay =
