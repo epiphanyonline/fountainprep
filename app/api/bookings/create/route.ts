@@ -689,13 +689,25 @@ async function validateTutorWeeklyEligibility(
 })
 
     if (!matchingPattern) {
-      throw new RequestError(
-        isLanguage
-          ? 'This tutor is no longer available for the selected language at this time.'
-          : 'This tutor is no longer available for this subject and learning level at the selected time.',
-        409
+  if (isLanguage) {
+    const weeklySummary = rows
+      .map(
+        (row) =>
+          `day=${row.day_of_week}, time=${normaliseTime(row.start_time)}, subject=${row.subject_id}`
       )
-    }
+      .join(' | ')
+
+    throw new RequestError(
+      `Language timetable mismatch. Selected: date=${slot.slot_date}, day=${slotDay}, time=${slotTime}, timezone=${slot.timezone || 'unknown'}. Tutor weekly rows: ${weeklySummary}`,
+      409
+    )
+  }
+
+  throw new RequestError(
+    'This tutor is no longer available for this subject and learning level at the selected time.',
+    409
+  )
+}
   }
 }
 
