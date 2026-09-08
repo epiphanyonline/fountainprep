@@ -663,6 +663,31 @@ async function validateTutorWeeklyEligibility(
       )
     })
 
+    console.log('weekly-eligibility-debug', {
+  requestedSubjectId,
+  subjectCategory,
+  eligibleSubjectIds,
+  tutorId,
+
+  selectedSlot: {
+    id: slot.id,
+    slot_date: slot.slot_date,
+    start_time: slot.start_time,
+    timezone: slot.timezone,
+    calculatedDay: slotDay,
+    normalisedTime: slotTime,
+  },
+
+  weeklyRows: rows.map((row) => ({
+    id: row.id,
+    subject_id: row.subject_id,
+    learning_level_id: row.learning_level_id,
+    day_of_week: row.day_of_week,
+    start_time: row.start_time,
+    normalisedTime: normaliseTime(row.start_time),
+  })),
+})
+
     if (!matchingPattern) {
       throw new RequestError(
         isLanguage
