@@ -503,11 +503,11 @@ async function validateTutorWeeklyEligibility(
 
   let eligibleSubjectIds = [requestedSubjectId]
 
-  if (isLanguage) {
+    if (isLanguage) {
     const { data: requestedSubject, error: requestedSubjectError } =
       await supabaseAdmin
         .from('subjects')
-        .select('id, name, code, category')
+        .select('id, name, category')
         .eq('id', requestedSubjectId)
         .maybeSingle()
 
@@ -520,14 +520,10 @@ async function validateTutorWeeklyEligibility(
         .trim()
         .toLowerCase()
 
-      const subjectCode = String(requestedSubject.code || '')
-        .trim()
-        .toLowerCase()
-
       const { data: matchingSubjects, error: matchingSubjectsError } =
         await supabaseAdmin
           .from('subjects')
-          .select('id, name, code, category')
+          .select('id, name, category')
           .eq('category', 'language')
 
       if (matchingSubjectsError) {
@@ -542,14 +538,9 @@ async function validateTutorWeeklyEligibility(
                 .trim()
                 .toLowerCase()
 
-              const code = String(subject.code || '')
-                .trim()
-                .toLowerCase()
-
               return (
                 subject.id === requestedSubjectId ||
-                (subjectName && name === subjectName) ||
-                (subjectCode && code === subjectCode)
+                (subjectName && name === subjectName)
               )
             })
             .map((subject) => subject.id)
