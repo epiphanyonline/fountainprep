@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FormEvent, Suspense, useMemo, useState } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 const countryOptions = [
@@ -60,14 +60,7 @@ function AdultLearnerSignupContent() {
   const searchParams = useSearchParams()
 
   const nextPath = safeNextPath(searchParams.get('next'))
-  const isAcademySignup = useMemo(
-    () =>
-      nextPath.startsWith('/pricing?product=academies') ||
-      nextPath.startsWith('/academies/') ||
-      nextPath.startsWith('/classroom/academy'),
-    [nextPath],
-  )
-
+  
   const loginHref =
     `/login?next=${encodeURIComponent(nextPath)}`
 
@@ -114,13 +107,13 @@ function AdultLearnerSignupContent() {
       return
     }
 
-    if (!isAcademySignup && !languageInterest) {
+    if (!languageInterest) {
       setMessageType('error')
       setMessage('Please select the language you would like to learn.')
       return
     }
 
-    if (!isAcademySignup && !learningGoal) {
+    if (!learningGoal) {
       setMessageType('error')
       setMessage('Please select your main learning goal.')
       return
@@ -318,17 +311,12 @@ function AdultLearnerSignupContent() {
             Adult Learner
           </div>
 
-          <h1>
-            {isAcademySignup
-              ? 'Create your Individual Learner account.'
-              : 'Start learning for yourself.'}
-          </h1>
+          <h1>Start learning for yourself.</h1>
 
-          <p>
-            {isAcademySignup
-              ? 'One account for your own self-paced Academy learning, progress, assessments and certificates.'
-              : 'Create an account to book private Yoruba, Igbo or Hausa lessons and manage your own learning journey.'}
-          </p>
+<p>
+  Create an account to book private Yoruba, Igbo or Hausa
+  lessons and manage your own learning journey.
+</p>
         </div>
 
         <div className="learner-layout">
@@ -444,8 +432,7 @@ function AdultLearnerSignupContent() {
                 </label>
               </div>
             </div>
-
-            {!isAcademySignup ? (
+            
             <div className="form-section">
               <div className="section-heading">
                 <span>03</span>
@@ -493,11 +480,8 @@ function AdultLearnerSignupContent() {
                   ))}
                 </select>
               </label>
-            </div>
-
-            ) : null}
-
-            {!isAcademySignup ? (
+            </div>            
+            
             <div className="identity-check">
               <strong>Who will take the lessons?</strong>
 
@@ -528,9 +512,7 @@ function AdultLearnerSignupContent() {
                   </small>
                 </span>
               </button>
-            </div>
-
-            ) : null}
+            </div>          
 
             {message ? (
               <div
@@ -557,12 +539,10 @@ function AdultLearnerSignupContent() {
               disabled={loading}
             >
               {loading
-                ? 'Creating your account...'
-                : isAcademySignup
-                  ? 'Create Individual Learner Account'
-                  : takingLessonsForSelf
-                    ? 'Create Adult Learner Account'
-                    : 'Continue to Parent Signup'}
+  ? 'Creating your account...'
+  : takingLessonsForSelf
+    ? 'Create Adult Learner Account'
+    : 'Continue to Parent Signup'}
             </button>
 
             <p className="login-copy">
@@ -575,20 +555,17 @@ function AdultLearnerSignupContent() {
             <div className="benefit-icon">🎓</div>
 
             <p className="benefit-eyebrow">
-              {isAcademySignup ? 'Premium Individual' : 'Learn for yourself'}
-            </p>
+  Learn for yourself
+</p>
 
-            <h2>
-              {isAcademySignup
-                ? 'One learner. One continuous learning record.'
-                : 'Your language journey, your schedule.'}
-            </h2>
+<h2>
+  Your language journey, your schedule.
+</h2>
 
-            <p className="benefit-description">
-              {isAcademySignup
-                ? 'Your Academy progress, assessments and certificates stay attached to you as the learner.'
-                : 'Learn with a private tutor who can adapt each lesson to your current level, goals and preferred pace.'}
-            </p>
+<p className="benefit-description">
+  Learn with a private tutor who can adapt each lesson to
+  your current level, goals and preferred pace.
+</p>
 
             <div className="benefit-list">
               <div>
@@ -1112,7 +1089,29 @@ function AdultLearnerSignupContent() {
 }
 
 function safeNextPath(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+  if (
+    !value ||
+    !value.startsWith('/') ||
+    value.startsWith('//')
+  ) {
+    return '/learner/dashboard'
+  }
+
+  const blockedDestinations = [
+    '/academies',
+    '/financial-education',
+    '/classroom/academy',
+  ]
+
+  if (
+    blockedDestinations.some(
+      (path) =>
+        value === path ||
+        value.startsWith(`${path}/`) ||
+        value.startsWith(`${path}?`),
+    ) ||
+    value.startsWith('/pricing?product=academies')
+  ) {
     return '/learner/dashboard'
   }
 

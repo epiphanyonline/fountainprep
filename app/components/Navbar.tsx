@@ -14,6 +14,7 @@ import {
 
 import { supabase } from "../lib/supabase";
 import NotificationBell from "./ui/NotificationBell";
+import { FEATURES } from "../config/features";
 
 type UserProfile = {
   id: string;
@@ -128,15 +129,19 @@ export default function Navbar() {
     setNotificationCount,
   ] = useState(0);
 
-  const financialEducationMode =
-    useMemo(
-      () =>
-        isFinancialEducationPath(
-          pathname,
-          currentSearch,
-        ),
-      [pathname, currentSearch],
-    );
+  const financialEducationPath =
+  useMemo(
+    () =>
+      isFinancialEducationPath(
+        pathname,
+        currentSearch,
+      ),
+    [pathname, currentSearch],
+  );
+
+const financialEducationMode =
+  FEATURES.SELF_PACED_ACADEMY &&
+  financialEducationPath;
 
   useEffect(() => {
     const syncSearch = () => {
@@ -824,42 +829,32 @@ export default function Navbar() {
   }
 
   const publicLinks = [
-    {
-      label: "Home",
-      href: "/",
-    },
-    {
-      label:
-        "Self-Paced Academies",
-      href: "/academies",
-    },
-    {
-      label: "Live Tutors",
-      href: "/subjects",
-    },
-    {
-      label: "Plans",
-      href: "/plans",
-    },
-    {
-      label: "Become a Tutor",
-      href: "/signup/tutor",
-    },
-    {
-      label: "Login",
-      href: "/login",
-    },
-  ];
+  {
+    label: "Home",
+    href: "/",
+  },
+  {
+    label: "Live Tutors",
+    href: "/subjects",
+  },
+  {
+    label: "Plans",
+    href: "/plans",
+  },
+  {
+    label: "Become a Tutor",
+    href: "/signup/tutor",
+  },
+  {
+    label: "Login",
+    href: "/login",
+  },
+];
 
   const authedLinks =
     isAdultLearner
       ? [
-          {
-            label:
-              "Self-Paced Academies",
-            href: "/academies",
-          },
-          {
+                   {
             label: "Live Tutors",
             href: "/subjects",
           },
@@ -874,11 +869,7 @@ export default function Navbar() {
           },
         ]
       : [
-          {
-            label:
-              "Self-Paced Academies",
-            href: "/academies",
-          },
+          
           {
             label: "Live Tutors",
             href: "/subjects",
@@ -1125,14 +1116,15 @@ export default function Navbar() {
             </button>
           ) : null}
 
-          {!loading ? (
-            <Link
-              href="/financial-education"
-              className="nav-btn nav-btn-finance"
-            >
-              Financial Education
-            </Link>
-          ) : null}
+          {!loading &&
+FEATURES.SELF_PACED_ACADEMY ? (
+  <Link
+    href="/financial-education"
+    className="nav-btn nav-btn-finance"
+  >
+    Financial Education
+  </Link>
+) : null}
 
           {!loading &&
           (!profile ||

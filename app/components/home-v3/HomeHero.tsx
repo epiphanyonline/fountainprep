@@ -7,35 +7,71 @@ export default function HomeHero() {
       <div className={styles.shell}>
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Premium learning for families worldwide</p>
-            <h1 className={styles.heroTitle}>
-              The learning partner
-              <span>for families around the world.</span>
-            </h1>
-            <p className={styles.heroLead}>
-              Choose expert live tutoring or flexible self-paced academies.
-              Both are designed to help children build confidence, master
-              important skills and make progress parents can see.
+            <p className={styles.eyebrow}>
+              Live 1-to-1 online learning for families worldwide
             </p>
+
+            <h1 className={styles.heroTitle}>
+              The Learning Partner
+              <span>for Families Around the World.</span>
+            </h1>
+
+            <p className={styles.heroLead}>
+              Give your child personal attention from a carefully
+              selected tutor through live 1-to-1 online lessons
+              built around their learning needs.
+            </p>
+
             <div className={styles.heroActions}>
-              <Link href="/start" className={styles.primaryButton}>Book a Live Tutor</Link>
-              <Link href="/academies" className={styles.secondaryButton}>Explore Self-Paced Academy</Link>
+              <Link
+                href="/start"
+                className={styles.primaryButton}
+              >
+                Find a Tutor
+              </Link>
+
+              <Link
+                href="/subjects"
+                className={styles.secondaryButton}
+              >
+                Explore Subjects
+              </Link>
             </div>
+
             <div className={styles.learningModePills}>
-              <span><strong>Live Tutors</strong> · scheduled 1-to-1 learning</span>
-              <span><strong>Self-Paced Academies</strong> · AI-assisted, learn anytime</span>
+              <span>
+                <strong>Live 1-to-1</strong>
+                {" · "}
+                personal attention
+              </span>
+
+              <span>
+                <strong>Flexible scheduling</strong>
+                {" · "}
+                built around your family
+              </span>
             </div>
           </div>
 
           <div className={styles.heroVisual}>
             <div className={styles.heroPhoto} />
-            <div className={`${styles.heroFloatCard} ${styles.liveCard}`}>
+
+            <div
+              className={`${styles.heroFloatCard} ${styles.liveCard}`}
+            >
               <small>LIVE 1-TO-1 LESSON</small>
-              <strong>Personal guidance from an expert tutor</strong>
+              <strong>
+                Personal guidance from an expert tutor
+              </strong>
             </div>
-            <div className={`${styles.heroFloatCard} ${styles.progressCard}`}>
+
+            <div
+              className={`${styles.heroFloatCard} ${styles.progressCard}`}
+            >
               <small>PARENT PROGRESS</small>
-              <strong>Clear learning updates you can follow</strong>
+              <strong>
+                Clear learning updates you can follow
+              </strong>
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ import {
   convertGbpPrice,
   type CurrencyDisplay,
 } from '../lib/pricing/currency'
+import { FEATURES } from "../config/features";
 
 type Student = {
   id: string
@@ -93,6 +94,7 @@ const frequencyParam =
   searchParams.get('frequency')
 
 const isAcademyPricing =
+  FEATURES.SELF_PACED_ACADEMY &&
   product === 'academies'
 
   const [student, setStudent] = useState<Student | null>(null)
@@ -104,8 +106,8 @@ const isAcademyPricing =
   const [selectingPlan, setSelectingPlan] = useState('')
   const [selectedProduct, setSelectedProduct] =
   useState<'LIVE' | 'PREMIUM'>(
-    productTypeParam ===
-      'PREMIUM'
+    FEATURES.SELF_PACED_ACADEMY &&
+    productTypeParam === 'PREMIUM'
       ? 'PREMIUM'
       : 'LIVE',
   )
@@ -1040,7 +1042,8 @@ return (
       </section>
 
       <section className="plansSection">
-  {isLanguageBooking ? (
+  {isLanguageBooking &&
+FEATURES.SELF_PACED_ACADEMY ? (
     <div className="productSelector">
       <div className="productSelectorHeading">
         <p className="eyebrow">Choose how you want to learn</p>

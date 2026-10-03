@@ -2,7 +2,11 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import {
   currencyTable,
@@ -32,87 +36,74 @@ const languages = [
 
 export default function LanguagesPage() {
   const [currency, setCurrency] =
-  useState<CurrencyDisplay>(
-    defaultCurrency,
-  )
+    useState<CurrencyDisplay>(
+      defaultCurrency,
+    )
 
-const [pricingCountry, setPricingCountry] =
-  useState('UK')
+  const [pricingCountry, setPricingCountry] =
+    useState('UK')
 
-useEffect(() => {
-  let cancelled = false
+  useEffect(() => {
+    let cancelled = false
 
-  async function detectCountry() {
-    try {
-      const response =
-        await fetch(
+    async function detectCountry() {
+      try {
+        const response = await fetch(
           '/api/location/country',
           {
             cache: 'no-store',
           },
         )
 
-      if (!response.ok) {
-        return
-      }
+        if (!response.ok) return
 
-      const data =
-        (await response.json()) as {
-          countryCode?:
-            | string
-            | null
+        const data =
+          (await response.json()) as {
+            countryCode?:
+              | string
+              | null
+          }
+
+        const resolved =
+          getCurrencyForCountryCode(
+            data.countryCode,
+          )
+
+        if (cancelled) return
+
+        setCurrency(resolved)
+
+        const matchedCountry =
+          Object.entries(
+            currencyTable,
+          ).find(
+            ([, item]) =>
+              item.code ===
+              resolved.code,
+          )
+
+        if (matchedCountry) {
+          setPricingCountry(
+            matchedCountry[0],
+          )
         }
-
-      const resolved =
-        getCurrencyForCountryCode(
-          data.countryCode,
-        )
-
-      if (cancelled) {
-        return
-      }
-
-      setCurrency(resolved)
-
-      const matchedCountry =
-        Object.entries(
-          currencyTable,
-        ).find(
-          ([, item]) =>
-            item.code ===
-            resolved.code,
-        )
-
-      if (matchedCountry) {
-        setPricingCountry(
-          matchedCountry[0],
+      } catch (error) {
+        console.warn(
+          'Unable to detect pricing country:',
+          error,
         )
       }
-    } catch (error) {
-      console.warn(
-        'Unable to detect pricing country:',
-        error,
-      )
     }
-  }
 
-  void detectCountry()
+    void detectCountry()
 
-  return () => {
-    cancelled = true
-  }
-}, [])
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-const localPrices =
-  useMemo(
+  const localPrices = useMemo(
     () => ({
-      aiMonthly:
-        convertGbpPrice(
-          19.99,
-          currency,
-          true,
-        ),
-
       liveMonthly:
         convertGbpPrice(
           10,
@@ -126,56 +117,22 @@ const localPrices =
           currency,
           false,
         ),
-
-      premiumMonthlyOne:
-        convertGbpPrice(
-          49.99,
-          currency,
-          true,
-        ),
-
-      premiumMonthlyTwo:
-        convertGbpPrice(
-          89.99,
-          currency,
-          true,
-        ),
-
-      premiumThreeMonthOne:
-        convertGbpPrice(
-          134.99,
-          currency,
-          true,
-        ),
-
-      premiumThreeMonthTwo:
-        convertGbpPrice(
-          239.99,
-          currency,
-          true,
-        ),
     }),
     [currency],
   )
 
-function changePricingCountry(
-  countryKey: string,
-) {
-  const nextCurrency =
-    currencyTable[countryKey]
+  function changePricingCountry(
+    countryKey: string,
+  ) {
+    const nextCurrency =
+      currencyTable[countryKey]
 
-  if (!nextCurrency) {
-    return
+    if (!nextCurrency) return
+
+    setPricingCountry(countryKey)
+    setCurrency(nextCurrency)
   }
 
-  setPricingCountry(
-    countryKey,
-  )
-
-  setCurrency(
-    nextCurrency,
-  )
-}
   return (
     <main className="page">
       <section className="hero">
@@ -190,13 +147,17 @@ function changePricingCountry(
           </h1>
 
           <p className="lead">
-            Online Yoruba, Igbo and Hausa learning through
-            private 1-to-1 lessons, AI-assisted practice and
-            self-paced learning.
+            Live private 1-to-1 Yoruba,
+            Igbo and Hausa lessons with
+            carefully selected tutors who
+            help learners speak with
+            confidence and connect with
+            language and culture.
           </p>
 
           <p className="heroPromise">
-            Build real conversation skills — not just vocabulary.
+            Build real conversation skills
+            — not just vocabulary.
           </p>
 
           <div className="heroActions">
@@ -204,7 +165,7 @@ function changePricingCountry(
               href="/parent/students"
               className="primary"
             >
-              Start Language Learning
+              Find a Language Tutor
               <span>→</span>
             </Link>
 
@@ -224,12 +185,12 @@ function changePricingCountry(
 
             <span>
               <b>✓</b>
-              Yoruba • Igbo • Hausa
+              Yoruba · Igbo · Hausa
             </span>
 
             <span>
               <b>✓</b>
-              AI-assisted self-paced practice
+              Flexible scheduling
             </span>
           </div>
         </div>
@@ -248,16 +209,17 @@ function changePricingCountry(
 
           <div className="imageBadge">
             <div className="badgeIcon">
-              ✦
+              1:1
             </div>
 
             <div>
               <small>
-                PREMIUM LANGUAGE LEARNING
+                LIVE LANGUAGE LEARNING
               </small>
 
               <strong>
-                Learn live. Practise between lessons.
+                Personal teaching.
+                Real conversation.
               </strong>
             </div>
           </div>
@@ -271,42 +233,48 @@ function changePricingCountry(
           </p>
 
           <h2>
-            Learn a language you can actually use.
+            Learn a language you can
+            actually use.
           </h2>
 
           <p>
-            Build the confidence to understand, respond and
-            hold real conversations in Yoruba, Igbo or Hausa.
+            Build the confidence to
+            understand, respond and hold
+            real conversations in Yoruba,
+            Igbo or Hausa.
           </p>
         </div>
 
         <div className="languageGrid">
-          {languages.map((language) => (
-            <Link
-              key={language.name}
-              href="/parent/students"
-              className="languageCard"
-            >
-              <div className="languageTop">
-                <h3>
-                  {language.name}
-                </h3>
+          {languages.map(
+            (language) => (
+              <Link
+                key={language.name}
+                href="/parent/students"
+                className="languageCard"
+              >
+                <div className="languageTop">
+                  <h3>
+                    {language.name}
+                  </h3>
 
-                <div className="cardArrow">
-                  →
+                  <div className="cardArrow">
+                    →
+                  </div>
                 </div>
-              </div>
 
-              <p>
-                {language.text}
-              </p>
+                <p>
+                  {language.text}
+                </p>
 
-              <div className="languageAction">
-                Start learning {language.name}
-                <span>→</span>
-              </div>
-            </Link>
-          ))}
+                <div className="languageAction">
+                  Find a {language.name}{' '}
+                  tutor
+                  <span>→</span>
+                </div>
+              </Link>
+            ),
+          )}
         </div>
       </section>
 
@@ -320,14 +288,15 @@ function changePricingCountry(
           </p>
 
           <h2>
-            Learn live. Practise between lessons.
-            <span> Keep progressing.</span>
+            Personal language learning
+            from the first lesson.
           </h2>
 
           <p>
-            Premium combines private 1-to-1 teaching with
-            AI-assisted, self-paced practice so language
-            learning continues throughout the week.
+            Choose your language, arrange
+            a convenient timetable and
+            learn directly with a
+            dedicated Fountain Prep tutor.
           </p>
         </div>
 
@@ -337,20 +306,17 @@ function changePricingCountry(
               <div className="stepIcon">
                 1
               </div>
-
-              <span>
-                LIVE
-              </span>
+              <span>CHOOSE</span>
             </div>
 
             <h3>
-              Learn 1-to-1
+              Choose your language
             </h3>
 
             <p>
-              Meet a dedicated Fountain Prep language tutor for
-              structured private teaching, conversation,
-              vocabulary, pronunciation and cultural context.
+              Start with Yoruba, Igbo or
+              Hausa and choose the learning
+              path that suits your child.
             </p>
           </article>
 
@@ -359,20 +325,18 @@ function changePricingCountry(
               <div className="stepIcon">
                 2
               </div>
-
-              <span>
-                PRACTISE
-              </span>
+              <span>SCHEDULE</span>
             </div>
 
             <h3>
-              AI-Assisted Practice
+              Choose your timetable
             </h3>
 
             <p>
-              Between live lessons, practise speaking,
-              listening, pronunciation and recall through
-              guided interactive activities at your own pace.
+              Arrange recurring private
+              lessons around school, work
+              and your family&apos;s
+              schedule.
             </p>
           </article>
 
@@ -381,404 +345,121 @@ function changePricingCountry(
               <div className="stepIcon">
                 3
               </div>
-
-              <span>
-                PROGRESS
-              </span>
+              <span>LEARN</span>
             </div>
 
             <h3>
-              Return Stronger
+              Learn 1-to-1
             </h3>
 
             <p>
-              Reinforce what was taught, build confidence and
-              return to the next live lesson ready to progress
-              further.
+              Meet your tutor live for
+              conversation, pronunciation,
+              vocabulary and cultural
+              context.
             </p>
           </article>
         </div>
       </section>
 
-      <section className="premiumStory">
-        <div className="premiumCopy">
-          <div className="premiumKicker">
-            PREMIUM BUNDLE
-          </div>
-
-          <h2>
-            The live lesson is only the beginning.
-          </h2>
-
-          <p>
-            Premium combines private 1-to-1 teaching with
-            AI-assisted, self-paced learning between lessons.
-            The learner can practise, revise and reinforce what
-            was taught before the next live class.
-          </p>
-
-          <div className="premiumBenefits">
-            <span>
-              ✓ Private 1-to-1 lessons
-            </span>
-
-            <span>
-              ✓ Full self-paced Language Academy
-            </span>
-
-            <span>
-              ✓ AI-assisted speaking practice
-            </span>
-
-            <span>
-              ✓ Listening practice
-            </span>
-
-            <span>
-              ✓ Pronunciation reinforcement
-            </span>
-
-            <span>
-              ✓ Revision between live lessons
-            </span>
-
-            <span>
-              ✓ Progress tracking
-            </span>
-
-            <span>
-              ✓ Learn at any convenient time
-            </span>
-          </div>
-
-          <Link
-            href="/parent/students"
-            className="premiumButton"
-          >
-            Explore Premium
-            <span>→</span>
-          </Link>
-        </div>
-
-        <div className="premiumJourney">
-          <div className="journeyCard">
-            <div className="journeyNumber">
-              01
-            </div>
-
-            <div>
-              <small>
-                LIVE LESSON
-              </small>
-
-              <strong>
-                Learn 1-to-1
-              </strong>
-
-              <p>
-                Learn something new with a dedicated tutor.
-              </p>
-            </div>
-          </div>
-
-          <div className="journeyConnector">
-            ↓
-          </div>
-
-          <div className="journeyCard highlightedJourney">
-            <div className="journeyNumber">
-              02
-            </div>
-
-            <div>
-              <small>
-                BETWEEN LESSONS
-              </small>
-
-              <strong>
-                AI-Assisted Practice
-              </strong>
-
-              <p>
-                Speak, listen, revise and reinforce learning.
-              </p>
-            </div>
-          </div>
-
-          <div className="journeyConnector">
-            ↓
-          </div>
-
-          <div className="journeyCard">
-            <div className="journeyNumber">
-              03
-            </div>
-
-            <div>
-              <small>
-                NEXT LIVE LESSON
-              </small>
-
-              <strong>
-                Return Stronger
-              </strong>
-
-              <p>
-                Continue from a stronger foundation.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="plansSection">
-        <div className="sectionHeading centred">
-          <p className="eyebrow">
-            Ways to learn
+      <section className="liveStory">
+        <div className="liveStoryCopy">
+          <p className="eyebrowLight">
+            MORE THAN VOCABULARY
           </p>
 
           <h2>
-            Choose how you want to learn.
+            A language becomes meaningful
+            when you can use it.
           </h2>
 
           <p>
-            Learn with a private tutor, learn independently,
-            or combine both for continuous practice between
-            lessons.
+            Fountain Prep lessons are
+            designed to help learners move
+            beyond memorising words to
+            understanding, responding and
+            speaking with confidence.
           </p>
+
+          <div className="benefitGrid">
+            <span>
+              ✓ Private 1-to-1 teaching
+            </span>
+            <span>
+              ✓ Conversation practice
+            </span>
+            <span>
+              ✓ Listening development
+            </span>
+            <span>
+              ✓ Pronunciation support
+            </span>
+            <span>
+              ✓ Cultural context
+            </span>
+            <span>
+              ✓ Structured progression
+            </span>
+          </div>
+
+          <Link
+            href="/parent/students"
+            className="whiteAction"
+          >
+            Find a Language Tutor →
+          </Link>
         </div>
 
-        <div className="planGrid">
-          <Link
-            href="/parent/students"
-            className="planCard livePlan"
-          >
-            <div className="planCardHeader">
-              <div>
-                <div className="planLabel">
-                  1-TO-1 LIVE
-                </div>
-
-                <h3>
-                  1-to-1 Live Lessons
-                </h3>
-
-                <p>
-                  Learn directly with a dedicated private tutor.
-                </p>
-              </div>
-
-              <div className="planArrow">
-                →
-              </div>
-            </div>
-
-            <div className="planFeatureBlock">
-              <span className="featureTitle">
-                What&apos;s included
-              </span>
-
-              <div className="featureList">
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Private 1-to-1 lessons
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  1 or 2 lessons per week
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Monthly or 3-month plans
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Structured curriculum
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Progress updates
-                </div>
-              </div>
-            </div>
-
-            <div className="planFooter">
-              <span>
-                Choose Live Lessons
-              </span>
-
-              <strong>→</strong>
-            </div>
-          </Link>
-
-          <Link
-            href="/parent/students"
-            className="planCard premiumPlan"
-          >
-            <div className="recommended">
-              MOST COMPLETE
-            </div>
-
-            <div className="premiumGlow" />
-
-            <div className="planCardHeader">
-              <div>
-                <div className="planLabel premiumLabel">
-                  PREMIUM BUNDLE
-                </div>
-
-                <h3>
-                  1-to-1 Live + AI-Assisted
-                  Self-Paced Learning
-                </h3>
-
-                <p>
-                  Live teaching plus structured practice
-                  throughout the week.
-                </p>
-              </div>
-
-              <div className="planArrow premiumArrow">
-                →
-              </div>
-            </div>
-
-            <div className="premiumValue">
-              <span className="premiumValueEyebrow">
-                ONE CONNECTED EXPERIENCE
-              </span>
-
+        <div className="journey">
+          <div className="journeyCard">
+            <span>01</span>
+            <div>
+              <small>
+                PERSONAL ATTENTION
+              </small>
               <strong>
-                Learn live. Practise between lessons.
+                Learn directly
               </strong>
-
               <p>
-                Your tutor teaches. AI-assisted practice helps
-                reinforce what was learned before the next class.
+                A dedicated tutor focuses
+                on the learner&apos;s
+                individual progress.
               </p>
             </div>
+          </div>
 
-            <div className="planFeatureBlock premiumFeatureBlock">
-              <span className="featureTitle">
-                Premium includes
-              </span>
-
-              <div className="featureList">
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Everything in 1-to-1 Live
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Full self-paced Language Academy
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  AI-assisted speaking practice
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Listening & pronunciation practice
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Revision between live lessons
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Learn any time between classes
-                </div>
-              </div>
+          <div className="journeyCard">
+            <span>02</span>
+            <div>
+              <small>
+                REAL CONVERSATION
+              </small>
+              <strong>
+                Speak and respond
+              </strong>
+              <p>
+                Build practical language
+                skills through live
+                interaction.
+              </p>
             </div>
+          </div>
 
-            <div className="planFooter premiumFooter">
-              <span>
-                Choose Premium
-              </span>
-
-              <strong>→</strong>
+          <div className="journeyCard">
+            <span>03</span>
+            <div>
+              <small>
+                CONTINUED PROGRESS
+              </small>
+              <strong>
+                Build confidence
+              </strong>
+              <p>
+                Progress through regular,
+                structured lessons.
+              </p>
             </div>
-          </Link>
-
-          <Link
-            href="/academies"
-            className="planCard aiPlan"
-          >
-            <div className="planCardHeader">
-              <div>
-                <div className="planLabel">
-                  AI SELF-PACED
-                </div>
-
-                <h3>
-                  AI Self-Paced Learning
-                </h3>
-
-                <p>
-                  Learn independently, whenever it suits you.
-                </p>
-              </div>
-
-              <div className="planArrow">
-                →
-              </div>
-            </div>
-
-            <div className="planFeatureBlock">
-              <span className="featureTitle">
-                What&apos;s included
-              </span>
-
-              <div className="featureList">
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Full self-paced Language Academy
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Guided interactive lessons
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Speaking practice
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Listening practice
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Pronunciation practice
-                </div>
-
-                <div>
-                  <span className="featureCheck">✓</span>
-                  Progress tracking
-                </div>
-              </div>
-            </div>
-
-            <div className="planFooter">
-              <span>
-                Choose Self-Paced Learning
-              </span>
-
-              <strong>→</strong>
-            </div>
-          </Link>
+          </div>
         </div>
       </section>
 
@@ -786,57 +467,55 @@ function changePricingCountry(
         className="pricingSnapshot"
         id="language-pricing"
       >
+        <div className="pricingCountryBar">
+          <div>
+            <span className="countryLabel">
+              Pricing for
+            </span>
+            <strong>
+              {currency.country}
+            </strong>
+          </div>
+
+          <select
+            value={pricingCountry}
+            onChange={(event) =>
+              changePricingCountry(
+                event.target.value,
+              )
+            }
+            aria-label="Choose pricing country"
+          >
+            <option value="UK">
+              United Kingdom — GBP
+            </option>
+            <option value="USA">
+              United States — USD
+            </option>
+            <option value="Canada">
+              Canada — CAD
+            </option>
+            <option value="Australia">
+              Australia — AUD
+            </option>
+          </select>
+        </div>
+
         <div className="pricingHeading">
-          <div className="pricingCountryBar">
-  <div>
-    <span className="countryLabel">
-      Pricing for
-    </span>
-
-    <strong>
-      {currency.country}
-    </strong>
-  </div>
-
-  <select
-    value={pricingCountry}
-    onChange={(event) =>
-      changePricingCountry(
-        event.target.value,
-      )
-    }
-    aria-label="Choose pricing country"
-  >
-    <option value="UK">
-      United Kingdom — GBP
-    </option>
-
-    <option value="USA">
-      United States — USD
-    </option>
-
-    <option value="Canada">
-      Canada — CAD
-    </option>
-
-    <option value="Australia">
-      Australia — AUD
-    </option>
-  </select>
-</div>
           <div>
             <p className="eyebrow">
-              Language plans at a glance
+              Simple live lesson pricing
             </p>
 
             <h2>
-              Clear options.
-              <span> Choose what fits.</span>
+              Private 1-to-1 learning.
+              <span> Clear pricing.</span>
             </h2>
 
             <p>
-              Start independently, learn live with a tutor,
-              or combine both with Premium.
+              Choose one or two lessons
+              each week with monthly and
+              three-month options.
             </p>
           </div>
 
@@ -844,263 +523,86 @@ function changePricingCountry(
             href="/parent/students"
             className="pricingTopLink"
           >
-            Start choosing
-            <span>→</span>
+            Start choosing →
           </Link>
         </div>
 
-        <div className="pricingGrid">
-  <article className="pricingCard">
-    <div className="pricingCardTop">
-      <div>
-        <div className="pricePill">
-          1-TO-1 LIVE
+        <div className="pricingCard">
+          <div className="pricingCardTop">
+            <div>
+              <div className="pricePill">
+                LIVE 1-TO-1
+              </div>
+
+              <h3>
+                Private language lessons
+              </h3>
+            </div>
+
+            <span className="pricingIcon">
+              1:1
+            </span>
+          </div>
+
+          <div className="priceDisplay">
+            <span className="priceFrom">
+              From
+            </span>
+
+            <strong>
+              {localPrices.liveThreeMonth}
+            </strong>
+
+            <span>/ class</span>
+          </div>
+
+          <p className="priceDescription">
+            Private structured language
+            lessons with a dedicated
+            Fountain Prep tutor.
+          </p>
+
+          <div className="miniPriceRows">
+            <div>
+              <span>Monthly plan</span>
+              <strong>
+                {localPrices.liveMonthly}
+                /class
+              </strong>
+            </div>
+
+            <div>
+              <span>3-month plan</span>
+              <strong>
+                {localPrices.liveThreeMonth}
+                /class
+              </strong>
+            </div>
+          </div>
+
+          <div className="miniBenefits">
+            <span>
+              ✓ 1 or 2 classes/week
+            </span>
+            <span>
+              ✓ Private tutor
+            </span>
+            <span>
+              ✓ Structured curriculum
+            </span>
+            <span>
+              ✓ Flexible scheduling
+            </span>
+          </div>
+
+          <Link
+            href="/parent/students"
+            className="priceButton"
+          >
+            View Live Plans
+            <span>→</span>
+          </Link>
         </div>
-
-        <h3>
-          Private tutor lessons
-        </h3>
-      </div>
-
-      <span className="pricingIcon">
-        1:1
-      </span>
-    </div>
-
-    <div className="priceDisplay">
-      <span className="priceFrom">
-        From
-      </span>
-
-      <strong>
-        {localPrices.liveThreeMonth}
-      </strong>
-
-      <span>
-        / class
-      </span>
-    </div>
-
-    <p className="priceDescription">
-      Private structured language lessons with
-      a dedicated Fountain Prep tutor.
-    </p>
-
-    <div className="miniPriceRows">
-      <div>
-        <span>
-          Monthly plan
-        </span>
-
-        <strong>
-          {localPrices.liveMonthly}/class
-        </strong>
-      </div>
-
-      <div>
-        <span>
-          3-month plan
-        </span>
-
-        <strong>
-          {localPrices.liveThreeMonth}/class
-        </strong>
-      </div>
-    </div>
-
-    <div className="miniBenefits">
-      <span>
-        ✓ 1 or 2 classes/week
-      </span>
-
-      <span>
-        ✓ Private tutor
-      </span>
-
-      <span>
-        ✓ Structured curriculum
-      </span>
-    </div>
-
-    <Link
-      href="/parent/students"
-      className="priceButton softPriceButton"
-    >
-      View Live Plans
-      <span>→</span>
-    </Link>
-  </article>
-
-  <article className="pricingCard">
-    <div className="pricingCardTop">
-      <div>
-        <div className="pricePill">
-          AI SELF-PACED
-        </div>
-
-        <h3>
-          Learn independently
-        </h3>
-      </div>
-
-      <span className="pricingIcon">
-        ✦
-      </span>
-    </div>
-
-    <div className="priceDisplay">
-      <span className="priceFrom">
-        Full access
-      </span>
-
-      <strong>
-        {localPrices.aiMonthly}
-      </strong>
-
-      <span>
-        / month
-      </span>
-    </div>
-
-    <p className="priceDescription">
-      Learn at your own pace with guided AI-assisted
-      speaking, listening and pronunciation practice.
-    </p>
-
-    <div className="miniBenefits">
-      <span>
-        ✓ Self-paced lessons
-      </span>
-
-      <span>
-        ✓ Speaking & listening
-      </span>
-
-      <span>
-        ✓ Pronunciation practice
-      </span>
-
-      <span>
-        ✓ Progress tracking
-      </span>
-    </div>
-
-    <Link
-      href="/academies"
-      className="priceButton softPriceButton"
-    >
-      Explore Self-Paced
-      <span>→</span>
-    </Link>
-  </article>
-
-  <article className="pricingCard premiumPricingCard">
-    <div className="premiumPricingBadge">
-      RECOMMENDED
-    </div>
-
-    <div className="pricingCardTop">
-      <div>
-        <div className="pricePill premiumPricePill">
-          PREMIUM BUNDLE
-        </div>
-
-        <h3>
-          Live + Full AI Academy
-        </h3>
-      </div>
-
-      <span className="pricingIcon premiumPricingIcon">
-        ✦
-      </span>
-    </div>
-
-    <div className="priceDisplay premiumPriceDisplay">
-      <span className="priceFrom">
-        From
-      </span>
-
-      <strong>
-        {localPrices.premiumMonthlyOne}
-      </strong>
-
-      <span>
-        / month
-      </span>
-    </div>
-
-    <p className="priceDescription">
-      Combine private live teaching with full
-      AI-assisted self-paced learning between lessons.
-    </p>
-
-    <div className="premiumPriceTable">
-      <div className="priceTableHeader">
-        <span>
-          Live pace
-        </span>
-
-        <span>
-          Monthly
-        </span>
-
-        <span>
-          3 months
-        </span>
-      </div>
-
-      <div className="priceTableRow">
-        <strong>
-          1 live lesson / week
-        </strong>
-
-        <span>
-          {localPrices.premiumMonthlyOne}
-        </span>
-
-        <span>
-          {localPrices.premiumThreeMonthOne}
-        </span>
-      </div>
-
-      <div className="priceTableRow">
-        <strong>
-          2 live lessons / week
-        </strong>
-
-        <span>
-          {localPrices.premiumMonthlyTwo}
-        </span>
-
-        <span>
-          {localPrices.premiumThreeMonthTwo}
-        </span>
-      </div>
-    </div>
-
-    <div className="miniBenefits premiumMiniBenefits">
-      <span>
-        ✓ Live tutor included
-      </span>
-
-      <span>
-        ✓ Full AI Academy
-      </span>
-
-      <span>
-        ✓ Practise between lessons
-      </span>
-    </div>
-
-    <Link
-      href="/parent/students"
-      className="priceButton premiumPriceButton"
-    >
-      Choose Premium
-      <span>→</span>
-    </Link>
-  </article>
-</div>
 
         <div className="pricingNote">
           <div className="pricingNoteIcon">
@@ -1113,10 +615,11 @@ function changePricingCountry(
             </strong>
 
             <p>
-  Prices are displayed in your selected local currency.
-  You can change the pricing country above, and your
-  final booking total will be confirmed before payment.
-</p>
+              Prices are displayed in your
+              selected local currency. Your
+              final booking total will be
+              confirmed before payment.
+            </p>
           </div>
         </div>
       </section>
@@ -1132,13 +635,16 @@ function changePricingCountry(
           </p>
 
           <h2>
-            Give them more than vocabulary.
-            Give them a language they can use.
+            Give them more than
+            vocabulary. Give them a
+            language they can use.
           </h2>
 
           <p>
-            Start with Yoruba, Igbo or Hausa and build the
-            confidence to speak, understand and connect.
+            Start with Yoruba, Igbo or
+            Hausa and build the confidence
+            to speak, understand and
+            connect.
           </p>
         </div>
 
@@ -1147,16 +653,14 @@ function changePricingCountry(
             href="/parent/students"
             className="whiteButton"
           >
-            Start Language Learning
-            <span>→</span>
+            Find a Language Tutor →
           </Link>
 
           <Link
-            href="/academies"
+            href="/subjects"
             className="outlineButton"
           >
-            See Other Academies
-            <span>→</span>
+            Explore Other Subjects
           </Link>
         </div>
       </section>
@@ -1165,33 +669,25 @@ function changePricingCountry(
         .page {
           min-height: 100vh;
           padding: 28px 20px 90px;
-
+          color: #20122f;
           background:
             radial-gradient(
               circle at 92% 8%,
               rgba(124, 58, 237, 0.12),
               transparent 27%
             ),
-            radial-gradient(
-              circle at 8% 75%,
-              rgba(139, 92, 246, 0.06),
-              transparent 30%
-            ),
             linear-gradient(
               180deg,
-              #ffffff 0%,
+              #fff 0%,
               #fbf9ff 50%,
               #f5f0ff 100%
             );
-
-          color: #20122f;
         }
 
         .hero,
         .languageSection,
         .learningModel,
-        .premiumStory,
-        .plansSection,
+        .liveStory,
         .pricingSnapshot,
         .finalCta {
           width: min(1240px, 100%);
@@ -1206,10 +702,10 @@ function changePricingCountry(
             minmax(0, 0.84fr)
             minmax(0, 1.16fr);
           overflow: hidden;
+          border: 1px solid
+            rgba(124, 58, 237, 0.12);
           border-radius: 36px;
-          background: #ffffff;
-          border:
-            1px solid rgba(124, 58, 237, 0.12);
+          background: #fff;
           box-shadow:
             0 30px 90px
             rgba(59, 31, 98, 0.12);
@@ -1220,17 +716,16 @@ function changePricingCountry(
           display: flex;
           flex-direction: column;
           justify-content: center;
-          position: relative;
-          z-index: 2;
         }
 
-        .pill {
+        .pill,
+        .pricePill {
           width: fit-content;
           padding: 8px 12px;
           border-radius: 999px;
           background: #f0e7ff;
           color: #6d28d9;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 950;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -1246,7 +741,8 @@ function changePricingCountry(
           font-weight: 950;
         }
 
-        h1 span {
+        h1 span,
+        .pricingHeading h2 span {
           color: #7c3aed;
         }
 
@@ -1274,7 +770,7 @@ function changePricingCountry(
 
         .primary,
         .secondary,
-        .premiumButton,
+        .whiteAction,
         .whiteButton,
         .outlineButton {
           min-height: 50px;
@@ -1286,38 +782,23 @@ function changePricingCountry(
           border-radius: 15px;
           font-weight: 950;
           text-decoration: none;
-          transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease,
-            border-color 0.2s ease;
         }
 
         .primary {
-          color: #ffffff;
+          color: #fff;
           background:
             linear-gradient(
               135deg,
               #6d28d9,
               #8b5cf6
             );
-          box-shadow:
-            0 15px 35px
-            rgba(124, 58, 237, 0.24);
         }
 
         .secondary {
           color: #4d286f;
-          background: #ffffff;
-          border:
-            1px solid rgba(124, 58, 237, 0.18);
-        }
-
-        .primary:hover,
-        .secondary:hover,
-        .premiumButton:hover,
-        .whiteButton:hover,
-        .outlineButton:hover {
-          transform: translateY(-2px);
+          border: 1px solid
+            rgba(124, 58, 237, 0.18);
+          background: #fff;
         }
 
         .trustRow {
@@ -1328,9 +809,6 @@ function changePricingCountry(
         }
 
         .trustRow span {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
           padding: 7px 10px;
           border-radius: 999px;
           background: #faf7ff;
@@ -1352,7 +830,6 @@ function changePricingCountry(
 
         .heroImage {
           object-fit: cover;
-          object-position: center center;
         }
 
         .imageShade {
@@ -1364,7 +841,6 @@ function changePricingCountry(
               rgba(255,255,255,0.05),
               transparent 25%
             );
-          pointer-events: none;
         }
 
         .imageBadge {
@@ -1377,11 +853,10 @@ function changePricingCountry(
           padding: 15px 17px;
           border-radius: 18px;
           background:
-            rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(14px);
+            rgba(255,255,255,0.95);
           box-shadow:
             0 16px 40px
-            rgba(26, 13, 42, 0.2);
+            rgba(26,13,42,0.2);
         }
 
         .badgeIcon {
@@ -1390,14 +865,10 @@ function changePricingCountry(
           display: grid;
           place-items: center;
           border-radius: 13px;
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #9f67ff
-            );
-          font-size: 18px;
+          color: #fff;
+          background: #6d28d9;
+          font-size: 12px;
+          font-weight: 950;
         }
 
         .imageBadge small {
@@ -1405,7 +876,6 @@ function changePricingCountry(
           color: #7c3aed;
           font-size: 9px;
           font-weight: 950;
-          letter-spacing: 0.07em;
         }
 
         .imageBadge strong {
@@ -1416,7 +886,6 @@ function changePricingCountry(
 
         .languageSection,
         .learningModel,
-        .plansSection,
         .pricingSnapshot {
           padding-top: 88px;
         }
@@ -1426,12 +895,12 @@ function changePricingCountry(
         }
 
         .sectionHeading.centred {
-          margin-left: auto;
-          margin-right: auto;
+          margin: 0 auto;
           text-align: center;
         }
 
-        .eyebrow {
+        .eyebrow,
+        .eyebrowLight {
           margin: 0;
           color: #7c3aed;
           font-size: 12px;
@@ -1450,20 +919,21 @@ function changePricingCountry(
           font-weight: 950;
         }
 
-        .sectionHeading h2 span,
-        .pricingHeading h2 span {
-          color: #7c3aed;
-        }
-
-        .sectionHeading > p:last-child {
-          max-width: 680px;
-          margin: 16px auto 0;
+        .sectionHeading > p:last-child,
+        .pricingHeading p:last-child {
+          margin: 16px 0 0;
           color: #71657b;
           font-size: 16px;
           line-height: 1.7;
         }
 
-        .languageGrid {
+        .sectionHeading > p:last-child {
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .languageGrid,
+        .steps {
           display: grid;
           grid-template-columns:
             repeat(3, minmax(0, 1fr));
@@ -1471,35 +941,37 @@ function changePricingCountry(
           margin-top: 34px;
         }
 
-        .languageCard {
-          display: block;
+        .languageCard,
+        .steps article {
           padding: 27px;
           border-radius: 25px;
-          background: #ffffff;
-          border:
-            1px solid rgba(124, 58, 237, 0.12);
+          background: #fff;
+          border: 1px solid
+            rgba(124, 58, 237, 0.12);
           box-shadow:
             0 18px 48px
-            rgba(71, 43, 117, 0.07);
+            rgba(71,43,117,0.07);
+        }
+
+        .languageCard {
+          display: block;
           color: inherit;
           text-decoration: none;
-          cursor: pointer;
           transition:
             transform 0.22s ease,
-            border-color 0.22s ease,
             box-shadow 0.22s ease;
         }
 
         .languageCard:hover {
           transform: translateY(-5px);
-          border-color:
-            rgba(124, 58, 237, 0.42);
           box-shadow:
             0 26px 60px
-            rgba(94, 48, 170, 0.14);
+            rgba(94,48,170,0.14);
         }
 
-        .languageTop {
+        .languageTop,
+        .stepTop,
+        .pricingCardTop {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -1509,87 +981,49 @@ function changePricingCountry(
         .languageTop h3 {
           margin: 0;
           font-size: 27px;
+        }
+
+        .cardArrow,
+        .stepIcon,
+        .pricingIcon {
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          background: #f3ebff;
+          color: #6d28d9;
           font-weight: 950;
         }
 
         .cardArrow {
           width: 38px;
           height: 38px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 auto;
           border-radius: 50%;
-          background: #f8f3ff;
-          color: #6d28d9;
-          font-weight: 950;
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease;
         }
 
-        .languageCard:hover .cardArrow {
-          transform: translateX(3px);
-          background: #ede9fe;
-        }
-
-        .languageCard p {
-          margin: 15px 0 0;
+        .languageCard p,
+        .steps p {
           color: #73667d;
           line-height: 1.66;
         }
 
         .languageAction {
           display: flex;
-          align-items: center;
           justify-content: space-between;
           margin-top: 21px;
           padding-top: 17px;
-          border-top:
-            1px solid rgba(124, 58, 237, 0.1);
+          border-top: 1px solid
+            rgba(124,58,237,0.1);
           color: #6d28d9;
           font-size: 13px;
           font-weight: 950;
         }
 
-        .steps {
-          display: grid;
-          grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-          gap: 18px;
-          margin-top: 34px;
-        }
-
-        .steps article {
-          padding: 28px;
-          border-radius: 25px;
-          background: #ffffff;
-          border:
-            1px solid rgba(124, 58, 237, 0.11);
-          box-shadow:
-            0 16px 42px
-            rgba(71, 43, 117, 0.06);
-        }
-
-        .stepTop {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
         .stepIcon {
           width: 44px;
           height: 44px;
-          display: grid;
-          place-items: center;
           border-radius: 14px;
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #9a65f5
-            );
-          font-weight: 950;
+          color: #fff;
+          background: #6d28d9;
         }
 
         .stepTop > span {
@@ -1602,15 +1036,9 @@ function changePricingCountry(
         .steps h3 {
           margin: 20px 0 0;
           font-size: 23px;
-          font-weight: 950;
         }
 
-        .steps p {
-          color: #73667d;
-          line-height: 1.66;
-        }
-
-        .premiumStory {
+        .liveStory {
           margin-top: 90px;
           display: grid;
           grid-template-columns:
@@ -1619,13 +1047,8 @@ function changePricingCountry(
           gap: 38px;
           padding: 48px;
           border-radius: 36px;
-          color: #ffffff;
+          color: #fff;
           background:
-            radial-gradient(
-              circle at 85% 10%,
-              rgba(180, 148, 255, 0.38),
-              transparent 30%
-            ),
             linear-gradient(
               135deg,
               #2b0d59,
@@ -1634,37 +1057,27 @@ function changePricingCountry(
             );
           box-shadow:
             0 32px 90px
-            rgba(76, 29, 149, 0.26);
+            rgba(76,29,149,0.26);
         }
 
-        .premiumKicker {
-          width: fit-content;
-          padding: 7px 10px;
-          border-radius: 999px;
-          background:
-            rgba(255,255,255,0.13);
-          color: #e7dcff;
-          font-size: 10px;
-          font-weight: 950;
-          letter-spacing: 0.08em;
+        .eyebrowLight {
+          color: #ddd6fe;
         }
 
-        .premiumCopy h2 {
+        .liveStory h2 {
           margin: 16px 0 0;
           font-size:
             clamp(38px, 4.6vw, 60px);
           line-height: 1.03;
           letter-spacing: -0.045em;
-          font-weight: 950;
         }
 
-        .premiumCopy > p {
-          max-width: 600px;
+        .liveStoryCopy > p:not(.eyebrowLight) {
           color: #e7ddf2;
           line-height: 1.7;
         }
 
-        .premiumBenefits {
+        .benefitGrid {
           display: grid;
           grid-template-columns:
             repeat(2, minmax(0, 1fr));
@@ -1672,52 +1085,42 @@ function changePricingCountry(
           margin-top: 22px;
         }
 
-        .premiumBenefits span {
+        .benefitGrid span {
           padding: 11px 12px;
           border-radius: 12px;
           background:
-            rgba(255, 255, 255, 0.09);
-          border:
-            1px solid rgba(255,255,255,0.08);
+            rgba(255,255,255,0.09);
           font-size: 12px;
           font-weight: 800;
         }
 
-        .premiumButton {
+        .whiteAction {
           width: fit-content;
           margin-top: 26px;
           color: #52209d;
-          background: #ffffff;
+          background: #fff;
         }
 
-        .premiumJourney {
+        .journey {
           display: grid;
           align-content: center;
-          gap: 6px;
+          gap: 10px;
         }
 
         .journeyCard {
           display: grid;
-          grid-template-columns:
-            auto 1fr;
+          grid-template-columns: auto 1fr;
           gap: 14px;
           align-items: center;
           padding: 19px;
           border-radius: 18px;
           background:
-            rgba(255,255,255,0.09);
-          border:
-            1px solid rgba(255,255,255,0.11);
+            rgba(255,255,255,0.1);
+          border: 1px solid
+            rgba(255,255,255,0.11);
         }
 
-        .highlightedJourney {
-          background:
-            rgba(255,255,255,0.15);
-          border-color:
-            rgba(255,255,255,0.22);
-        }
-
-        .journeyNumber {
+        .journeyCard > span {
           width: 44px;
           height: 44px;
           display: grid;
@@ -1725,7 +1128,6 @@ function changePricingCountry(
           border-radius: 13px;
           background:
             rgba(255,255,255,0.12);
-          color: #ede9fe;
           font-size: 12px;
           font-weight: 950;
         }
@@ -1734,341 +1136,52 @@ function changePricingCountry(
           color: #ddd6fe;
           font-size: 9px;
           font-weight: 950;
-          letter-spacing: 0.07em;
         }
 
         .journeyCard strong {
           display: block;
           margin-top: 4px;
-          font-size: 17px;
         }
 
         .journeyCard p {
           margin: 4px 0 0;
           color: #e9e2f2;
           font-size: 12px;
-          line-height: 1.5;
         }
 
-        .journeyConnector {
-          text-align: center;
-          color: #c4b5fd;
-          font-weight: 950;
-        }
-
-        .planGrid {
-          display: grid;
-          grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-          gap: 24px;
-          margin-top: 42px;
-          align-items: stretch;
-        }
-
-        .planCard {
-          position: relative;
-          min-height: 590px;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          padding: 30px;
-          border-radius: 30px;
-          background:
-            linear-gradient(
-              180deg,
-              #ffffff 0%,
-              #fcfaff 100%
-            );
-          border:
-            1px solid rgba(124, 58, 237, 0.13);
-          box-shadow:
-            0 20px 55px
-            rgba(56, 31, 92, 0.08);
-          color: #20122f;
-          text-decoration: none;
-          transition:
-            transform 0.24s ease,
-            box-shadow 0.24s ease,
-            border-color 0.24s ease;
-        }
-
-        .planCard:hover {
-          transform: translateY(-8px);
-          border-color:
-            rgba(124, 58, 237, 0.38);
-          box-shadow:
-            0 34px 85px
-            rgba(74, 37, 128, 0.14);
-        }
-
-        .planCardHeader {
-          display: grid;
-          grid-template-columns:
-            minmax(0, 1fr) auto;
-          gap: 18px;
-          align-items: start;
-        }
-
-        .planLabel {
-          width: fit-content;
-          padding: 7px 11px;
-          border-radius: 999px;
-          background: #f0e7ff;
-          color: #6d28d9;
-          font-size: 10px;
-          font-weight: 950;
-          letter-spacing: 0.07em;
-        }
-
-        .planCard h3 {
-          margin: 22px 0 0;
-          font-size: 27px;
-          line-height: 1.15;
-          font-weight: 950;
-          letter-spacing: -0.025em;
-        }
-
-        .planCardHeader p {
-          margin: 10px 0 0;
-          color: #73667d;
-          font-size: 15px;
-          line-height: 1.6;
-        }
-
-        .planArrow {
-          width: 44px;
-          height: 44px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 auto;
-          border-radius: 50%;
-          background: #f6f0ff;
-          color: #6d28d9;
-          font-size: 18px;
-          font-weight: 950;
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease;
-        }
-
-        .planCard:hover .planArrow {
-          transform: translateX(4px);
-          background: #ede4ff;
-        }
-
-        .planFeatureBlock {
-          margin-top: 28px;
-          padding: 21px;
-          border-radius: 21px;
-          background: #faf7ff;
-          border:
-            1px solid rgba(124, 58, 237, 0.08);
-        }
-
-        .featureTitle {
-          display: block;
-          margin-bottom: 16px;
-          color: #7b6f85;
-          font-size: 11px;
-          font-weight: 950;
-          letter-spacing: 0.07em;
-          text-transform: uppercase;
-        }
-
-        .featureList {
-          display: grid;
-          gap: 13px;
-        }
-
-        .featureList > div {
-          display: grid;
-          grid-template-columns:
-            22px 1fr;
-          gap: 10px;
-          align-items: start;
-          color: #554a5f;
-          font-size: 14px;
-          line-height: 1.45;
-        }
-
-        .featureCheck {
-          width: 22px;
-          height: 22px;
-          display: grid;
-          place-items: center;
-          border-radius: 50%;
-          background: #ede5ff;
-          color: #6d28d9;
-          font-size: 11px;
-          font-weight: 950;
-        }
-
-        .planFooter {
-          min-height: 58px;
-          margin-top: auto;
+        .pricingCountryBar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 18px;
-          padding: 0 19px;
-          border-radius: 17px;
-          background: #f1e8ff;
-          color: #5b21b6;
-          font-size: 15px;
+          gap: 20px;
+          padding: 15px 17px;
+          border-radius: 18px;
+          background: #fff;
+          border: 1px solid
+            rgba(124,58,237,0.11);
+        }
+
+        .pricingCountryBar > div {
+          display: grid;
+          gap: 3px;
+        }
+
+        .countryLabel {
+          color: #8a7c94;
+          font-size: 10px;
           font-weight: 950;
+          text-transform: uppercase;
         }
 
-        .planFooter strong {
-          font-size: 18px;
-        }
-
-        .premiumPlan {
-          z-index: 2;
-          transform: translateY(-14px);
-          border: 2px solid #7c3aed;
-          background:
-            radial-gradient(
-              circle at 80% 5%,
-              rgba(139, 92, 246, 0.15),
-              transparent 30%
-            ),
-            linear-gradient(
-              180deg,
-              #ffffff 0%,
-              #faf6ff 100%
-            );
-          box-shadow:
-            0 34px 90px
-            rgba(124, 58, 237, 0.2);
-        }
-
-        .premiumPlan:hover {
-          transform: translateY(-20px);
-          box-shadow:
-            0 42px 105px
-            rgba(124, 58, 237, 0.28);
-        }
-
-        .recommended {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          padding: 8px 16px;
-          border-radius:
-            0 0 14px 14px;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-          color: #ffffff;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: 0.08em;
-          box-shadow:
-            0 9px 24px
-            rgba(124, 58, 237, 0.24);
-        }
-
-        .premiumGlow {
-          position: absolute;
-          width: 180px;
-          height: 180px;
-          top: -70px;
-          right: -60px;
-          border-radius: 50%;
-          background:
-            rgba(139, 92, 246, 0.1);
-          filter: blur(15px);
-          pointer-events: none;
-        }
-
-        .premiumLabel {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-        }
-
-        .premiumArrow {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-          box-shadow:
-            0 10px 25px
-            rgba(124, 58, 237, 0.22);
-        }
-
-        .premiumValue {
-          position: relative;
-          z-index: 1;
-          margin-top: 26px;
-          padding: 19px;
-          border-radius: 20px;
-          background:
-            linear-gradient(
-              135deg,
-              #efe5ff,
-              #faf7ff
-            );
-          border:
-            1px solid rgba(124, 58, 237, 0.15);
-        }
-
-        .premiumValueEyebrow {
-          display: block;
-          color: #7c3aed;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: 0.08em;
-        }
-
-        .premiumValue strong {
-          display: block;
-          margin-top: 7px;
-          color: #4f1d96;
-          font-size: 16px;
-          line-height: 1.35;
-        }
-
-        .premiumValue p {
-          margin: 7px 0 0;
-          color: #71627d;
-          font-size: 12px;
-          line-height: 1.55;
-        }
-
-        .premiumFeatureBlock {
-          background:
-            rgba(255,255,255,0.78);
-        }
-
-        .premiumFooter {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-          box-shadow:
-            0 15px 35px
-            rgba(124, 58, 237, 0.24);
-        }
-
-        /* PRICING SNAPSHOT */
-
-        .pricingSnapshot {
-          padding-top: 96px;
+        .pricingCountryBar select {
+          min-height: 44px;
+          padding: 0 14px;
+          border: 1px solid
+            rgba(124,58,237,0.16);
+          border-radius: 13px;
+          background: #fff;
+          color: #4f286e;
+          font-weight: 850;
         }
 
         .pricingHeading {
@@ -2077,25 +1190,13 @@ function changePricingCountry(
             minmax(0, 1fr) auto;
           gap: 30px;
           align-items: end;
-        }
-
-        .pricingHeading > div {
-          max-width: 760px;
-        }
-
-        .pricingHeading > div > p:last-child {
-          max-width: 620px;
-          margin: 16px 0 0;
-          color: #71657b;
-          font-size: 16px;
-          line-height: 1.65;
+          margin-top: 30px;
         }
 
         .pricingTopLink {
           min-height: 48px;
           display: inline-flex;
           align-items: center;
-          gap: 9px;
           padding: 0 18px;
           border-radius: 15px;
           background: #f1e8ff;
@@ -2104,70 +1205,28 @@ function changePricingCountry(
           text-decoration: none;
         }
 
-        .pricingGrid {
-          display: grid;
-          grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-          gap: 22px;
-          margin-top: 36px;
-          align-items: stretch;
-        }
-
         .pricingCard {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          padding: 29px;
+          max-width: 720px;
+          margin: 36px auto 0;
+          padding: 32px;
           border-radius: 30px;
-          background:
-            linear-gradient(
-              180deg,
-              #ffffff,
-              #fdfcff
-            );
-          border:
-            1px solid rgba(124, 58, 237, 0.12);
+          background: #fff;
+          border: 1px solid
+            rgba(124,58,237,0.12);
           box-shadow:
             0 20px 55px
-            rgba(60, 31, 100, 0.08);
-        }
-
-        .pricingCardTop {
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
-          align-items: start;
-        }
-
-        .pricePill {
-          width: fit-content;
-          padding: 7px 10px;
-          border-radius: 999px;
-          background: #f0e7ff;
-          color: #6d28d9;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: 0.08em;
+            rgba(60,31,100,0.08);
         }
 
         .pricingCard h3 {
           margin: 16px 0 0;
-          font-size: 24px;
-          line-height: 1.15;
-          font-weight: 950;
+          font-size: 27px;
         }
 
         .pricingIcon {
           width: 43px;
           height: 43px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 auto;
           border-radius: 14px;
-          background: #f7f2ff;
-          color: #6d28d9;
-          font-size: 13px;
-          font-weight: 950;
         }
 
         .priceDisplay {
@@ -2178,114 +1237,23 @@ function changePricingCountry(
           margin-top: 28px;
         }
 
-        .priceDisplay strong {
-          color: #251238;
-          font-size:
-            clamp(40px, 4vw, 52px);
-          letter-spacing: -0.05em;
-          line-height: 1;
-        }
-
-        .priceDisplay > span:last-child {
-          color: #7d7086;
-          font-size: 13px;
-          font-weight: 800;
-        }
-
         .priceFrom {
           width: 100%;
           color: #8a7d94;
           font-size: 10px;
           font-weight: 950;
-          letter-spacing: 0.07em;
           text-transform: uppercase;
         }
 
+        .priceDisplay strong {
+          font-size:
+            clamp(40px, 4vw, 52px);
+          letter-spacing: -0.05em;
+        }
+
         .priceDescription {
-          margin: 18px 0 0;
           color: #706279;
           line-height: 1.62;
-          font-size: 14px;
-        }
-
-        .pricingCountryBar {
-  margin-top: 24px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-
-  padding: 15px 17px;
-
-  border-radius: 18px;
-
-  background:
-    rgba(255, 255, 255, 0.82);
-
-  border:
-    1px solid
-      rgba(124, 58, 237, 0.11);
-
-  box-shadow:
-    0 12px 32px
-      rgba(66, 35, 105, 0.05);
-}
-
-.pricingCountryBar > div {
-  display: grid;
-  gap: 3px;
-}
-
-.countryLabel {
-  color: #8a7c94;
-
-  font-size: 10px;
-  font-weight: 950;
-
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.pricingCountryBar strong {
-  color: #402552;
-
-  font-size: 14px;
-}
-
-.pricingCountryBar select {
-  min-height: 44px;
-
-  padding: 0 38px 0 14px;
-
-  border:
-    1px solid
-      rgba(124, 58, 237, 0.16);
-
-  border-radius: 13px;
-
-  background: #ffffff;
-
-  color: #4f286e;
-
-  font-weight: 850;
-
-  cursor: pointer;
-}
-        
-        .miniBenefits {
-          display: grid;
-          gap: 9px;
-          margin: 22px 0 26px;
-          padding-top: 19px;
-          border-top:
-            1px solid rgba(124,58,237,0.09);
-        }
-
-        .miniBenefits span {
-          color: #594c63;
-          font-size: 13px;
-          font-weight: 800;
         }
 
         .miniPriceRows {
@@ -2299,7 +1267,6 @@ function changePricingCountry(
 
         .miniPriceRows div {
           display: flex;
-          align-items: center;
           justify-content: space-between;
           gap: 14px;
           color: #71657b;
@@ -2310,149 +1277,37 @@ function changePricingCountry(
           color: #4f1d96;
         }
 
+        .miniBenefits {
+          display: grid;
+          gap: 9px;
+          margin: 22px 0 26px;
+          padding-top: 19px;
+          border-top: 1px solid
+            rgba(124,58,237,0.09);
+        }
+
+        .miniBenefits span {
+          color: #594c63;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
         .priceButton {
           min-height: 54px;
-          margin-top: auto;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 14px;
           padding: 0 18px;
           border-radius: 16px;
+          color: #fff;
+          background:
+            linear-gradient(
+              135deg,
+              #6d28d9,
+              #8b5cf6
+            );
           font-weight: 950;
           text-decoration: none;
-        }
-
-        .softPriceButton {
-          color: #5b21b6;
-          background: #f1e8ff;
-        }
-
-        .premiumPricingCard {
-          z-index: 2;
-          transform: translateY(-10px);
-          border: 2px solid #7c3aed;
-          background:
-            radial-gradient(
-              circle at 88% 4%,
-              rgba(139, 92, 246, 0.16),
-              transparent 29%
-            ),
-            linear-gradient(
-              180deg,
-              #ffffff,
-              #faf6ff
-            );
-          box-shadow:
-            0 32px 82px
-            rgba(124, 58, 237, 0.19);
-        }
-
-        .premiumPricingBadge {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          padding: 7px 14px;
-          border-radius:
-            0 0 13px 13px;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-          color: #ffffff;
-          font-size: 8px;
-          font-weight: 950;
-          letter-spacing: 0.08em;
-        }
-
-        .premiumPricePill {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-        }
-
-        .premiumPricingIcon {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-        }
-
-        .premiumPriceDisplay strong {
-          color: #5b21b6;
-        }
-
-        .premiumPriceTable {
-          margin-top: 21px;
-          overflow: hidden;
-          border-radius: 18px;
-          border:
-            1px solid rgba(124,58,237,0.12);
-          background: rgba(255,255,255,0.82);
-        }
-
-        .priceTableHeader,
-        .priceTableRow {
-          display: grid;
-          grid-template-columns:
-            1.25fr 0.75fr 0.75fr;
-          gap: 10px;
-          align-items: center;
-        }
-
-        .priceTableHeader {
-          padding: 10px 13px;
-          background: #f1e8ff;
-          color: #7a6790;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-        }
-
-        .priceTableRow {
-          padding: 13px;
-          border-top:
-            1px solid rgba(124,58,237,0.08);
-          color: #62546d;
-          font-size: 12px;
-        }
-
-        .priceTableRow strong {
-          color: #3f2753;
-          font-size: 12px;
-        }
-
-        .priceTableRow span {
-          color: #5b21b6;
-          font-weight: 950;
-        }
-
-        .premiumMiniBenefits {
-          margin-top: 18px;
-        }
-
-        .premiumPriceButton {
-          color: #ffffff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-          box-shadow:
-            0 14px 32px
-            rgba(124,58,237,0.23);
         }
 
         .pricingNote {
@@ -2464,8 +1319,8 @@ function changePricingCountry(
           border-radius: 20px;
           background:
             rgba(255,255,255,0.75);
-          border:
-            1px solid rgba(124,58,237,0.1);
+          border: 1px solid
+            rgba(124,58,237,0.1);
         }
 
         .pricingNoteIcon {
@@ -2480,15 +1335,10 @@ function changePricingCountry(
           font-weight: 950;
         }
 
-        .pricingNote strong {
-          color: #3c254f;
-        }
-
         .pricingNote p {
           margin: 3px 0 0;
           color: #796d82;
           font-size: 12px;
-          line-height: 1.5;
         }
 
         .finalCta {
@@ -2500,21 +1350,13 @@ function changePricingCountry(
           align-items: center;
           padding: 42px;
           border-radius: 30px;
-          color: #ffffff;
+          color: #fff;
           background:
-            radial-gradient(
-              circle at 80% 0%,
-              rgba(139,92,246,0.35),
-              transparent 30%
-            ),
             linear-gradient(
               135deg,
               #28103d,
               #4c1d95
             );
-          box-shadow:
-            0 26px 70px
-            rgba(49, 17, 79, 0.22);
         }
 
         .finalIcon {
@@ -2533,7 +1375,6 @@ function changePricingCountry(
           color: #ddd6fe;
           font-size: 10px;
           font-weight: 950;
-          letter-spacing: 0.08em;
         }
 
         .finalCopy h2 {
@@ -2543,13 +1384,11 @@ function changePricingCountry(
             clamp(30px, 3.3vw, 46px);
           line-height: 1.04;
           letter-spacing: -0.04em;
-          font-weight: 950;
         }
 
         .finalCopy > p:last-child {
           margin: 10px 0 0;
           color: #ded3e8;
-          line-height: 1.6;
         }
 
         .finalActions {
@@ -2560,20 +1399,18 @@ function changePricingCountry(
 
         .whiteButton {
           color: #4c1d95;
-          background: #ffffff;
+          background: #fff;
         }
 
         .outlineButton {
-          color: #ffffff;
-          border:
-            1px solid rgba(255,255,255,0.28);
-          background:
-            rgba(255,255,255,0.05);
+          color: #fff;
+          border: 1px solid
+            rgba(255,255,255,0.28);
         }
 
         @media (max-width: 900px) {
           .hero,
-          .premiumStory,
+          .liveStory,
           .finalCta {
             grid-template-columns: 1fr;
           }
@@ -2583,29 +1420,13 @@ function changePricingCountry(
           }
 
           .languageGrid,
-          .steps,
-          .planGrid,
-          .pricingGrid {
+          .steps {
             grid-template-columns: 1fr;
-          }
-
-          .premiumPlan,
-          .premiumPlan:hover,
-          .premiumPricingCard {
-            transform: none;
-          }
-
-          .planCard {
-            min-height: auto;
           }
 
           .pricingHeading {
             grid-template-columns: 1fr;
             align-items: start;
-          }
-
-          .pricingTopLink {
-            width: fit-content;
           }
 
           .finalActions {
@@ -2618,15 +1439,6 @@ function changePricingCountry(
           .page {
             padding: 16px 12px 68px;
           }
-
-          .pricingCountryBar {
-  align-items: stretch;
-  flex-direction: column;
-}
-
-.pricingCountryBar select {
-  width: 100%;
-}
 
           .hero {
             min-height: auto;
@@ -2642,14 +1454,6 @@ function changePricingCountry(
               clamp(39px, 11vw, 54px);
           }
 
-          .lead {
-            font-size: 15px;
-          }
-
-          .heroPromise {
-            font-size: 13px;
-          }
-
           .heroVisual {
             min-height: 300px;
           }
@@ -2660,7 +1464,7 @@ function changePricingCountry(
 
           .primary,
           .secondary,
-          .premiumButton,
+          .whiteAction,
           .whiteButton,
           .outlineButton {
             width: 100%;
@@ -2674,144 +1478,35 @@ function changePricingCountry(
 
           .languageSection,
           .learningModel,
-          .plansSection,
           .pricingSnapshot {
             padding-top: 70px;
           }
 
-          .sectionHeading h2,
-          .pricingHeading h2 {
-            font-size:
-              clamp(34px, 10vw, 47px);
-          }
-
-          .languageGrid {
-            gap: 16px;
-          }
-
-          .languageCard {
-            padding: 24px 22px;
-            border-radius: 24px;
-          }
-
-          .languageTop h3 {
-            font-size: 27px;
-          }
-
-          .premiumStory,
+          .liveStory,
           .finalCta {
             padding: 26px 20px;
             border-radius: 26px;
           }
 
-          .premiumBenefits {
+          .benefitGrid {
             grid-template-columns: 1fr;
           }
 
-          .premiumButton {
+          .pricingCountryBar {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .pricingCountryBar select {
             width: 100%;
-          }
-
-          .planGrid {
-            gap: 22px;
-            margin-top: 34px;
-          }
-
-          .planCard {
-            min-height: 0;
-            padding: 24px 21px;
-            border-radius: 27px;
-            background: #ffffff;
-            box-shadow:
-              0 16px 40px
-              rgba(64, 33, 105, 0.09);
-          }
-
-          .planCardHeader {
-            grid-template-columns:
-              minmax(0, 1fr) auto;
-            gap: 14px;
-          }
-
-          .planCard h3 {
-            margin-top: 18px;
-            font-size: 25px;
-          }
-
-          .planFeatureBlock {
-            margin-top: 22px;
-            padding: 18px;
-            border-radius: 18px;
-          }
-
-          .featureList > div {
-            font-size: 15px;
-          }
-
-          .planFooter {
-            min-height: 58px;
-            margin-top: 22px;
-            font-size: 16px;
-          }
-
-          .premiumPlan {
-            border: 2px solid #7c3aed;
-            box-shadow:
-              0 24px 58px
-              rgba(124, 58, 237, 0.17);
-          }
-
-          .premiumValue {
-            margin-top: 22px;
-          }
-
-          .recommended {
-            top: 0;
-          }
-
-          .pricingGrid {
-            gap: 20px;
-            margin-top: 30px;
           }
 
           .pricingCard {
             padding: 24px 21px;
-            border-radius: 26px;
           }
 
-          .premiumPricingCard {
-            border: 2px solid #7c3aed;
-            box-shadow:
-              0 24px 58px
-              rgba(124,58,237,0.17);
-          }
-
-          .priceDisplay strong {
-            font-size: 44px;
-          }
-
-          .priceTableHeader,
-          .priceTableRow {
-            grid-template-columns:
-              1.2fr 0.8fr 0.8fr;
-            gap: 7px;
-          }
-
-          .priceTableHeader {
-            font-size: 8px;
-          }
-
-          .priceTableRow {
-            font-size: 11px;
-          }
-
-          .pricingTopLink {
-            width: 100%;
-            justify-content: center;
-          }
-
-          .pricingNote {
-            align-items: flex-start;
+          .finalCta {
+            margin-top: 70px;
           }
         }
       `}</style>

@@ -4,10 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
-import {
-  academyPricingHref,
-  subjectAcademyRoute,
-} from "../data/academy-routing";
 
 type Student = {
   id: string;
@@ -157,26 +153,6 @@ function startBookingLink(subjectName: string, category?: string | null) {
   if (category) params.set("category", category);
   params.set("subject", subjectName);
   return `/start?${params.toString()}`;
-}
-
-
-function academyLearningLink(
-  subjectName: string,
-  studentId?: string | null,
-) {
-  const academy = subjectAcademyRoute(subjectName);
-
-  if (!academy) return null;
-
-  if (studentId) {
-    return academyPricingHref({
-      studentId,
-      academy: academy.academyCode,
-      programme: academy.programmeId,
-    });
-  }
-
-  return `/academies/${academy.slug}`;
 }
 
 export default function SubjectsPageClient() {
@@ -1014,8 +990,7 @@ function CatalogueGrid({
     <div className="subject-grid">
       {subjects.map((subject) => {
         const subjectSlug = toSubjectSlug(subject.name);
-        const viewCurriculumHref = curriculumLink(subject.name, studentId);
-        const academyHref = academyLearningLink(subject.name, studentId);
+const viewCurriculumHref = curriculumLink(subject.name, studentId);
 
         return (
           <div key={subject.name} className="subject-card">
@@ -1043,27 +1018,14 @@ function CatalogueGrid({
               <Link href={viewCurriculumHref} className="btn-curriculum">
                 See What They’ll Learn
               </Link>
-
-              {academyHref ? (
-                <Link
-                  href={academyHref}
-                  className="btn-primary"
-                >
-                  Start Interactive Lessons
-                </Link>
-              ) : null}
-
+              
               <Link
                 href={
                   personalised && studentId
                     ? `/pricing?studentId=${studentId}&subjectId=${subjectSlug}`
                     : startBookingLink(subject.name, subject.category)
                 }
-                className={
-                  academyHref
-                    ? "btn-live-tutor"
-                    : "btn-primary"
-                }
+                className="btn-primary"
               >
                 Book a Live Tutor
               </Link>
@@ -1287,8 +1249,7 @@ function ProgramGrid({
     <div className="program-grid">
       {programs.map((program) => {
         const subjectName = program.subjects?.name || program.title;
-        const viewCurriculumHref = curriculumLink(subjectName, studentId);
-        const academyHref = academyLearningLink(subjectName, studentId);
+const viewCurriculumHref = curriculumLink(subjectName, studentId);
 
         return (
           <div key={program.id} className="program-card">
@@ -1327,16 +1288,7 @@ function ProgramGrid({
             <div className="program-actions">
               <Link href={viewCurriculumHref} className="btn-curriculum">
                 See What They’ll Learn
-              </Link>
-
-              {academyHref ? (
-                <Link
-                  href={academyHref}
-                  className="btn-primary"
-                >
-                  Start Interactive Lessons
-                </Link>
-              ) : null}
+              </Link>            
 
               <Link
                 href={
@@ -1347,11 +1299,7 @@ function ProgramGrid({
                         program.subjects?.category,
                       )
                 }
-                className={
-                  academyHref
-                    ? "btn-live-tutor"
-                    : "btn-primary"
-                }
+                className="btn-primary"
               >
                 Book a Live 1-to-1 Tutor
               </Link>

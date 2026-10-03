@@ -7,16 +7,36 @@ export default function FinalCTA() {
       <div className={styles.shell}>
         <div className={styles.finalPanel}>
           <div className={styles.finalImage} />
+
           <div className={styles.finalCopy}>
-            <p className={styles.eyebrow}>One platform. Two ways to learn.</p>
-            <h2>Ready to give your child a learning advantage?</h2>
-            <p>
-              Choose personal one-to-one tutoring or an AI-assisted self-paced academy.
-              FountainPrep makes the pathway clear from the very first click.
+            <p className={styles.eyebrow}>
+              Learning starts with the right support
             </p>
+
+            <h2>
+              Ready to find the right tutor for your child?
+            </h2>
+
+            <p>
+              Choose a subject, find a tutor and schedule
+              live 1-to-1 online lessons around your
+              family&apos;s timetable.
+            </p>
+
             <div className={styles.heroActions}>
-              <Link href="/start" className={styles.primaryButton}>Book a Live Tutor</Link>
-              <Link href="/academies" className={styles.secondaryButton}>Explore Self-Paced Academy</Link>
+              <Link
+                href="/start"
+                className={styles.primaryButton}
+              >
+                Find a Tutor
+              </Link>
+
+              <Link
+                href="/subjects"
+                className={styles.secondaryButton}
+              >
+                Explore Subjects
+              </Link>
             </div>
           </div>
         </div>

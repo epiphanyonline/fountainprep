@@ -177,3 +177,67 @@
 
 @media(max-width:980px){.modeGrid,.selfPacedGrid{grid-template-columns:1fr}.livePathGrid{grid-template-columns:1fr 1fr}.selfPacedHeading{grid-template-columns:1fr;align-items:start}.selfFeatured{grid-column:auto}}
 @media(max-width:640px){.learningModePills{display:grid;grid-template-columns:1fr}.modeGrid,.livePathGrid,.selfPacedGrid{grid-template-columns:1fr}.modeCard{padding:26px 22px;border-radius:24px}.modeCard h3{font-size:30px}.sectionHeaderRow{display:block}.headerLink{display:inline-flex;margin-top:18px}.livePathCard{min-height:430px}.selfPacedSection{margin-top:70px;padding:64px 0}.selfPacedHeading h2{font-size:39px}.selfPacedHeaderButton{width:100%;margin-top:4px}.selfPacedCard{min-height:410px}.switchPathBanner{align-items:flex-start;flex-direction:column}}
+/* =========================================================
+   HOMEPAGE BRAND INTRO
+   ========================================================= */
+
+.brandStatement {
+  width: min(820px, 100%);
+  margin: 22px auto 42px;
+  text-align: center;
+}
+
+.brandStatement > span {
+  display: inline-block;
+  margin-bottom: 11px;
+  color: #7c3aed;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.brandStatement h2 {
+  max-width: 760px;
+  margin: 0 auto;
+  color: #21142f;
+  font-size: clamp(34px, 3.5vw, 48px);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.brandStatement h2 strong {
+  color: #7c3aed;
+  font-weight: inherit;
+}
+
+.brandStatement p {
+  max-width: 570px;
+  margin: 14px auto 0;
+  color: #756b7c;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 700px) {
+  .brandStatement {
+    margin: 18px auto 32px;
+    padding: 0 8px;
+  }
+
+  .brandStatement > span {
+    margin-bottom: 9px;
+    font-size: 9px;
+  }
+
+  .brandStatement h2 {
+    font-size: clamp(30px, 9vw, 40px);
+    line-height: 1.02;
+  }
+
+  .brandStatement p {
+    max-width: 390px;
+    margin-top: 12px;
+    font-size: 12px;
+  }
+}

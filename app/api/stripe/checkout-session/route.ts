@@ -93,6 +93,17 @@ export async function POST(req: Request) {
       )
     }
 
+    if (anchorBooking.product_type !== 'LIVE') {
+  return NextResponse.json(
+    {
+      error:
+        'This learning product is temporarily unavailable for checkout.',
+      code: 'SELF_PACED_ACADEMY_DISABLED',
+    },
+    { status: 503 }
+  )
+}
+
     const groupBookings = await getOwnedBookingGroup(anchorBooking, user.id)
 
     if (groupBookings.length === 0) {
@@ -154,16 +165,11 @@ export async function POST(req: Request) {
     ])
 
     const learnerName = student?.full_name || 'Learner'
-    const subjectName = subject?.name || 'Private lesson'
-    const planName = planLabels[anchorBooking.plan_id] || 'Learning Plan'
-    const isPremium =
-  anchorBooking.product_type ===
-  'PREMIUM'
+const subjectName = subject?.name || 'Private lesson'
+const planName = planLabels[anchorBooking.plan_id] || 'Learning Plan'
 
 const checkoutProductName =
-  isPremium
-    ? `${subjectName} Premium Bundle`
-    : `${subjectName} — ${planName}`
+  `${subjectName} — ${planName}`
     const lessonCount = groupBookings.length
     const bookingGroupReference =
       anchorBooking.parent_booking_group_id || anchorBooking.id
@@ -186,13 +192,10 @@ const checkoutProductName =
               currency: currency.toLowerCase(),
               product_data: {
                 name: checkoutProductName,
-                description: isPremium
-  ? `${lessonCount} private 1-to-1 lesson${
-      lessonCount === 1 ? '' : 's'
-    } for ${learnerName}, plus full AI Language Academy access`
-  : `${lessonCount} private 1-to-1 lesson${
-      lessonCount === 1 ? '' : 's'
-    } for ${learnerName}`,
+                description:
+  `${lessonCount} private 1-to-1 lesson${
+    lessonCount === 1 ? '' : 's'
+  } for ${learnerName}`,
               },
               unit_amount: Math.round(amount * 100),
             },
