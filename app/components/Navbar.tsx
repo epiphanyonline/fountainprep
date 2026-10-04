@@ -1199,14 +1199,15 @@ FEATURES.SELF_PACED_ACADEMY ? (
               </button>
             ) : null}
 
-            {!loading ? (
-              <Link
-                href="/financial-education"
-                className="mobile-link finance"
-              >
-                Financial Education
-              </Link>
-            ) : null}
+            {!loading &&
+FEATURES.SELF_PACED_ACADEMY ? (
+  <Link
+    href="/financial-education"
+    className="nav-btn nav-btn-finance"
+  >
+    Financial Education
+  </Link>
+) : null}
 
             {!loading &&
             (!profile ||

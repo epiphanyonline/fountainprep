@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { stripe } from "../../../lib/stripe";
+import { FEATURES } from "../../../config/features";
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -61,6 +62,27 @@ export async function POST(
   req: Request,
 ) {
   try {
+    /*
+     * Self-paced Academy sales are temporarily paused.
+     *
+     * Keep all existing Academy subscription infrastructure
+     * intact, but prevent any NEW Stripe subscription checkout
+     * from being created while the product is being refined.
+     *
+     * This does not affect live tutor bookings or existing
+     * Academy subscriptions.
+     */
+    if (!FEATURES.SELF_PACED_ACADEMY) {
+      return NextResponse.json(
+        {
+          error:
+            "Fountain Prep Self-Paced Academy is temporarily unavailable for new subscriptions while we prepare an improved learning experience.",
+          code: "SELF_PACED_ACADEMY_DISABLED",
+        },
+        { status: 503 },
+      );
+    }
+
     const user =
       await authenticateRequest(req);
 
