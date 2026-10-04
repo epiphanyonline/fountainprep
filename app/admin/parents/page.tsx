@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import {
@@ -21,7 +21,7 @@ type FilterType =
   | 'ALL'
   | 'PARENT'
   | 'ADULT_LEARNER'
-  | 'INCOMPLETE'
+  | 'PROFILE_ISSUE'
 
 type EmailTemplate =
   | 'GENERAL'
@@ -553,12 +553,12 @@ export default function AdminParentsPage() {
           }
 
           if (
-            filter ===
-              'INCOMPLETE' &&
-            !row.incomplete
-          ) {
-            return false
-          }
+  filter ===
+    'PROFILE_ISSUE' &&
+  row.parentProfile
+) {
+  return false
+}
 
           if (!q) return true
 
@@ -603,11 +603,18 @@ export default function AdminParentsPage() {
         'ADULT_LEARNER'
     ).length
 
-  const incompleteCount =
-    accountRows.filter(
-      (row) =>
-        row.incomplete
-    ).length
+  const profileIssueCount =
+  accountRows.filter(
+    (row) =>
+      !row.parentProfile
+  ).length
+
+  const onboardingPendingCount =
+  accountRows.filter(
+    (row) =>
+      row.incomplete &&
+      !!row.parentProfile
+  ).length
 
   const totalRevenue =
     accountRows.reduce(
@@ -990,12 +997,12 @@ If you need help getting started, simply reply to this email and our team will b
 
       showNotice(
         failed === 0
-          ? `✓ Email sent successfully. ${sent} recipient${
+          ? `âœ“ Email sent successfully. ${sent} recipient${
               sent === 1
                 ? ''
                 : 's'
-            } · 0 failed.`
-          : `Communication completed. ${sent} sent · ${failed} failed.`,
+            } Â· 0 failed.`
+          : `Communication completed. ${sent} sent Â· ${failed} failed.`,
         failed === 0
           ? 'success'
           : 'info'
@@ -1072,7 +1079,7 @@ If you need help getting started, simply reply to this email and our team will b
             >
               See who has joined
               Fountain Prep, identify
-              incomplete registration,
+              profile issues and pending onboarding,
               monitor learning and
               booking activity, and
               contact customers directly
@@ -1125,10 +1132,10 @@ If you need help getting started, simply reply to this email and our team will b
           />
 
           <Kpi
-            label="Incomplete Setup"
+            label="Onboarding Pending"
             value={String(
-              incompleteCount
-            )}
+  onboardingPendingCount
+)}
           />
 
           <Kpi
@@ -1140,7 +1147,7 @@ If you need help getting started, simply reply to this email and our team will b
 
           <Kpi
             label="Revenue"
-            value={`£${totalRevenue.toFixed(
+            value={`Â£${totalRevenue.toFixed(
               2
             )}`}
           />
@@ -1229,7 +1236,7 @@ If you need help getting started, simply reply to this email and our team will b
               setNoticeType('')
             }}
           >
-            ×
+            Ã—
           </button>
         </section>
       ) : null}
@@ -1267,7 +1274,7 @@ If you need help getting started, simply reply to this email and our team will b
               }
             >
               Filter accounts, identify
-              incomplete registration,
+              profile issues and pending onboarding,
               see communication history
               and send follow-up emails.
             </p>
@@ -1334,19 +1341,19 @@ If you need help getting started, simply reply to this email and our team will b
           </FilterButton>
 
           <FilterButton
-            active={
-              filter ===
-              'INCOMPLETE'
-            }
-            onClick={() =>
-              setFilter(
-                'INCOMPLETE'
-              )
-            }
-          >
-            Incomplete (
-            {incompleteCount})
-          </FilterButton>
+  active={
+    filter ===
+      'PROFILE_ISSUE'
+  }
+  onClick={() =>
+    setFilter(
+      'PROFILE_ISSUE'
+    )
+  }
+>
+  Profile Issues (
+  {profileIssueCount})
+</FilterButton>
         </div>
 
         <div
@@ -1494,16 +1501,20 @@ If you need help getting started, simply reply to this email and our team will b
                           </span>
 
                           <span
-                            style={
-                              row.incomplete
-                                ? styles.incompleteBadge
-                                : styles.readyBadge
-                            }
-                          >
-                            {row.incomplete
-                              ? 'Incomplete Setup'
-                              : 'Setup Complete'}
-                          </span>
+  style={
+    !row.parentProfile
+      ? styles.incompleteBadge
+      : row.incomplete
+        ? styles.incompleteBadge
+        : styles.readyBadge
+  }
+>
+  {!row.parentProfile
+    ? 'Profile Issue'
+    : row.incomplete
+      ? 'Onboarding Pending'
+      : 'Setup Complete'}
+</span>
                         </div>
 
                         <p
@@ -1535,7 +1546,7 @@ If you need help getting started, simply reply to this email and our team will b
                             parentProfile
                               ?.country_of_residence ||
                             'Country not set'}
-                          {' • '}
+                          {' â€¢ '}
                           {user.timezone ||
                             parentProfile
                               ?.timezone ||
@@ -1612,7 +1623,7 @@ If you need help getting started, simply reply to this email and our team will b
 
                       <Detail
                         label="Revenue"
-                        value={`£${row.revenue.toFixed(
+                        value={`Â£${row.revenue.toFixed(
                           2
                         )}`}
                       />
@@ -1760,7 +1771,7 @@ If you need help getting started, simply reply to this email and our team will b
                                     student.full_name
                                   }
                                   {student.is_self_learner
-                                    ? ' · Self'
+                                    ? ' Â· Self'
                                     : ''}
                                 </span>
                               )
@@ -1882,7 +1893,7 @@ If you need help getting started, simply reply to this email and our team will b
                   )
                 }
               >
-                ×
+                Ã—
               </button>
             </div>
 
@@ -3066,3 +3077,4 @@ const styles: Record<
     cursor: 'pointer',
   },
 }
+
