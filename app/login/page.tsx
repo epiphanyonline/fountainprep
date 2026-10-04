@@ -53,6 +53,8 @@ function LoginForm() {
   const [resetEmail, setResetEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+const [verificationLoading, setVerificationLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeType, setNoticeType] = useState<NoticeType>("info");
 
@@ -65,6 +67,7 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setNotice("");
+    setVerificationRequired(false);
 
     const { data: loginData, error: loginError } =
       await supabase.auth.signInWithPassword({
@@ -73,13 +76,30 @@ function LoginForm() {
       });
 
     if (loginError || !loginData.user) {
-      showNotice(
-        "error",
-        "Login was not successful. Please check your email and password, or use the reset option below.",
-      );
-      setLoading(false);
-      return;
-    }
+  const errorMessage = String(loginError?.message || "").toLowerCase();
+  const errorCode = String(loginError?.code || "").toLowerCase();
+
+  const emailNotConfirmed =
+    errorCode === "email_not_confirmed" ||
+    errorMessage.includes("email not confirmed");
+
+  if (emailNotConfirmed) {
+    setVerificationRequired(true);
+    showNotice(
+      "info",
+      "Your Fountain Prep account has been created, but your email address still needs to be verified. Please check your inbox or spam folder, or request a new verification email below.",
+    );
+  } else {
+    setVerificationRequired(false);
+    showNotice(
+      "error",
+      "Login was not successful. Please check your email and password, or use the reset option below.",
+    );
+  }
+
+  setLoading(false);
+  return;
+}
 
     const user = loginData.user;
 
@@ -150,6 +170,53 @@ function LoginForm() {
     router.push("/account");
     router.refresh();
   }
+
+  async function handleResendVerification() {
+  const emailToUse = email.trim().toLowerCase();
+
+  if (!emailToUse) {
+    showNotice(
+      "error",
+      "Please enter your email address first.",
+    );
+    return;
+  }
+
+  setVerificationLoading(true);
+
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    window.location.origin
+  ).replace(/\/$/, "");
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: emailToUse,
+    options: {
+      emailRedirectTo: `${siteUrl}/login?next=${encodeURIComponent(
+        nextPath || "/parent/dashboard",
+      )}`,
+    },
+  });
+
+  if (error) {
+    showNotice(
+      "error",
+      "We could not send a new verification email right now. Please try again shortly or contact Fountain Prep support.",
+    );
+    setVerificationLoading(false);
+    return;
+  }
+
+  showNotice(
+    "success",
+    `A new verification email has been sent to ${emailToUse}. Please check your inbox and spam folder.`,
+  );
+
+  setVerificationRequired(false);
+  setVerificationLoading(false);
+}
 
   async function handlePasswordReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -274,6 +341,29 @@ function LoginForm() {
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
+
+          {verificationRequired ? (
+  <div className="resetBox">
+    <h3>Email verification required</h3>
+    <p>
+      Already registered? You do not need to create another account.
+      Request a new verification email and use the link to activate
+      your Fountain Prep account.
+    </p>
+
+    <button
+      type="button"
+      className="secondaryBtn"
+      disabled={verificationLoading}
+      onClick={handleResendVerification}
+      style={{ width: "100%", marginTop: 14 }}
+    >
+      {verificationLoading
+        ? "Sending verification email..."
+        : "Resend Verification Email"}
+    </button>
+  </div>
+) : null}
 
           <div className="resetBox">
             <h3>Forgot password?</h3>
