@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -100,40 +100,6 @@ function ParentSignupForm() {
 
     if (error || !data.user) {
       setErrorMessage(error?.message || "Unable to create your account.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: userProfileError } = await supabase
-      .from("user_profiles")
-      .upsert({
-        id: data.user.id,
-        email: cleanEmail,
-        role: "PARENT",
-        full_name: cleanName,
-        phone: phone.trim() || null,
-        country,
-        timezone,
-        is_active: true,
-      });
-
-    const { error: parentProfileError } = await supabase
-      .from("parent_profiles")
-      .upsert({
-        user_id: data.user.id,
-        full_name: cleanName,
-        phone: phone.trim() || null,
-        country,
-        timezone,
-        account_type: "PARENT",
-      });
-
-    if (userProfileError || parentProfileError) {
-      setErrorMessage(
-        userProfileError?.message ||
-          parentProfileError?.message ||
-          "Your account was created, but the parent profile could not be completed.",
-      );
       setLoading(false);
       return;
     }
@@ -299,7 +265,7 @@ function ParentSignupForm() {
             disabled={loading || signupComplete}
           >
             {loading
-              ? "Creating account…"
+              ? "Creating accountâ€¦"
               : signupComplete
                 ? "Account created"
                 : "Create Account & Continue"}
@@ -507,7 +473,7 @@ function SignupLoading() {
   return (
     <main className="page-wrap">
       <div className="container">
-        <p>Preparing parent signup…</p>
+        <p>Preparing parent signupâ€¦</p>
       </div>
     </main>
   );
@@ -521,3 +487,4 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
