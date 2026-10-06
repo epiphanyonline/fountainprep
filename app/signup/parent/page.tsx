@@ -133,11 +133,25 @@ function ParentSignupForm() {
       return;
     }
 
-    setSignupComplete(true);
-    setMessage(
-      "Account created. Confirm your email, then log in to continue your booking.",
-    );
-    setLoading(false);
+    // Tell Meta that a real parent registration was successfully created.
+if (typeof window !== "undefined") {
+  const fbq = (window as Window & {
+    fbq?: (...args: unknown[]) => void;
+  }).fbq;
+
+  if (typeof fbq === "function") {
+    fbq("track", "CompleteRegistration", {
+      content_name: "Parent Account",
+      status: "created",
+    });
+  }
+}
+
+setSignupComplete(true);
+setMessage(
+  "Account created. Confirm your email, then log in to continue your booking.",
+);
+setLoading(false);
   }
 
   return (
