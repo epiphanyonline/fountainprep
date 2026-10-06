@@ -142,8 +142,8 @@ export default function LanguagesPage() {
           </div>
 
           <h1>
-            Learn the Language.
-            <span> Stay connected.</span>
+            Help your your child
+            <span> grow closer to Nigerian culture.</span>
           </h1>
 
           <p className="lead">
@@ -156,8 +156,8 @@ export default function LanguagesPage() {
           </p>
 
           <p className="heroPromise">
-            Build real conversation skills
-            — not just vocabulary.
+            They will speak their roots and 
+            feel at home in their culture.
           </p>
 
           <div className="heroActions">
@@ -165,7 +165,7 @@ export default function LanguagesPage() {
               href="/parent/students"
               className="primary"
             >
-              Find a Language Tutor
+              Find my child a Tutor
               <span>→</span>
             </Link>
 
