@@ -142,7 +142,7 @@ export default function LanguagesPage() {
           </div>
 
           <h1>
-            Help your your child
+            Help your child
             <span> grow closer to Nigerian culture.</span>
           </h1>
 
@@ -162,12 +162,27 @@ export default function LanguagesPage() {
 
           <div className="heroActions">
             <Link
-              href="/parent/students"
-              className="primary"
-            >
-              Find my child a Tutor
-              <span>→</span>
-            </Link>
+  href="/parent/students"
+  className="heroPrimaryButton"
+  style={{
+    minHeight: "56px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    padding: "0 26px",
+    borderRadius: "15px",
+    color: "#ffffff",
+    background: "linear-gradient(135deg, #6d28d9, #8b5cf6)",
+    fontSize: "15px",
+    fontWeight: 950,
+    textDecoration: "none",
+    boxShadow: "0 12px 28px rgba(109, 40, 217, 0.28)",
+  }}
+>
+  Find my child a Tutor
+  <span>→</span>
+</Link>
 
             <a
               href="#how-it-works"
@@ -768,11 +783,11 @@ export default function LanguagesPage() {
           margin-top: 28px;
         }
 
-        .primary,
-        .secondary,
-        .whiteAction,
-        .whiteButton,
-        .outlineButton {
+        .heroPrimaryButton,
+.secondary,
+.whiteAction,
+.whiteButton,
+.outlineButton {
           min-height: 50px;
           display: inline-flex;
           align-items: center;
@@ -784,16 +799,28 @@ export default function LanguagesPage() {
           text-decoration: none;
         }
 
-        .primary {
-          color: #fff;
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #8b5cf6
-            );
-        }
+        .heroPrimaryButton {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 26px;
+  border-radius: 15px;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  font-size: 15px;
+  font-weight: 950;
+  text-decoration: none !important;
+  box-shadow: 0 12px 28px rgba(109, 40, 217, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
+.heroPrimaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(109, 40, 217, 0.36);
+}
+  
         .secondary {
           color: #4d286f;
           border: 1px solid
@@ -1462,13 +1489,13 @@ export default function LanguagesPage() {
             display: grid;
           }
 
-          .primary,
-          .secondary,
-          .whiteAction,
-          .whiteButton,
-          .outlineButton {
-            width: 100%;
-          }
+          .heroPrimaryButton,
+.secondary,
+.whiteAction,
+.whiteButton,
+.outlineButton {
+  width: 100%;
+}
 
           .imageBadge {
             left: 14px;
