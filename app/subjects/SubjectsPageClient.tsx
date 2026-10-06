@@ -173,6 +173,7 @@ export default function SubjectsPageClient() {
   );
   const [subjectFilter, setSubjectFilter] = useState(requestedSubject);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -400,7 +401,412 @@ export default function SubjectsPageClient() {
     );
   }
 
-  const hasPrograms = filteredPrograms.length > 0;
+  // Fast booking flow:
+// Keep this as a normal calculation rather than a Hook because this
+// section is reached after conditional loading/error returns.
+const selectedBookingSubject =
+  catalogueSubjects.find(
+    (subject) => toSubjectSlug(subject.name) === selectedProgramId,
+  ) ?? null;
+
+function continueToPricing() {
+  if (!student?.id || !selectedBookingSubject) return;
+
+  const params = new URLSearchParams({
+    studentId: student.id,
+    subjectId: toSubjectSlug(selectedBookingSubject.name),
+  });
+
+  router.push(`/pricing?${params.toString()}`);
+}
+
+    const hasPrograms = filteredPrograms.length > 0;
+
+  // ---------------------------------------------------------
+  // FAST BOOKING MODE
+  // ---------------------------------------------------------
+  // A child has already been selected, so the parent's next
+  // decision should simply be the subject.
+  if (personalised && student) {
+    return (
+      <main className="booking-subject-page">
+        <div className="booking-subject-shell">
+          <section className="booking-subject-card">
+            <div className="booking-progress">
+              <span className="progress-complete">✓ Child</span>
+              <span className="progress-current">2 Subject</span>
+              <span>3 Plan</span>
+              <span>4 Schedule</span>
+              <span>5 Payment</span>
+            </div>
+
+            <p className="booking-kicker">PERSONALISED LEARNING</p>
+
+            <h1>
+              Choose a subject for
+              <br />
+              <strong>{student.full_name}</strong>
+            </h1>
+
+            <p className="booking-description">
+              Choose what you would like {student.full_name} to learn.
+              You&apos;ll choose the lesson plan and timetable next.
+            </p>
+
+            <div className="child-summary">
+              <div>
+                <span>Child</span>
+                <strong>{student.full_name}</strong>
+              </div>
+
+              <div>
+                <span>Age</span>
+                <strong>{student.child_age ?? "-"}</strong>
+              </div>
+
+              <div>
+                <span>Class</span>
+                <strong>{student.country_class_label || "-"}</strong>
+              </div>
+            </div>
+
+            <div className="subject-selector-card">
+              <label htmlFor="booking-subject">
+                What would you like {student.full_name} to learn?
+              </label>
+
+              <select
+                id="booking-subject"
+                value={selectedProgramId}
+                onChange={(event) => setSelectedProgramId(event.target.value)}
+              >
+                <option value="">Select a subject</option>
+
+                {catalogueSubjects.map((subject) => (
+  <option
+    key={subject.name}
+    value={toSubjectSlug(subject.name)}
+  >
+    {subject.name}
+  </option>
+))}
+              </select>
+
+              {selectedBookingSubject ? (
+                <div className="selected-subject">
+                  <div>
+                    <span>Selected subject</span>
+                    <strong>
+                      {selectedBookingSubject.name}
+                    </strong>
+                  </div>
+
+                  {level?.name ? (
+                    <div>
+                      <span>Learning level</span>
+                      <strong>{level.name}</strong>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className="continue-button"
+                disabled={!selectedBookingSubject}
+                onClick={continueToPricing}
+              >
+                Continue to Plans →
+              </button>
+            </div>
+
+            <div className="explore-options">
+              <p>Want to learn more before choosing?</p>
+
+              <div>
+                {selectedBookingSubject ? (
+                  <Link
+                    href={curriculumLink(
+  selectedBookingSubject.name,
+  student.id,
+)}
+                  >
+                    View subject curriculum
+                  </Link>
+                ) : null}
+
+                <Link href="/subjects">
+                  View all subjects
+                </Link>
+
+                <Link href="/parent/students?mode=booking">
+                  Choose another child
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <style jsx>{`
+          .booking-subject-page {
+            min-height: calc(100vh - 80px);
+            padding: 42px 20px 70px;
+            background:
+              radial-gradient(
+                circle at 50% 10%,
+                rgba(138, 92, 246, 0.12),
+                transparent 34%
+              ),
+              #faf8ff;
+          }
+
+          .booking-subject-shell {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+          }
+
+          .booking-subject-card {
+            padding: 38px;
+            border: 1px solid rgba(111, 66, 193, 0.12);
+            border-radius: 32px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 24px 70px rgba(55, 35, 95, 0.1);
+          }
+
+          .booking-progress {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 38px;
+            font-size: 12px;
+            font-weight: 800;
+          }
+
+          .booking-progress span {
+            padding: 10px 8px;
+            border-radius: 12px;
+            background: #f6f3fa;
+            color: #81778d;
+            text-align: center;
+          }
+
+          .booking-progress .progress-complete {
+            background: #eaf9ef;
+            color: #198754;
+          }
+
+          .booking-progress .progress-current {
+            background: #eee4ff;
+            color: #6f42c1;
+          }
+
+          .booking-kicker {
+            margin: 0 0 10px;
+            color: #6f42c1;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+          }
+
+          h1 {
+            margin: 0;
+            color: #241438;
+            font-size: clamp(38px, 6vw, 58px);
+            line-height: 1.02;
+            letter-spacing: -0.045em;
+          }
+
+          h1 strong {
+            color: #7c3aed;
+          }
+
+          .booking-description {
+            max-width: 620px;
+            margin: 18px 0 0;
+            color: #6f6478;
+            font-size: 16px;
+            line-height: 1.7;
+          }
+
+          .child-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 26px;
+          }
+
+          .child-summary div {
+            padding: 15px;
+            border: 1px solid rgba(111, 66, 193, 0.1);
+            border-radius: 17px;
+            background: #faf8ff;
+          }
+
+          .child-summary span,
+          .selected-subject span {
+            display: block;
+            margin-bottom: 5px;
+            color: #8a8093;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+
+          .child-summary strong,
+          .selected-subject strong {
+            color: #241438;
+            font-size: 14px;
+          }
+
+          .subject-selector-card {
+            margin-top: 26px;
+            padding: 24px;
+            border: 1px solid rgba(111, 66, 193, 0.14);
+            border-radius: 24px;
+            background: linear-gradient(135deg, #faf7ff, #ffffff);
+          }
+
+          .subject-selector-card label {
+            display: block;
+            margin-bottom: 10px;
+            color: #241438;
+            font-size: 15px;
+            font-weight: 900;
+          }
+
+          .subject-selector-card select {
+            width: 100%;
+            min-height: 58px;
+            padding: 0 16px;
+            border: 2px solid rgba(111, 66, 193, 0.18);
+            border-radius: 15px;
+            outline: none;
+            background: #ffffff;
+            color: #241438;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+          }
+
+          .subject-selector-card select:focus {
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+          }
+
+          .selected-subject {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 14px;
+          }
+
+          .selected-subject div {
+            padding: 14px;
+            border-radius: 15px;
+            background: #ffffff;
+            border: 1px solid rgba(111, 66, 193, 0.1);
+          }
+
+          .continue-button {
+            width: 100%;
+            min-height: 56px;
+            margin-top: 18px;
+            border: 0;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #7c3aed, #6f42c1);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            transition:
+              transform 0.18s ease,
+              opacity 0.18s ease;
+          }
+
+          .continue-button:not(:disabled):hover {
+            transform: translateY(-1px);
+          }
+
+          .continue-button:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+          }
+
+          .explore-options {
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 1px solid rgba(111, 66, 193, 0.1);
+            text-align: center;
+          }
+
+          .explore-options p {
+            margin: 0 0 10px;
+            color: #766c80;
+            font-size: 13px;
+          }
+
+          .explore-options div {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+          }
+
+          .explore-options :global(a) {
+            color: #6f42c1;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+          }
+
+          .explore-options :global(a:hover) {
+            text-decoration: underline;
+          }
+
+          @media (max-width: 650px) {
+            .booking-subject-page {
+              padding: 20px 14px 50px;
+            }
+
+            .booking-subject-card {
+              padding: 25px 18px;
+              border-radius: 25px;
+            }
+
+            .booking-progress {
+              grid-template-columns: repeat(5, minmax(0, 1fr));
+              gap: 4px;
+              margin-bottom: 28px;
+            }
+
+            .booking-progress span {
+              padding: 8px 3px;
+              font-size: 9px;
+            }
+
+            .child-summary {
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 6px;
+            }
+
+            .child-summary div {
+              padding: 11px 8px;
+            }
+
+            .selected-subject {
+              grid-template-columns: 1fr;
+            }
+
+            .subject-selector-card {
+              padding: 18px;
+            }
+          }
+        `}</style>
+      </main>
+    );
+  }
 
   return (
     <main className="page-wrap">
