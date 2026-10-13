@@ -1,10 +1,8 @@
-'use client'
-
+﻿'use client'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FormEvent, Suspense, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-
 const countryOptions = [
   {
     name: 'United Kingdom',
@@ -35,9 +33,7 @@ const countryOptions = [
     timezone: 'Europe/London',
   },
 ]
-
 const languages = ['Yoruba', 'Igbo', 'Hausa']
-
 const goals = [
   'Speak confidently',
   'Reconnect with family',
@@ -46,7 +42,6 @@ const goals = [
   'Prepare for travel',
   'Start from the beginning',
 ]
-
 export default function AdultLearnerSignupPage() {
   return (
     <Suspense fallback={<SignupLoading />}>
@@ -54,19 +49,17 @@ export default function AdultLearnerSignupPage() {
     </Suspense>
   )
 }
-
 function AdultLearnerSignupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-
   const nextPath = safeNextPath(searchParams.get('next'))
-  
+  const isFinancialLiteracy =
+  nextPath === '/academies/financial-literacy/start' ||
+  nextPath.startsWith('/academies/financial-literacy/start?')
   const loginHref =
     `/login?next=${encodeURIComponent(nextPath)}`
-
   const parentHref =
     `/signup/parent?next=${encodeURIComponent(nextPath)}`
-
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -76,68 +69,54 @@ function AdultLearnerSignupContent() {
   const [languageInterest, setLanguageInterest] = useState('')
   const [learningGoal, setLearningGoal] = useState('')
   const [takingLessonsForSelf, setTakingLessonsForSelf] = useState(true)
-
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
-
   function handleCountryChange(value: string) {
     setCountry(value)
-
     const selectedCountry = countryOptions.find(
       (item) => item.name === value
     )
-
     if (selectedCountry) {
       setTimezone(selectedCountry.timezone)
     }
   }
-
   async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
     if (!takingLessonsForSelf) {
       router.push(parentHref)
       return
     }
-
     if (!fullName.trim()) {
       setMessageType('error')
       setMessage('Please enter your full name.')
       return
     }
-
-    if (!languageInterest) {
+    if (!isFinancialLiteracy && !languageInterest) {
       setMessageType('error')
       setMessage('Please select the language you would like to learn.')
       return
     }
-
-    if (!learningGoal) {
+    if (!isFinancialLiteracy && !learningGoal) {
       setMessageType('error')
       setMessage('Please select your main learning goal.')
       return
     }
-
     if (password.length < 6) {
       setMessageType('error')
       setMessage('Your password must contain at least 6 characters.')
       return
     }
-
     setLoading(true)
     setMessage('')
     setMessageType('')
-
     try {
       const cleanEmail = email.trim().toLowerCase()
       const cleanName = fullName.trim()
-
       const siteUrl =
         process.env.NEXT_PUBLIC_SITE_URL ||
         process.env.NEXT_PUBLIC_APP_URL ||
         window.location.origin
-
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
@@ -156,11 +135,9 @@ function AdultLearnerSignupContent() {
           },
         },
       })
-
       if (error) {
         throw error
       }
-
       /*
        * When email confirmation is disabled Supabase gives us
        * a live session immediately. Complete the canonical
@@ -183,7 +160,6 @@ function AdultLearnerSignupContent() {
             timezone,
             is_active: true,
           })
-
         const {
           data: parentProfile,
           error: parentProfileError,
@@ -202,7 +178,6 @@ function AdultLearnerSignupContent() {
           )
           .select('id')
           .single()
-
         if (userProfileError || parentProfileError || !parentProfile) {
           throw new Error(
             userProfileError?.message ||
@@ -210,7 +185,6 @@ function AdultLearnerSignupContent() {
               'Your account was created, but the Adult Learner profile could not be completed.',
           )
         }
-
         const {
           data: existingSelfLearner,
           error: selfLearnerLookupError,
@@ -220,14 +194,11 @@ function AdultLearnerSignupContent() {
           .eq('parent_id', parentProfile.id)
           .eq('is_self_learner', true)
           .maybeSingle()
-
         if (selfLearnerLookupError) {
           throw selfLearnerLookupError
         }
-
         let selfLearnerId =
           existingSelfLearner?.id ?? null
-
         if (!selfLearnerId) {
           const {
             data: createdSelfLearner,
@@ -243,42 +214,37 @@ function AdultLearnerSignupContent() {
             })
             .select('id')
             .single()
-
           if (selfLearnerError || !createdSelfLearner) {
             throw new Error(
               selfLearnerError?.message ||
                 'Your account was created, but your learner profile could not be completed.',
             )
           }
-
           selfLearnerId = createdSelfLearner.id
         }
-
         const destination =
           addStudentIdToNextPath(
             nextPath,
             selfLearnerId,
           )
-
         setMessageType('success')
         setMessage(
-          'Your Individual Learner account has been created. Redirecting you to continue...'
+          isFinancialLiteracy
+              ? 'Your account has been created. Redirecting you to Financial Literacy...'
+              : 'Your Individual Learner account has been created. Redirecting you to continue...'
         )
-
         window.setTimeout(() => {
           router.replace(destination)
           router.refresh()
         }, 700)
-
         return
       }
-
-
       setMessageType('success')
       setMessage(
-        'Your Individual Learner account has been created. Please check your email and confirm your account. After confirmation, log in and you will return to the plan you selected.'
+        isFinancialLiteracy
+          ? 'Your account has been created. Please confirm your email, then log in to continue to Financial Literacy.'
+          : 'Your Individual Learner account has been created. Please check your email and confirm your account. After confirmation, log in and you will return to the plan you selected.'
       )
-
       setFullName('')
       setEmail('')
       setPhone('')
@@ -290,55 +256,48 @@ function AdultLearnerSignupContent() {
         error instanceof Error
           ? error.message
           : 'We could not create your account. Please try again.'
-
       setMessageType('error')
       setMessage(errorMessage)
     } finally {
       setLoading(false)
     }
   }
-
   return (
     <main className="learner-page">
       <section className="learner-shell">
         <div className="learner-heading">
-          <Link href="/signup" className="back-link">
+          <Link href={isFinancialLiteracy ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"} className="back-link">
             ← Back to account options
           </Link>
-
           <div className="learner-badge">
             <span />
-            Adult Learner
+            {isFinancialLiteracy ? 'Financial Literacy Academy' : 'Adult Learner'}
           </div>
-
-          <h1>Start learning for yourself.</h1>
-
+          <h1>{isFinancialLiteracy ? 'Start your financial literacy journey.' : 'Start learning for yourself.'}</h1>
 <p>
-  Create an account to book private Yoruba, Igbo or Hausa
-  lessons and manage your own learning journey.
+  {isFinancialLiteracy
+    ? 'Create your account to access self-paced Financial Literacy lessons and track your progress.'
+    : 'Create an account to book private Yoruba, Igbo or Hausa lessons and manage your own learning journey.'}
 </p>
         </div>
-
         <div className="learner-layout">
           <form className="signup-card" onSubmit={handleSignup}>
             <div className="account-notice">
               <strong>You are creating an Adult Learner account</strong>
               <span>
-                This account is for one adult learner aged 18 or over. It cannot
-                be used to add children; choose the Family plan for that.
+                {isFinancialLiteracy
+                  ? 'For adults aged 18 or over. To enrol a child or teenager, create a Parent or Guardian account.'
+                  : 'This account is for one adult learner aged 18 or over. It cannot be used to add children; choose the Family plan for that.'}
               </span>
             </div>
-
             <div className="form-section">
               <div className="section-heading">
                 <span>01</span>
-
                 <div>
                   <h2>Your details</h2>
                   <p>.</p>
                 </div>
               </div>
-
               <label>
                 Full name
                 <input
@@ -350,7 +309,6 @@ function AdultLearnerSignupContent() {
                   required
                 />
               </label>
-
               <div className="two-column">
                 <label>
                   Email address
@@ -363,7 +321,6 @@ function AdultLearnerSignupContent() {
                     required
                   />
                 </label>
-
                 <label>
                   Phone number
                   <input
@@ -375,7 +332,6 @@ function AdultLearnerSignupContent() {
                   />
                 </label>
               </div>
-
               <label>
                 Password
                 <input
@@ -390,19 +346,15 @@ function AdultLearnerSignupContent() {
                 <small>Use at least 6 characters.</small>
               </label>
             </div>
-
             <div className="form-section">
               <div className="section-heading">
                 <span>02</span>
-
                 <div>
                   <h2>Your location</h2>
                   <p>
-                  
                   </p>
                 </div>
               </div>
-
               <div className="two-column">
                 <label>
                   Country
@@ -419,7 +371,6 @@ function AdultLearnerSignupContent() {
                     ))}
                   </select>
                 </label>
-
                 <label>
                   Time zone
                   <input
@@ -432,19 +383,16 @@ function AdultLearnerSignupContent() {
                 </label>
               </div>
             </div>
-            
+            {!isFinancialLiteracy && (
             <div className="form-section">
               <div className="section-heading">
                 <span>03</span>
-
                 <div>
                   <h2>Your learning goal</h2>
                   <p>
-                  
                   </p>
                 </div>
               </div>
-
               <label>
                 Language
                 <select
@@ -455,7 +403,6 @@ function AdultLearnerSignupContent() {
                   required
                 >
                   <option value="">Choose a language</option>
-
                   {languages.map((language) => (
                     <option key={language} value={language}>
                       {language}
@@ -463,7 +410,6 @@ function AdultLearnerSignupContent() {
                   ))}
                 </select>
               </label>
-
               <label>
                 Main learning goal
                 <select
@@ -472,7 +418,6 @@ function AdultLearnerSignupContent() {
                   required
                 >
                   <option value="">Choose your main goal</option>
-
                   {goals.map((goal) => (
                     <option key={goal} value={goal}>
                       {goal}
@@ -481,10 +426,10 @@ function AdultLearnerSignupContent() {
                 </select>
               </label>
             </div>            
-            
-            <div className="identity-check">
+            )}
+          {!isFinancialLiteracy && (
+          <div className="identity-check">
               <strong>Who will take the lessons?</strong>
-
               <button
                 type="button"
                 className={takingLessonsForSelf ? 'choice selected' : 'choice'}
@@ -498,7 +443,6 @@ function AdultLearnerSignupContent() {
                   </small>
                 </span>
               </button>
-
               <button
                 type="button"
                 className={!takingLessonsForSelf ? 'choice selected' : 'choice'}
@@ -513,8 +457,8 @@ function AdultLearnerSignupContent() {
                 </span>
               </button>
             </div>          
-
-            {message ? (
+            )}
+          {message ? (
               <div
                 className={
                   messageType === 'success'
@@ -528,11 +472,9 @@ function AdultLearnerSignupContent() {
                     ? 'Account update'
                     : 'Please check the form'}
                 </strong>
-
                 <span>{message}</span>
               </div>
             ) : null}
-
             <button
               type="submit"
               className="submit-button"
@@ -540,33 +482,52 @@ function AdultLearnerSignupContent() {
             >
               {loading
   ? 'Creating your account...'
-  : takingLessonsForSelf
+  : isFinancialLiteracy
+    ? 'Create Account & Start Learning'
+    : takingLessonsForSelf
     ? 'Create Adult Learner Account'
     : 'Continue to Parent Signup'}
             </button>
-
             <p className="login-copy">
               Already have an account?{' '}
               <Link href={loginHref}>Log in</Link>
             </p>
           </form>
-
           <aside className="benefit-card">
-            <div className="benefit-icon">🎓</div>
+            {isFinancialLiteracy ? (
+              <>
+                <div className="benefit-icon">🎓</div>
+                <p className="benefit-eyebrow">Financial Literacy Academy</p>
+                <h2>Learn money skills at your own pace.</h2>
+                <p className="benefit-description">
+                  Explore practical financial concepts through structured, self-paced lessons.
+                </p>
+                <div className="benefit-list">
+                  <div><span>✓</span><p><strong>Self-paced lessons</strong><small>Study when it suits you.</small></p></div>
+                  <div><span>✓</span><p><strong>Track your progress</strong><small>Continue through your learning pathway.</small></p></div>
+                  <div><span>✓</span><p><strong>Certificate on completion</strong><small>Recognise your completed learning.</small></p></div>
+                  <div><span>✓</span><p><strong>One-time academy purchase</strong><small>Payment is handled separately after registration.</small></p></div>
+                </div>
+                <div className="parent-switch">
+                  <strong>Enrolling a child or teenager?</strong>
+                  <span>Use a Parent or Guardian account to manage their learning.</span>
+                  <Link href={parentHref}>Continue as Parent →</Link>
+                </div>
+              </>
+            ) : (
+              <>
 
+            <div className="benefit-icon">🎓</div>
             <p className="benefit-eyebrow">
   Learn for yourself
 </p>
-
 <h2>
   Your language journey, your schedule.
 </h2>
-
 <p className="benefit-description">
   Learn with a private tutor who can adapt each lesson to
   your current level, goals and preferred pace.
 </p>
-
             <div className="benefit-list">
               <div>
                 <span>✓</span>
@@ -575,7 +536,6 @@ function AdultLearnerSignupContent() {
                   <small>Focused teaching with no group classes.</small>
                 </p>
               </div>
-
               <div>
                 <span>✓</span>
                 <p>
@@ -583,7 +543,6 @@ function AdultLearnerSignupContent() {
                   <small>More African languages are coming soon.</small>
                 </p>
               </div>
-
               <div>
                 <span>✓</span>
                 <p>
@@ -591,7 +550,6 @@ function AdultLearnerSignupContent() {
                   <small>Choose lesson times that suit your routine.</small>
                 </p>
               </div>
-
               <div>
                 <span>✓</span>
                 <p>
@@ -602,22 +560,21 @@ function AdultLearnerSignupContent() {
                 </p>
               </div>
             </div>
-
             <div className="parent-switch">
               <strong>Booking for a child instead?</strong>
               <span>
                 Create a Parent or Guardian account to add and manage a
                 child&apos;s lessons.
               </span>
-
               <Link href={parentHref}>
                 Continue as Parent →
               </Link>
             </div>
+              </>
+            )}
           </aside>
         </div>
       </section>
-
       <style jsx global>{`
         .learner-page {
           min-height: 100vh;
@@ -636,17 +593,14 @@ function AdultLearnerSignupContent() {
             ),
             linear-gradient(180deg, #fffaff 0%, #f7f1ff 100%);
         }
-
         .learner-shell {
           width: min(1160px, 100%);
           margin: 0 auto;
         }
-
         .learner-heading {
           max-width: 800px;
           margin-bottom: 30px;
         }
-
         .back-link {
           display: inline-flex;
           margin-bottom: 22px;
@@ -654,7 +608,6 @@ function AdultLearnerSignupContent() {
           text-decoration: none;
           font-weight: 900;
         }
-
         .learner-badge {
           width: fit-content;
           display: flex;
@@ -667,7 +620,6 @@ function AdultLearnerSignupContent() {
           font-size: 13px;
           font-weight: 950;
         }
-
         .learner-badge span {
           width: 9px;
           height: 9px;
@@ -675,7 +627,6 @@ function AdultLearnerSignupContent() {
           background: #7c3aed;
           box-shadow: 0 0 0 5px rgba(124, 58, 237, 0.14);
         }
-
         .learner-heading h1 {
           margin: 18px 0 0;
           font-size: clamp(42px, 6vw, 68px);
@@ -683,7 +634,6 @@ function AdultLearnerSignupContent() {
           letter-spacing: -0.06em;
           font-weight: 950;
         }
-
         .learner-heading > p {
           max-width: 680px;
           margin: 18px 0 0;
@@ -691,26 +641,22 @@ function AdultLearnerSignupContent() {
           font-size: 17px;
           line-height: 1.7;
         }
-
         .learner-layout {
           display: grid;
           grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
           gap: 24px;
           align-items: start;
         }
-
         .signup-card,
         .benefit-card {
           border: 1px solid rgba(124, 58, 237, 0.12);
           background: rgba(255, 255, 255, 0.95);
           box-shadow: 0 28px 80px rgba(55, 35, 95, 0.1);
         }
-
         .signup-card {
           padding: 30px;
           border-radius: 34px;
         }
-
         .benefit-card {
           position: sticky;
           top: 96px;
@@ -724,42 +670,35 @@ function AdultLearnerSignupContent() {
             ),
             rgba(255, 255, 255, 0.95);
         }
-
         .account-notice {
           padding: 18px;
           border-radius: 22px;
           background: #f6f0ff;
           border: 1px solid #e5d8ff;
         }
-
         .account-notice strong,
         .account-notice span {
           display: block;
         }
-
         .account-notice strong {
           font-size: 16px;
           font-weight: 950;
         }
-
         .account-notice span {
           margin-top: 5px;
           color: #6d647c;
           line-height: 1.55;
         }
-
         .form-section {
           padding: 28px 0;
           border-bottom: 1px solid #eee6f8;
         }
-
         .section-heading {
           display: flex;
           align-items: flex-start;
           gap: 13px;
           margin-bottom: 20px;
         }
-
         .section-heading > span {
           width: 40px;
           height: 40px;
@@ -773,19 +712,16 @@ function AdultLearnerSignupContent() {
           font-size: 12px;
           font-weight: 950;
         }
-
         .section-heading h2 {
           margin: 0;
           font-size: 22px;
           letter-spacing: -0.035em;
         }
-
         .section-heading p {
           margin: 5px 0 0;
           color: #766b83;
           line-height: 1.55;
         }
-
         .signup-card label {
           display: block;
           margin-top: 16px;
@@ -793,7 +729,6 @@ function AdultLearnerSignupContent() {
           font-size: 14px;
           font-weight: 900;
         }
-
         .signup-card input,
         .signup-card select {
           width: 100%;
@@ -808,26 +743,22 @@ function AdultLearnerSignupContent() {
           font-weight: 700;
           outline: none;
         }
-
         .signup-card input:focus,
         .signup-card select:focus {
           border-color: #7c3aed;
           box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
         }
-
         .signup-card label small {
           display: block;
           margin-top: 7px;
           color: #887d94;
           font-weight: 650;
         }
-
         .two-column {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 14px;
         }
-
         .identity-check {
           margin-top: 26px;
           padding: 22px;
@@ -835,13 +766,11 @@ function AdultLearnerSignupContent() {
           background: #fbf8ff;
           border: 1px solid #e8def5;
         }
-
         .identity-check > strong {
           display: block;
           margin-bottom: 14px;
           font-size: 17px;
         }
-
         .choice {
           width: 100%;
           display: flex;
@@ -855,13 +784,11 @@ function AdultLearnerSignupContent() {
           background: #fff;
           cursor: pointer;
         }
-
         .choice.selected {
           border-color: #7c3aed;
           background: #f7f1ff;
           box-shadow: 0 10px 28px rgba(124, 58, 237, 0.1);
         }
-
         .radio-dot {
           width: 19px;
           height: 19px;
@@ -871,55 +798,45 @@ function AdultLearnerSignupContent() {
           border: 2px solid #b7aac7;
           background: #ffffff;
         }
-
         .choice.selected .radio-dot {
           border: 5px solid #7c3aed;
         }
-
         .choice b,
         .choice small {
           display: block;
         }
-
         .choice b {
           color: #2b183e;
           font-size: 14px;
         }
-
         .choice small {
           margin-top: 4px;
           color: #74687f;
           line-height: 1.45;
         }
-
         .message {
           margin-top: 20px;
           padding: 16px;
           border-radius: 18px;
         }
-
         .message strong,
         .message span {
           display: block;
         }
-
         .message span {
           margin-top: 5px;
           line-height: 1.55;
         }
-
         .message.success {
           color: #166534;
           background: #ecfdf3;
           border: 1px solid #bbf7d0;
         }
-
         .message.error {
           color: #9f1239;
           background: #fff1f2;
           border: 1px solid #fecdd3;
         }
-
         .submit-button {
           width: 100%;
           min-height: 58px;
@@ -934,24 +851,20 @@ function AdultLearnerSignupContent() {
           font-weight: 950;
           cursor: pointer;
         }
-
         .submit-button:disabled {
           cursor: not-allowed;
           opacity: 0.7;
         }
-
         .login-copy {
           margin: 18px 0 0;
           text-align: center;
           color: #766b83;
           font-weight: 750;
         }
-
         .login-copy a {
           color: #6d28d9;
           font-weight: 950;
         }
-
         .benefit-icon {
           width: 60px;
           height: 60px;
@@ -962,39 +875,33 @@ function AdultLearnerSignupContent() {
           background: #f0e7ff;
           font-size: 30px;
         }
-
         .benefit-eyebrow {
           margin: 20px 0 0;
           color: #6d28d9;
           font-size: 13px;
           font-weight: 950;
         }
-
         .benefit-card h2 {
           margin: 8px 0 0;
           font-size: 36px;
           line-height: 1.03;
           letter-spacing: -0.05em;
         }
-
         .benefit-description {
           margin: 16px 0 0;
           color: #6d647c;
           line-height: 1.7;
         }
-
         .benefit-list {
           display: grid;
           gap: 15px;
           margin-top: 24px;
         }
-
         .benefit-list > div {
           display: flex;
           align-items: flex-start;
           gap: 11px;
         }
-
         .benefit-list > div > span {
           width: 25px;
           height: 25px;
@@ -1008,26 +915,21 @@ function AdultLearnerSignupContent() {
           font-size: 12px;
           font-weight: 950;
         }
-
         .benefit-list p {
           margin: 0;
         }
-
         .benefit-list strong,
         .benefit-list small {
           display: block;
         }
-
         .benefit-list strong {
           font-size: 14px;
         }
-
         .benefit-list small {
           margin-top: 4px;
           color: #756980;
           line-height: 1.45;
         }
-
         .parent-switch {
           margin-top: 28px;
           padding: 18px;
@@ -1035,50 +937,41 @@ function AdultLearnerSignupContent() {
           background: #ffffff;
           border: 1px solid #e5d8ff;
         }
-
         .parent-switch strong,
         .parent-switch span,
         .parent-switch a {
           display: block;
         }
-
         .parent-switch span {
           margin-top: 6px;
           color: #756980;
           line-height: 1.55;
         }
-
         .parent-switch a {
           margin-top: 13px;
           color: #6d28d9;
           text-decoration: none;
           font-weight: 950;
         }
-
         @media (max-width: 900px) {
           .learner-page {
   padding: 64px 16px 80px;
 }
-
           .learner-layout {
             grid-template-columns: 1fr;
           }
-
           .benefit-card {
             position: static;
           }
-
           .signup-card,
           .benefit-card {
             padding: 22px;
             border-radius: 28px;
           }
-
           .two-column {
             grid-template-columns: 1fr;
             gap: 0;
           }
-
           .learner-heading h1 {
             font-size: clamp(40px, 12vw, 54px);
           }
@@ -1087,7 +980,6 @@ function AdultLearnerSignupContent() {
     </main>
   )
 }
-
 function safeNextPath(value: string | null) {
   if (
     !value ||
@@ -1096,13 +988,18 @@ function safeNextPath(value: string | null) {
   ) {
     return '/learner/dashboard'
   }
-
+    // Allow the Financial Literacy signup journey.
+  if (
+    value === '/academies/financial-literacy/start' ||
+    value.startsWith('/academies/financial-literacy/start?')
+  ) {
+    return value
+  }
   const blockedDestinations = [
     '/academies',
     '/financial-education',
     '/classroom/academy',
   ]
-
   if (
     blockedDestinations.some(
       (path) =>
@@ -1114,29 +1011,22 @@ function safeNextPath(value: string | null) {
   ) {
     return '/learner/dashboard'
   }
-
   return value
 }
-
 function addStudentIdToNextPath(
   nextPath: string,
   studentId: string,
 ) {
   const [pathname, rawQuery = ''] =
     nextPath.split('?')
-
   const params =
     new URLSearchParams(rawQuery)
-
   params.set('studentId', studentId)
-
   const query = params.toString()
-
   return query
     ? `${pathname}?${query}`
     : pathname
 }
-
 function SignupLoading() {
   return (
     <main

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import FinancialEducationAyoFlow from "@/app/financial-education/FinancialEducationAyoFlow";
 import FinancialEducationFlowProgress from "@/app/financial-education/FinancialEducationFlowProgress";
 
@@ -17,274 +18,914 @@ export default function FinancialLiteracyExperience() {
         <FinancialEducationFlowProgress
           steps={[
             { label: "Welcome", state: "done" },
-            { label: "Choose", state: "current" },
+            { label: "Free Lesson", state: "current" },
             { label: "Learn", state: "upcoming" },
             { label: "Graduate", state: "upcoming" },
           ]}
-          nextLabel="Financial Literacy classroom"
+          nextLabel="Begin your free Financial Literacy lesson"
         />
 
         <div className="journeyBrand">
           <span>FOUNTAIN PREP</span>
           <i />
-          <strong>FINANCIAL LITERACY</strong>
+          <strong>FINANCIAL LITERACY ACADEMY</strong>
         </div>
 
         <header className="journeyIntro ayoLiteracyIntro">
           <span>YOUR FINANCIAL LITERACY JOURNEY</span>
+
           <h1>
-            Learn the rules.
-            <em> Understand how value is built.</em>
+            Your first lesson
+            <em> starts here.</em>
           </h1>
+
           <p>
-            Continue into the guided Financial Literacy classroom, or first
-            explore the real decisions behind extraordinary wealth creation.
-            Whichever route you choose, Ayo will guide the next step.
+            Begin with a guided Financial Literacy lesson designed to help you
+            understand how money, value and financial decisions work before
+            progressing into assets, investing, business and capital.
           </p>
         </header>
 
-        <div className="pathGrid">
-          <Link href={startHref} className="pathCard primaryPath ayoLiteracyClassroom">
-            <div className="cardGlow" />
+        <section className="academyEntry ayoLiteracyClassroom">
+          <div className="entryGlow" aria-hidden="true" />
 
-            <div className="pathTop">
-              <span className="purpleBadge">
+          <div className="entryMain">
+            <div className="entryTop">
+              <span className="startBadge">
                 <i />
-                RECOMMENDED NEXT
+                START HERE
               </span>
-              <b>01</b>
+
+              <span className="lessonNumber">LESSON 01</span>
             </div>
 
-            <div className="pathHero">
-              <div className="pathIcon classroomIcon" aria-hidden="true">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" stroke="currentColor" strokeWidth="1.8"/>
-                  <path d="M9 7h6M9 11h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <div className="lessonHero">
+              <div className="lessonIcon" aria-hidden="true">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path
+                    d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M9 7h6M9 11h5"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
+
               <div>
-                <small>GUIDED CLASSROOM WITH AYO</small>
-                <h2>Start Financial Literacy</h2>
+                <small>FOUNDATION EXPERIENCE</small>
+                <h2>Money Is a Game — Know the Rules</h2>
               </div>
             </div>
 
-            <p className="pathDescription">
-              Enter the structured learning experience and build your financial
-              understanding step by step. Your first Foundation lesson is open.
+            <p className="lessonDescription">
+              Your Financial Literacy journey begins with the rules behind
+              money and value. Ayo will guide you step by step through the
+              lesson and introduce the foundation for everything that follows.
             </p>
 
-            <div className="pathFeature">
-              <span>FIRST EXPERIENCE</span>
-              <strong>Money Is a Game — Know the Rules</strong>
-              <small>Start immediately · No payment details required</small>
-            </div>
-
-            <div className="pathFacts">
-              <span>Guided by Ayo</span>
-              <span>First lesson free</span>
-              <span>Progress saved</span>
-            </div>
-
-            <div className="pathAction purpleAction">
-              <span>
-                <small>YOUR RECOMMENDED NEXT STEP</small>
-                <strong>START FINANCIAL LITERACY</strong>
-              </span>
-              <b>→</b>
-            </div>
-          </Link>
-
-          <Link href="/academies/biography" className="pathCard biographyPath ayoLiteracyBiography">
-            <div className="cardGlow" />
-
-            <div className="pathTop">
-              <span className="goldBadge">
-                <i />
-                OPTIONAL FIRST
-              </span>
-              <b>02</b>
-            </div>
-
-            <div className="pathHero">
-              <div className="pathIcon biographyIcon" aria-hidden="true">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 3 20 7.5 12 12 4 7.5 12 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-                  <path d="M6.5 10.5V16c0 1.4 2.5 3 5.5 3s5.5-1.6 5.5-3v-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
+            <div className="lessonJourney">
+              <div className="journeyStep currentStep">
+                <span>01</span>
+                <div>
+                  <strong>Start free</strong>
+                  <small>Take your first lesson at no cost.</small>
+                </div>
               </div>
-              <div>
-                <small>REAL WEALTH-BUILDING JOURNEYS</small>
-                <h2>Biography of Greatness</h2>
+
+              <div className="journeyLine" />
+
+              <div className="journeyStep">
+                <span>02</span>
+                <div>
+                  <strong>Unlock academy</strong>
+                  <small>Continue when you are ready.</small>
+                </div>
+              </div>
+
+              <div className="journeyLine" />
+
+              <div className="journeyStep">
+                <span>03</span>
+                <div>
+                  <strong>Complete training</strong>
+                  <small>Progress through the curriculum.</small>
+                </div>
+              </div>
+
+              <div className="journeyLine" />
+
+              <div className="journeyStep">
+                <span>04</span>
+                <div>
+                  <strong>Graduate</strong>
+                  <small>Complete the academy and earn your certificate.</small>
+                </div>
               </div>
             </div>
 
-            <p className="pathDescription">
-              Study how remarkable wealth creators began, built ownership,
-              navigated pivotal decisions and allocated capital over time.
+            <div className="entryBottom">
+              <div className="lessonFacts">
+                <span>✓ First lesson free</span>
+                <span>✓ No card required</span>
+                <span>✓ Guided by Ayo</span>
+                <span>✓ Progress saved</span>
+              </div>
+
+              <Link href={startHref} className="literacyStartButton">
+                <span>
+                  <small>BEGIN YOUR ACADEMY</small>
+                  <strong>Start Free Lesson</strong>
+                </span>
+
+                <b aria-hidden="true">→</b>
+              </Link>
+            </div>
+          </div>
+
+          <aside className="academyAside">
+            <span className="asideEyebrow">YOUR LEARNING PATH</span>
+
+            <h3>
+              Start free.
+              <br />
+              Build from there.
+            </h3>
+
+            <p>
+              Your Financial Literacy journey starts here. Complete the free
+              Foundation lesson first, then continue through the academy.
             </p>
 
-            <div className="pathFeature biographyFeature">
-              <span>LEARN FROM THE JOURNEY</span>
-              <strong>Origins → Ownership → Capital → Legacy</strong>
-              <small>Explore the decisions behind extraordinary outcomes</small>
-            </div>
+            <div className="pathList">
+              <div className="pathItem activePath">
+                <span>01</span>
+                <div>
+                  <strong>Experience</strong>
+                  <small>Complete your free Foundation lesson.</small>
+                </div>
+              </div>
 
-            <div className="pathFacts">
-              <span>Real case studies</span>
-              <span>Business ownership</span>
-              <span>Capital decisions</span>
-            </div>
+              <div className="pathItem">
+                <span>02</span>
+                <div>
+                  <strong>Learn</strong>
+                  <small>Unlock the complete Financial Literacy Academy.</small>
+                </div>
+              </div>
 
-            <div className="pathAction goldAction">
-              <span>
-                <small>OPTIONAL EXPERIENCE</small>
-                <strong>EXPLORE BIOGRAPHY FIRST</strong>
-              </span>
-              <b>→</b>
+              <div className="pathItem">
+                <span>03</span>
+                <div>
+                  <strong>Apply</strong>
+                  <small>Use simulations to practise what you learn.</small>
+                </div>
+              </div>
+
+              <div className="pathItem">
+                <span>04</span>
+                <div>
+                  <strong>Graduate</strong>
+                  <small>Complete your journey and earn your certificate.</small>
+                </div>
+              </div>
             </div>
-          </Link>
-        </div>
+          </aside>
+        </section>
 
         <FinancialEducationAyoFlow
-          title="You’re one step away from the classroom."
-          text="I recommend starting Financial Literacy now. Your first Foundation experience is open, and I’ll guide you through it. If you want to explore Biography of Greatness first, you can do that too — I’ll still show you what comes next."
+          title="Your Financial Literacy journey begins here."
+          text="I’ll guide you through your first Foundation lesson before we move into the rest of the academy. Your first lesson is open, so you can begin without entering any payment details."
           tourSteps={[
             {
               selector: ".ayoLiteracyIntro",
-              title: "Welcome inside Financial Literacy.",
-              text: "From here, you can proceed to the financial education classroom or spend some time to study the biography of greatness. we’re going to start building the foundation for understanding investment and wealth building asset classes. I’ll be with you throughout the journey.",
+              title: "Welcome to Financial Literacy.",
+              text: "You’ve chosen Financial Literacy, so from here the journey is simple. We’ll begin with the foundation and build your understanding step by step.",
             },
             {
               selector: ".ayoLiteracyClassroom",
-              title: "Let’s begin with the foundation.",
-              text: "This is the route I recommend. Your first Foundation experience is called Money Is a Game — Know the Rules. We’ll start by looking at some of the basic rules behind money, value and financial decisions before gradually moving into assets, investing and wealth creation. Your first experience is open, with no payment details required. When you enter the classroom, I’ll meet you there and guide the lesson.",
+              title: "Your first lesson is ready.",
+              text: "We’ll begin with Money Is a Game — Know the Rules. I’ll introduce the basic ideas behind money, value and financial decisions before we gradually move into assets, investing, business and capital.",
             },
             {
-              selector: ".ayoLiteracyBiography",
-              title: "Or begin with some inspiration.",
-              text: "If you’d prefer some inspiration before the classroom, you can explore Biography of Greatness first. We’ll examine real wealth-building journeys — not simply how much someone became worth, but what they built, what they owned, the important decisions they made and how they used capital along the way. When you finish, I’ll bring you back to your learning journey.",
-            },
-            {
-              selector: ".ayoLiteracyClassroom",
-              title: "I’m ready when you are.",
-              text: "So, you’re ready. My recommendation is to start Financial Literacy and let’s build from the foundation together. Or, if Biography has caught your attention, explore that first. There’s no wrong door here — whichever one you choose, I’ll show you what comes next.",
+              selector: ".literacyStartButton",
+              title: "Start your free lesson.",
+              text: "Your first lesson is open and no payment details are required. Select Start Free Lesson and I’ll meet you inside the classroom.",
             },
           ]}
         />
       </section>
 
       <style jsx>{`
-        :global(html,body){margin:0;background:#090610;color:#f8f5ff}
-        :global(body){overflow-x:hidden}
-        .journeyPage{
-          position:relative;min-height:calc(100vh - 78px);display:grid;place-items:center;
-          overflow:hidden;padding:42px 20px 64px;
+        :global(html, body) {
+          margin: 0;
+          background: #fbf9ff;
+          color: #241431;
+        }
+
+        :global(body) {
+          overflow-x: hidden;
+        }
+
+        .journeyPage {
+          position: relative;
+          min-height: calc(100vh - 78px);
+          overflow: hidden;
+          padding: 42px 20px 64px;
           background:
-            radial-gradient(circle at 16% 12%,rgba(109,40,217,.17),transparent 31%),
-            radial-gradient(circle at 88% 78%,rgba(184,123,34,.10),transparent 28%),
-            linear-gradient(180deg,#100a18 0%,#090610 58%,#07050b 100%);
-          font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-          box-sizing:border-box;
+            radial-gradient(
+              circle at 12% 12%,
+              rgba(124, 58, 237, 0.1),
+              transparent 30%
+            ),
+            radial-gradient(
+              circle at 91% 72%,
+              rgba(245, 158, 11, 0.045),
+              transparent 28%
+            ),
+            linear-gradient(180deg, #fbf9ff 0%, #ffffff 48%, #faf7ff 100%);
+          font-family:
+            Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+            "Segoe UI", sans-serif;
         }
-        .meshGrid{
-          position:absolute;inset:0;pointer-events:none;opacity:.17;
-          background-image:radial-gradient(rgba(255,255,255,.22) .65px,transparent .65px);
-          background-size:18px 18px;
-          mask-image:linear-gradient(to bottom,black,transparent 90%);
+
+        .meshGrid {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.22;
+          background-image: radial-gradient(
+            rgba(109, 40, 217, 0.13) 0.65px,
+            transparent 0.65px
+          );
+          background-size: 20px 20px;
+          mask-image: linear-gradient(to bottom, black, transparent 88%);
         }
-        .ambientGlow{position:absolute;border-radius:50%;filter:blur(100px);pointer-events:none}
-        .glowOne{width:480px;height:480px;left:-180px;top:10%;background:rgba(109,40,217,.14)}
-        .glowTwo{width:420px;height:420px;right:-170px;bottom:4%;background:rgba(181,125,44,.09)}
-        .journeyShell{
-          position:relative;z-index:2;width:min(1220px,100%);display:grid;gap:29px;padding:38px 44px 42px;
-          border:1px solid rgba(255,255,255,.09);border-radius:34px;
-          background:linear-gradient(155deg,rgba(26,17,38,.95),rgba(14,9,23,.96));
-          box-shadow:0 44px 110px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.055);
-          box-sizing:border-box;animation:premiumEnter .58s cubic-bezier(.22,1,.36,1) both;
+
+        .ambientGlow {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(100px);
+          pointer-events: none;
         }
-        @keyframes premiumEnter{from{opacity:0;transform:translateY(22px) scale(.985)}to{opacity:1;transform:none}}
-        .journeyBrand{display:flex;align-items:center;justify-content:center;gap:9px;color:#c5a8ff;font-size:9px;font-weight:950;letter-spacing:.12em}
-        .journeyBrand i{width:28px;height:1px;background:rgba(255,255,255,.25)}
-        .journeyBrand strong{color:#91859a}
-        .journeyIntro{max-width:930px;margin:0 auto;text-align:center}
-        .journeyIntro>span{color:#a78bfa;font-size:9px;font-weight:950;letter-spacing:.13em}
-        .journeyIntro h1{margin:11px 0 14px;font-size:clamp(46px,5.1vw,72px);line-height:.96;font-weight:900;letter-spacing:-.058em}
-        .journeyIntro h1 em{display:block;color:#c6a4ff;font-family:Georgia,"Times New Roman",serif;font-weight:400;font-style:italic;letter-spacing:-.045em}
-        .journeyIntro p{max-width:760px;margin:auto;color:#aaa0b5;font-size:15px;line-height:1.7}
-        .pathGrid{display:grid;grid-template-columns:1.08fr .92fr;gap:24px}
-        .pathCard{
-          position:relative;overflow:hidden;min-width:0;min-height:460px;display:flex;flex-direction:column;
-          padding:30px;border:1px solid;border-radius:27px;color:#fff;text-decoration:none;box-sizing:border-box;
-          transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+
+        .glowOne {
+          width: 500px;
+          height: 500px;
+          left: -220px;
+          top: 4%;
+          background: rgba(124, 58, 237, 0.09);
         }
-        @media(hover:hover) and (pointer:fine){
-          .pathCard:hover{transform:translateY(-7px)}
-          .primaryPath:hover{border-color:rgba(185,150,255,.52);box-shadow:0 26px 60px rgba(76,29,149,.22)}
-          .biographyPath:hover{border-color:rgba(233,194,119,.48);box-shadow:0 26px 60px rgba(120,75,18,.18)}
+
+        .glowTwo {
+          width: 430px;
+          height: 430px;
+          right: -180px;
+          bottom: 2%;
+          background: rgba(196, 181, 253, 0.14);
         }
-        .primaryPath{
-          border-color:rgba(167,139,250,.27);
-          background:radial-gradient(circle at 10% 3%,rgba(124,58,237,.23),transparent 34%),linear-gradient(145deg,rgba(73,34,119,.27),rgba(255,255,255,.025));
-          box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 20px 48px rgba(76,29,149,.13);
+
+        .journeyShell {
+          position: relative;
+          z-index: 2;
+          width: min(1180px, 100%);
+          margin: 0 auto;
+          display: grid;
+          gap: 27px;
+          padding: 36px 42px 42px;
+          box-sizing: border-box;
+          border: 1px solid #ebe3f5;
+          border-radius: 34px;
+          background: rgba(255, 255, 255, 0.94);
+          box-shadow:
+            0 30px 80px rgba(58, 33, 79, 0.09),
+            inset 0 1px 0 #ffffff;
         }
-        .biographyPath{
-          border-color:rgba(223,184,111,.25);
-          background:radial-gradient(circle at 10% 3%,rgba(194,132,39,.18),transparent 34%),linear-gradient(145deg,rgba(112,69,18,.22),rgba(255,255,255,.025));
-          box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 20px 48px rgba(101,64,20,.11);
+
+        .journeyBrand {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          color: #7c3aed;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 0.12em;
         }
-        .cardGlow{position:absolute;width:220px;height:220px;right:-70px;top:-80px;border-radius:50%;background:rgba(255,255,255,.035);filter:blur(2px);pointer-events:none}
-        .pathTop{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .pathTop>span{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.09em}
-        .pathTop>span i{width:6px;height:6px;border-radius:50%}
-        .purpleBadge{color:#d5c1ff;border-color:rgba(167,139,250,.28)!important;background:rgba(124,58,237,.13)}
-        .purpleBadge i{background:#a78bfa;box-shadow:0 0 0 5px rgba(167,139,250,.08)}
-        .goldBadge{color:#f3d79f;border-color:rgba(223,184,111,.26)!important;background:rgba(181,116,28,.12)}
-        .goldBadge i{background:#e2b45d;box-shadow:0 0 0 5px rgba(226,180,93,.08)}
-        .pathTop>b{color:#766d7d;font-size:11px;letter-spacing:.14em}
-        .pathHero{position:relative;display:grid;grid-template-columns:72px minmax(0,1fr);gap:18px;align-items:center;margin-top:25px;padding:18px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:rgba(255,255,255,.035)}
-        .pathIcon{width:72px;height:72px;display:grid;place-items:center;border-radius:20px;color:#fff}
-        .classroomIcon{background:linear-gradient(145deg,#7c3aed,#4c1d95);box-shadow:0 14px 30px rgba(109,40,217,.28)}
-        .biographyIcon{background:linear-gradient(145deg,#b7791f,#704516);box-shadow:0 14px 30px rgba(151,91,16,.24)}
-        .pathHero small{color:#a78bfa;font-size:8px;font-weight:950;letter-spacing:.11em}
-        .biographyPath .pathHero small{color:#e1bc78}
-        .pathHero h2{margin:6px 0 0;font-size:clamp(25px,2.2vw,32px);line-height:1.04;letter-spacing:-.04em}
-        .pathDescription{margin:20px 2px 0;color:#b6acbd;font-size:14px;line-height:1.65}
-        .pathFeature{display:grid;gap:4px;margin-top:19px;padding:15px 16px;border:1px solid rgba(167,139,250,.16);border-radius:15px;background:rgba(124,58,237,.07)}
-        .pathFeature span{color:#a78bfa;font-size:7px;font-weight:950;letter-spacing:.11em}
-        .pathFeature strong{font-size:12px}
-        .pathFeature small{color:#8f8497;font-size:9px}
-        .biographyFeature{border-color:rgba(223,184,111,.14);background:rgba(181,116,28,.055)}
-        .biographyFeature span{color:#dfb66d}
-        .pathFacts{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}
-        .pathFacts span{padding:6px 9px;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#b9afc0;background:rgba(255,255,255,.035);font-size:8px;font-weight:800}
-        .pathAction{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:auto;padding:0 18px;border-radius:15px;color:#fff;box-shadow:0 13px 28px rgba(0,0,0,.2)}
-        .purpleAction{background:linear-gradient(135deg,#7c3aed,#5b21b6)}
-        .goldAction{background:linear-gradient(135deg,#b7650d,#874407)}
-        .pathAction>span{display:grid;gap:2px}.pathAction small{font-size:7px;font-weight:850;letter-spacing:.08em;opacity:.72}.pathAction strong{font-size:11px;letter-spacing:.035em}.pathAction>b{font-size:22px}
-        @media(max-width:840px){
-          .journeyPage{place-items:start center;padding:20px 10px 44px}
-          .journeyShell{padding:20px;gap:22px;border-radius:25px}
-          .journeyIntro h1{font-size:44px}
-          .journeyIntro p{font-size:13px}
-          .pathGrid{grid-template-columns:1fr;gap:17px}
-          .pathCard{min-height:420px;padding:23px}
+
+        .journeyBrand i {
+          width: 28px;
+          height: 1px;
+          background: #d8ccef;
         }
-        @media(max-width:520px){
-          .journeyShell{padding:14px;border-radius:21px}
-          .journeyBrand{font-size:8px}
-          .journeyIntro h1{font-size:37px}
-          .journeyIntro p{font-size:12px}
-          .pathCard{min-height:390px;padding:18px;border-radius:21px}
-          .pathHero{grid-template-columns:58px minmax(0,1fr);gap:13px;padding:14px}
-          .pathIcon{width:58px;height:58px;border-radius:16px}
-          .pathIcon :global(svg){width:25px;height:25px}
-          .pathHero h2{font-size:23px}
-          .pathDescription{font-size:12px}
-          .pathFeature{padding:13px}
-          .pathAction{min-height:58px;padding:0 14px}
+
+        .journeyBrand strong {
+          color: #786a82;
         }
-        @media(prefers-reduced-motion:reduce){.journeyShell{animation:none}}
+
+        .journeyIntro {
+          max-width: 900px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .journeyIntro > span {
+          color: #7c3aed;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 0.13em;
+        }
+
+        .journeyIntro h1 {
+          margin: 11px 0 14px;
+          color: #241431;
+          font-size: clamp(46px, 5vw, 70px);
+          line-height: 0.98;
+          font-weight: 900;
+          letter-spacing: -0.055em;
+        }
+
+        .journeyIntro h1 em {
+          display: block;
+          color: #7c3aed;
+          font-family: Georgia, "Times New Roman", serif;
+          font-weight: 400;
+          font-style: italic;
+          letter-spacing: -0.045em;
+        }
+
+        .journeyIntro p {
+          max-width: 720px;
+          margin: auto;
+          color: #716477;
+          font-size: 15px;
+          line-height: 1.7;
+        }
+
+        .academyEntry {
+          position: relative;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 300px;
+          overflow: hidden;
+          border: 1px solid #ddd0f2;
+          border-radius: 28px;
+          background:
+            radial-gradient(
+              circle at 7% 0%,
+              rgba(124, 58, 237, 0.08),
+              transparent 36%
+            ),
+            linear-gradient(145deg, #ffffff, #fcfaff);
+          box-shadow:
+            0 22px 55px rgba(76, 29, 149, 0.08),
+            inset 0 1px 0 #ffffff;
+        }
+
+        .entryGlow {
+          position: absolute;
+          width: 320px;
+          height: 320px;
+          top: -190px;
+          right: 120px;
+          border-radius: 50%;
+          background: rgba(167, 139, 250, 0.12);
+          filter: blur(25px);
+          pointer-events: none;
+        }
+
+        .entryMain {
+          position: relative;
+          z-index: 1;
+          padding: 32px;
+        }
+
+        .entryTop {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .startBadge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 11px;
+          border: 1px solid #d8c8f4;
+          border-radius: 999px;
+          color: #6d28d9;
+          background: #f5efff;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: 0.1em;
+        }
+
+        .startBadge i {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #7c3aed;
+          box-shadow: 0 0 0 5px rgba(124, 58, 237, 0.08);
+        }
+
+        .lessonNumber {
+          color: #95889e;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 0.13em;
+        }
+
+        .lessonHero {
+          display: grid;
+          grid-template-columns: 76px minmax(0, 1fr);
+          align-items: center;
+          gap: 20px;
+          margin-top: 26px;
+        }
+
+        .lessonIcon {
+          width: 76px;
+          height: 76px;
+          display: grid;
+          place-items: center;
+          border-radius: 21px;
+          color: #ffffff;
+          background: linear-gradient(145deg, #8b5cf6, #6d28d9);
+          box-shadow: 0 15px 30px rgba(109, 40, 217, 0.22);
+        }
+
+        .lessonHero small {
+          color: #7c3aed;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: 0.11em;
+        }
+
+        .lessonHero h2 {
+          margin: 6px 0 0;
+          color: #281634;
+          font-size: clamp(28px, 3vw, 40px);
+          line-height: 1.03;
+          letter-spacing: -0.045em;
+        }
+
+        .lessonDescription {
+          max-width: 700px;
+          margin: 22px 0 0;
+          color: #6d6074;
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .lessonJourney {
+          display: grid;
+          grid-template-columns:
+            minmax(0, 1fr) 24px minmax(0, 1fr) 24px
+            minmax(0, 1fr) 24px minmax(0, 1fr);
+          align-items: center;
+          margin-top: 26px;
+          padding: 18px;
+          border: 1px solid #e7ddf4;
+          border-radius: 18px;
+          background: rgba(248, 245, 252, 0.8);
+        }
+
+        .journeyStep {
+          display: grid;
+          grid-template-columns: 28px minmax(0, 1fr);
+          gap: 9px;
+          align-items: start;
+        }
+
+        .journeyStep > span {
+          width: 28px;
+          height: 28px;
+          display: grid;
+          place-items: center;
+          border: 1px solid #e5dcf0;
+          border-radius: 50%;
+          color: #7c6e86;
+          background: #ffffff;
+          font-size: 8px;
+          font-weight: 900;
+        }
+
+        .currentStep > span {
+          border-color: #7c3aed;
+          color: #ffffff;
+          background: #7c3aed;
+          box-shadow: 0 0 0 5px rgba(124, 58, 237, 0.08);
+        }
+
+        .journeyStep div {
+          display: grid;
+          gap: 3px;
+        }
+
+        .journeyStep strong {
+          color: #34213e;
+          font-size: 10px;
+        }
+
+        .journeyStep small {
+          color: #84778b;
+          font-size: 8px;
+          line-height: 1.35;
+        }
+
+        .journeyLine {
+          height: 1px;
+          background: #dcd0ec;
+        }
+
+        .entryBottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          margin-top: 28px;
+        }
+
+        .lessonFacts {
+          flex: 1 1 auto;
+          min-width: 0;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 9px 16px;
+          color: #62526c;
+          font-size: 9px;
+          line-height: 1.4;
+          font-weight: 750;
+        }
+
+        /*
+         * Deliberately uses a GLOBAL selector.
+         * Next/Link renders an <a>, and this prevents the component's
+         * generated scoped selector from losing to site-wide anchor styles.
+         */
+        :global(a.literacyStartButton) {
+          flex: 0 0 270px !important;
+          width: 270px !important;
+          min-height: 66px !important;
+          box-sizing: border-box !important;
+
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 18px !important;
+
+          padding: 11px 18px !important;
+          border: 1px solid #7c3aed !important;
+          border-radius: 16px !important;
+
+          background-color: #7c3aed !important;
+          background-image: linear-gradient(
+            135deg,
+            #8b5cf6 0%,
+            #7c3aed 52%,
+            #6d28d9 100%
+          ) !important;
+
+          color: #ffffff !important;
+          text-decoration: none !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+
+          box-shadow:
+            0 14px 32px rgba(109, 40, 217, 0.28),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+
+          transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease !important;
+        }
+
+        :global(a.literacyStartButton > span) {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          gap: 3px !important;
+          min-width: 0;
+        }
+
+        :global(a.literacyStartButton small) {
+          display: block !important;
+          margin: 0 !important;
+          color: rgba(255, 255, 255, 0.8) !important;
+          font-size: 7px !important;
+          line-height: 1.2 !important;
+          font-weight: 850 !important;
+          letter-spacing: 0.1em !important;
+        }
+
+        :global(a.literacyStartButton strong) {
+          display: block !important;
+          margin: 0 !important;
+          color: #ffffff !important;
+          font-size: 15px !important;
+          line-height: 1.25 !important;
+          font-weight: 850 !important;
+          white-space: nowrap;
+        }
+
+        :global(a.literacyStartButton b) {
+          flex: 0 0 auto;
+          display: grid !important;
+          place-items: center !important;
+          width: 30px;
+          height: 30px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff !important;
+          font-size: 21px;
+          line-height: 1;
+          font-weight: 500;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          :global(a.literacyStartButton:hover) {
+            background-color: #6d28d9 !important;
+            background-image: linear-gradient(
+              135deg,
+              #7c3aed,
+              #6d28d9
+            ) !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            transform: translateY(-2px);
+            box-shadow:
+              0 18px 38px rgba(109, 40, 217, 0.32),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+          }
+        }
+
+        .academyAside {
+          position: relative;
+          z-index: 1;
+          padding: 32px 27px;
+          border-left: 1px solid #e7ddf1;
+          background: linear-gradient(
+            180deg,
+            rgba(248, 244, 255, 0.86),
+            rgba(252, 250, 255, 0.92)
+          );
+        }
+
+        .asideEyebrow {
+          color: #7c3aed;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: 0.12em;
+        }
+
+        .academyAside h3 {
+          margin: 15px 0 11px;
+          color: #2d1938;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 27px;
+          line-height: 1.05;
+          font-weight: 400;
+          letter-spacing: -0.035em;
+        }
+
+        .academyAside > p {
+          margin: 0;
+          color: #76697d;
+          font-size: 11px;
+          line-height: 1.65;
+        }
+
+        .pathList {
+          display: grid;
+          gap: 18px;
+          margin-top: 28px;
+        }
+
+        .pathItem {
+          display: grid;
+          grid-template-columns: 28px minmax(0, 1fr);
+          gap: 10px;
+        }
+
+        .pathItem > span {
+          color: #7c3aed;
+          font-size: 8px;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+        }
+
+        .pathItem div {
+          display: grid;
+          gap: 3px;
+        }
+
+        .pathItem strong {
+          color: #4a3a52;
+          font-size: 10px;
+        }
+
+        .pathItem small {
+          color: #8a7e90;
+          font-size: 8px;
+          line-height: 1.4;
+        }
+
+        .activePath strong {
+          color: #5b21b6;
+        }
+
+        .activePath small {
+          color: #6e6076;
+        }
+
+        @media (max-width: 900px) {
+          .journeyPage {
+            padding: 22px 12px 48px;
+          }
+
+          .journeyShell {
+            padding: 22px;
+            gap: 23px;
+            border-radius: 26px;
+          }
+
+          .academyEntry {
+            grid-template-columns: 1fr;
+          }
+
+          .academyAside {
+            border-left: 0;
+            border-top: 1px solid #e7ddf1;
+          }
+
+          .entryBottom {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          :global(a.literacyStartButton) {
+            flex-basis: auto !important;
+            width: 100% !important;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .journeyPage {
+            padding: 10px 8px 34px;
+          }
+
+          .journeyShell {
+            padding: 14px;
+            gap: 19px;
+            border-radius: 21px;
+          }
+
+          .journeyBrand {
+            font-size: 7px;
+          }
+
+          .journeyBrand i {
+            width: 17px;
+          }
+
+          .journeyIntro h1 {
+            margin-top: 9px;
+            font-size: 39px;
+          }
+
+          .journeyIntro p {
+            font-size: 12px;
+            line-height: 1.6;
+          }
+
+          .academyEntry {
+            border-radius: 22px;
+          }
+
+          .entryMain {
+            padding: 20px 17px;
+          }
+
+          .lessonHero {
+            grid-template-columns: 58px minmax(0, 1fr);
+            gap: 14px;
+            margin-top: 21px;
+          }
+
+          .lessonIcon {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+          }
+
+          .lessonIcon :global(svg) {
+            width: 25px;
+            height: 25px;
+          }
+
+          .lessonHero h2 {
+            font-size: 24px;
+          }
+
+          .lessonDescription {
+            margin-top: 17px;
+            font-size: 12px;
+          }
+
+          .lessonJourney {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 15px;
+          }
+
+          .journeyLine {
+            width: 1px;
+            height: 13px;
+            margin-left: 13px;
+          }
+
+          .journeyStep {
+            grid-template-columns: 28px minmax(0, 1fr);
+          }
+
+          .journeyStep strong {
+            font-size: 11px;
+          }
+
+          .journeyStep small {
+            font-size: 9px;
+          }
+
+          .entryBottom {
+            margin-top: 21px;
+          }
+
+          .lessonFacts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 8px;
+          }
+
+          :global(a.literacyStartButton) {
+            min-height: 64px !important;
+            border-radius: 15px !important;
+          }
+
+          .academyAside {
+            padding: 22px 19px;
+          }
+
+          .academyAside h3 {
+            font-size: 24px;
+          }
+
+          .pathList {
+            margin-top: 22px;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .journeyIntro h1 {
+            font-size: 34px;
+          }
+
+          .entryMain {
+            padding: 17px 14px;
+          }
+
+          .lessonFacts {
+            grid-template-columns: 1fr;
+          }
+
+          .lessonHero h2 {
+            font-size: 21px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .journeyShell,
+          :global(a.literacyStartButton) {
+            animation: none;
+            transition: none;
+          }
+        }
       `}</style>
     </main>
   );

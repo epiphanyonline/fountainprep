@@ -16,20 +16,38 @@ const locationOptions = [
 ];
 
 function safeNextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/parent/students?mode=booking";
+  const fallback = "/parent/students?mode=booking";
+
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    /[\r\n]/.test(value)
+  ) {
+    return fallback;
   }
 
-  const allowedPrefixes = [
-    "/parent/",
+  const pathname = value.split(/[?#]/, 1)[0];
+
+  const allowedPaths = [
+    "/academies/financial-literacy/start",
     "/subjects",
-    "/pricing",
     "/schedule",
     "/payment",
   ];
-  return allowedPrefixes.some((prefix) => value.startsWith(prefix))
-    ? value
-    : "/parent/students?mode=booking";
+
+  const allowedPrefixes = [
+    "/parent/",
+  ];
+
+  const isAllowed =
+    allowedPaths.includes(pathname) ||
+    allowedPrefixes.some((prefix) =>
+      pathname.startsWith(prefix),
+    );
+
+  return isAllowed ? value : fallback;
 }
 
 export default function ParentSignupPage() {
@@ -44,7 +62,12 @@ function ParentSignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = safeNextPath(searchParams.get("next"));
-  const loginHref = `/login?next=${encodeURIComponent(nextPath)}`;
+
+const isFinancialLiteracy =
+  nextPath.split(/[?#]/, 1)[0] ===
+  "/academies/financial-literacy/start";
+
+const loginHref = `/login?next=${encodeURIComponent(nextPath)}`;
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -119,23 +142,45 @@ if (typeof window !== "undefined") {
 }
 
 
-    await sendEmail({
+        await sendEmail({
       to: cleanEmail,
-      subject: "Welcome to Fountain Prep",
+      subject: isFinancialLiteracy
+        ? "Welcome to FountainPrep Financial Literacy Academy"
+        : "Welcome to Fountain Prep",
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#241235">
           <h2>Welcome to Fountain Prep, ${escapeHtml(cleanName)}</h2>
           <p>Your parent account has been created.</p>
           <p>Confirm your email, then continue with these simple steps:</p>
-          <ol>
-            <li>Add or choose your child.</li>
-            <li>Choose a subject and plan.</li>
-            <li>Select a tutor and weekly timetable.</li>
-            <li>Review and pay securely.</li>
-          </ol>
+
+          ${
+            isFinancialLiteracy
+              ? `
+                <ol>
+                  <li>Add or select your child or teenager.</li>
+                  <li>Open the Financial Literacy Academy.</li>
+                  <li>Complete the one-time purchase to unlock the full course.</li>
+                  <li>Follow your learner's progress and certificate journey.</li>
+                </ol>
+              `
+              : `
+                <ol>
+                  <li>Add or choose your child.</li>
+                  <li>Choose a subject and plan.</li>
+                  <li>Select a tutor and weekly timetable.</li>
+                  <li>Review and pay securely.</li>
+                </ol>
+              `
+          }
+
           <p>
-            <a href="${siteUrl}${loginHref}" style="display:inline-block;background:#6d28d9;color:white;padding:12px 18px;border-radius:14px;text-decoration:none;font-weight:700">
-              Continue your booking
+            <a href="${siteUrl}${loginHref}"
+               style="display:inline-block;background:#6d28d9;color:white;padding:12px 18px;border-radius:14px;text-decoration:none;font-weight:700">
+              ${
+                isFinancialLiteracy
+                  ? "Continue to Financial Literacy"
+                  : "Continue your booking"
+              }
             </a>
           </p>
         </div>
@@ -150,7 +195,9 @@ if (typeof window !== "undefined") {
 
 setSignupComplete(true);
 setMessage(
-  "Account created. Confirm your email, then log in to continue your booking.",
+  isFinancialLiteracy
+    ? "Account created. Confirm your email, then log in to continue enrolling your child in Financial Literacy."
+    : "Account created. Confirm your email, then log in to continue your booking.",
 );
 setLoading(false);
   }
@@ -159,24 +206,46 @@ setLoading(false);
     <main className="signupPage">
       <div className="signupShell">
         <section className="signupIntro">
-          <p className="eyebrow">Step 1 of your booking</p>
-          <h1>Create your parent account</h1>
-          <p>
-            After this, we will take you directly to add or choose your child.
-            Your subject, tutor, timetable and payment come next.
-          </p>
+  <p className="eyebrow">
+    {isFinancialLiteracy
+      ? "FINANCIAL LITERACY ACADEMY"
+      : "Step 1 of your booking"}
+  </p>
 
-          <div className="nextSteps">
-            <span>1</span>
-            <strong>Parent account</strong>
-            <span>2</span>
-            <strong>Child</strong>
-            <span>3</span>
-            <strong>Subject &amp; plan</strong>
-            <span>4</span>
-            <strong>Timetable &amp; payment</strong>
-          </div>
-        </section>
+  <h1>
+    {isFinancialLiteracy
+      ? "Start your child's financial education"
+      : "Create your parent account"}
+  </h1>
+
+  <p>
+    {isFinancialLiteracy
+      ? "Create your Parent or Guardian account to enrol your child or teenager in our self-paced Financial Literacy Academy. You will be able to manage their learning and track their progress."
+      : "After this, we will take you directly to add or choose your child. Your subject, tutor, timetable and payment come next."}
+  </p>
+
+  <div className="nextSteps">
+    <span>1</span>
+    <strong>Parent account</strong>
+
+    <span>2</span>
+    <strong>{isFinancialLiteracy ? "Add your learner" : "Child"}</strong>
+
+    <span>3</span>
+    <strong>
+      {isFinancialLiteracy
+        ? "Financial Literacy Academy"
+        : "Subject & plan"}
+    </strong>
+
+    <span>4</span>
+    <strong>
+      {isFinancialLiteracy
+        ? "One-time payment & access"
+        : "Timetable & payment"}
+    </strong>
+  </div>
+</section>
 
         <form className="signupCard" onSubmit={handleSignup}>
           <label>
@@ -230,8 +299,9 @@ setLoading(false);
           </div>
 
           <p className="fieldHelp">
-            Times will be shown in this timezone and matched correctly with your
-            tutor.
+            {isFinancialLiteracy
+  ? "Your country and timezone help us personalise your account."
+  : "Times will be shown in this timezone and matched correctly with your tutor."}
           </p>
 
           <label>

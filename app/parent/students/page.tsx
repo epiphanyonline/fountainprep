@@ -35,6 +35,10 @@ type StudentProfile = {
 };
 
 const ageOptions = [3, 4, 5, 6, 7, 8, 9, 10, 11];
+const academyAgeOptions = Array.from(
+  { length: 15 },
+  (_, index) => index + 3
+);
 
 const classOptionsByCountry: Record<string, string[]> = {
   UK: [
@@ -96,6 +100,27 @@ export default function ParentStudentsPage() {
 function ParentStudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const academyNext = searchParams.get("next") || "";
+
+const isFinancialLiteracyPath =
+  academyNext.startsWith(
+    "/academies/financial-literacy/start"
+  );
+
+function learnerDestination(studentId: string) {
+  if (isFinancialLiteracyPath) {
+    const url = new URL(
+      academyNext,
+      "http://localhost"
+    );
+
+    url.searchParams.set("studentId", studentId);
+
+    return `${url.pathname}${url.search}`;
+  }
+
+  return subjectsPath(studentId);
+}
   const bookingMode = searchParams.get("mode") === "booking";
   const requestedCategory = searchParams.get("category")?.trim() || "";
   const requestedSubject = searchParams.get("subject")?.trim() || "";
@@ -132,12 +157,17 @@ function ParentStudentsContent() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        const next = encodeURIComponent(
-          bookingMode ? bookingNextPath : "/parent/students",
-        );
-        router.replace(`/login?next=${next}`);
-        return;
-      }
+  const returnPath = isFinancialLiteracyPath
+    ? `/parent/students?next=${encodeURIComponent(academyNext)}`
+    : bookingMode
+      ? bookingNextPath
+      : "/parent/students";
+
+  router.replace(
+    `/login?next=${encodeURIComponent(returnPath)}`
+  );
+  return;
+}
 
       const { data: parentProfile, error: parentError } = await supabase
         .from("parent_profiles")
@@ -236,7 +266,7 @@ function ParentStudentsContent() {
     e.preventDefault();
     if (!parent) return;
 
-    if (!selectedLearningLevel) {
+    if (!isFinancialLiteracyPath && !selectedLearningLevel) {
       setMessage(
         "Age is valid, but no matching learning level was found. Please check that EY, LP and UP are active in learning_levels.",
       );
@@ -247,17 +277,39 @@ function ParentStudentsContent() {
     setMessage("");
 
     const payload = {
-      parent_id: parent.id,
-      full_name: fullName.trim(),
-      child_age: Number(childAge),
-      country_system: countrySystem,
-      country_class_label: countryClassLabel || null,
-      school_year_level: countryClassLabel || null,
-      curriculum_type: countrySystem,
-      learning_level_id: selectedLearningLevel.id,
-      subjects_needed: null,
-      parent_goal_for_student: goal.trim() || null,
-    };
+  parent_id: parent.id,
+  full_name: fullName.trim(),
+  child_age: Number(childAge),
+
+  country_system: isFinancialLiteracyPath
+    ? null
+    : countrySystem,
+
+  country_class_label: isFinancialLiteracyPath
+    ? null
+    : countryClassLabel || null,
+
+  school_year_level: isFinancialLiteracyPath
+    ? null
+    : countryClassLabel || null,
+
+  curriculum_type: isFinancialLiteracyPath
+    ? null
+    : countrySystem,
+
+  learning_level_id: isFinancialLiteracyPath
+    ? null
+    : selectedLearningLevel?.id ?? null,
+
+  age_group: isFinancialLiteracyPath
+  ? Number(childAge) >= 13
+    ? "TEEN"
+    : "CHILD"
+  : null,
+
+  subjects_needed: null,
+  parent_goal_for_student: goal.trim() || null,
+};
 
     const { data: createdStudent, error } = await supabase
       .from("student_profiles")
@@ -271,10 +323,15 @@ function ParentStudentsContent() {
       return;
     }
 
-    if (bookingMode && createdStudent?.id) {
-      router.push(subjectsPath(createdStudent.id));
-      return;
-    }
+    if (createdStudent?.id && isFinancialLiteracyPath) {
+  router.push(learnerDestination(createdStudent.id));
+  return;
+}
+
+if (bookingMode && createdStudent?.id) {
+  router.push(subjectsPath(createdStudent.id));
+  return;
+}
 
     await reloadStudents(parent.id);
 
@@ -313,17 +370,27 @@ function ParentStudentsContent() {
                 fontSize: 14,
               }}
             >
-              {bookingMode ? "Booking step 2: Child" : "Student Setup"}
+              {isFinancialLiteracyPath
+  ? "Financial Literacy Academy - Learner Setup"
+  : bookingMode
+    ? "Booking step 2: Child"
+    : "Student Setup"}
             </p>
 
             <h1 className="page-title" style={{ fontSize: 38, marginTop: 10 }}>
-              {bookingMode ? "Add or choose a child" : "Add a child"}
+              {isFinancialLiteracyPath
+  ? "Add or choose your learner"
+  : bookingMode
+    ? "Add or choose a child"
+    : "Add a child"}
             </h1>
 
             <p className="page-subtitle">
-              {bookingMode
-                ? "Choose an existing child, or add one now. Your next screen will be subject selection."
-                : "Select your child’s age and school system. FountainPrep will map them to the right learning level."}
+              {isFinancialLiteracyPath
+  ? "Add your child or teenager, or select an existing learner. You will return to the Financial Literacy Academy to continue."
+  : bookingMode
+    ? "Choose an existing child, or add one now. Your next screen will be subject selection."
+    : "Select your child's age and school system. FountainPrep will map them to the right learning level."}
             </p>
 
             <form
@@ -352,33 +419,39 @@ function ParentStudentsContent() {
                   required
                 >
                   <option value="">Select child age</option>
-                  {ageOptions.map((age) => (
+                  {(isFinancialLiteracyPath
+  ? academyAgeOptions
+  : ageOptions
+).map((age) => (
                     <option key={age} value={age}>
                       {age} years old
                     </option>
                   ))}
                 </select>
 
-                <select
-                  value={countrySystem}
-                  onChange={(e) => {
-                    setCountrySystem(e.target.value);
-                    setCountryClassLabel("");
-                  }}
-                >
-                  <option value="UK">UK school system</option>
-                  <option value="USA">USA school system</option>
-                  <option value="Canada">Canada school system</option>
-                  <option value="Nigeria">Nigeria school system</option>
-                  <option value="Other">Other / not sure</option>
-                </select>
+                {!isFinancialLiteracyPath && (
+  <select
+    value={countrySystem}
+    onChange={(e) => {
+      setCountrySystem(e.target.value);
+      setCountryClassLabel("");
+    }}
+  >
+    <option value="UK">UK school system</option>
+    <option value="USA">USA school system</option>
+    <option value="Canada">Canada school system</option>
+    <option value="Nigeria">Nigeria school system</option>
+    <option value="Other">Other / not sure</option>
+  </select>
+)}
               </div>
 
-              <select
-                value={countryClassLabel}
-                onChange={(e) => setCountryClassLabel(e.target.value)}
-                required
-              >
+              {!isFinancialLiteracyPath && (
+  <select
+    value={countryClassLabel}
+    onChange={(e) => setCountryClassLabel(e.target.value)}
+    required
+  >
                 <option value="">Select class / year / grade</option>
                 {classOptions.map((item) => (
                   <option key={item} value={item}>
@@ -386,46 +459,51 @@ function ParentStudentsContent() {
                   </option>
                 ))}
               </select>
-
-              {selectedLearningLevel ? (
-                <div className="panel" style={{ padding: 18 }}>
-                  <p style={{ margin: 0, fontWeight: 800 }}>
-                    Mapped level: {selectedLearningLevel.name}
-                  </p>
-                  <p className="page-subtitle" style={{ marginTop: 8 }}>
-                    UK: {selectedLearningLevel.uk_equivalent || "-"} •
-                    US/Canada:{" "}
-                    {selectedLearningLevel.us_canada_equivalent || "-"} •
-                    Nigeria teacher match:{" "}
-                    {selectedLearningLevel.nigeria_teacher_match || "-"}
-                  </p>
-                </div>
-              ) : (
-                <div className="panel" style={{ padding: 18 }}>
-                  <p style={{ margin: 0, fontWeight: 800 }}>
-                    Learning level pending
-                  </p>
-                  <p className="page-subtitle" style={{ marginTop: 8 }}>
-                    Select age 3–11 to map your child to Early Years, Lower
-                    Primary, or Upper Primary.
-                  </p>
-                </div>
               )}
 
-              <textarea
-                placeholder="Parent goal for this child e.g. reading, confidence, maths, language"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                rows={4}
-              />
+              {!isFinancialLiteracyPath && (
+  selectedLearningLevel ? (
+    <div className="panel" style={{ padding: 18 }}>
+      <p style={{ margin: 0, fontWeight: 800 }}>
+        Mapped level: {selectedLearningLevel.name}
+      </p>
+      <p className="page-subtitle" style={{ marginTop: 8 }}>
+        UK: {selectedLearningLevel.uk_equivalent || "-"} •
+        US/Canada:{" "}
+        {selectedLearningLevel.us_canada_equivalent || "-"} •
+        Nigeria teacher match:{" "}
+        {selectedLearningLevel.nigeria_teacher_match || "-"}
+      </p>
+    </div>
+  ) : (
+    <div className="panel" style={{ padding: 18 }}>
+      <p style={{ margin: 0, fontWeight: 800 }}>
+        Learning level pending
+      </p>
+      <p className="page-subtitle" style={{ marginTop: 8 }}>
+        Select age 3–11 to map your child to Early Years, Lower
+        Primary, or Upper Primary.
+      </p>
+    </div>
+  )
+)}
+
+<textarea
+  placeholder="Parent goal for this child e.g. reading, confidence, maths, language"
+  value={goal}
+  onChange={(e) => setGoal(e.target.value)}
+  rows={4}
+/>
 
               <button className="btn-primary" disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : bookingMode
-                    ? "Add Child & Continue to Subjects"
-                    : "Add Child"}
-              </button>
+  {saving
+    ? "Saving..."
+    : isFinancialLiteracyPath
+      ? "Add Learner & Continue to Academy"
+      : bookingMode
+        ? "Add Child & Continue to Subjects"
+        : "Add Child"}
+</button>
             </form>
 
             {message ? <Notice message={message} /> : null}
@@ -471,13 +549,15 @@ function ParentStudentsContent() {
 
                     <div style={{ marginTop: 14 }}>
                       <Link
-                        href={subjectsPath(student.id)}
+                        href={learnerDestination(student.id)}
                         className="btn-primary"
                         style={{ display: "inline-block" }}
                       >
-                        {bookingMode
-                          ? `Continue with ${student.full_name}`
-                          : "Choose Subject"}
+                        {isFinancialLiteracyPath
+  ? `Continue with ${student.full_name}`
+  : bookingMode
+    ? `Continue with ${student.full_name}`
+    : "Choose Subject"}
                       </Link>
                     </div>
                   </div>

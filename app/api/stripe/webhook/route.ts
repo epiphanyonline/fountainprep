@@ -102,60 +102,126 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+            case "checkout.session.completed": {
         const session =
-  event.data.object as Stripe.Checkout.Session;
+          event.data.object as Stripe.Checkout.Session;
 
-if (
-  session.metadata?.payment_type ===
-  "academy_subscription"
-) {
-  await confirmAcademySubscription(session);
-  break;
-}
+        if (
+          session.metadata?.payment_type ===
+          "academy_subscription"
+        ) {
+          await confirmAcademySubscription(
+            session,
+          );
+          break;
+        }
 
-// Some delayed payment methods complete Checkout before funds are paid.
-// Stripe later sends checkout.session.async_payment_succeeded.
-if (session.payment_status === "paid") {
-  await confirmPaidBookingGroup(session);
-}
+        if (
+          session.metadata?.payment_type ===
+          "academy_purchase"
+        ) {
+          /*
+           * Some payment methods complete Checkout
+           * before Stripe confirms that funds are paid.
+           */
+          if (
+            session.payment_status ===
+            "paid"
+          ) {
+            await confirmAcademyPurchase(
+              session,
+            );
+          }
+
+          break;
+        }
+
+        /*
+         * Existing live tutoring payment flow.
+         * Do not change.
+         */
+        if (
+          session.payment_status ===
+          "paid"
+        ) {
+          await confirmPaidBookingGroup(
+            session,
+          );
+        }
+
         break;
       }
 
       case "checkout.session.async_payment_succeeded": {
-  const session =
-    event.data.object as Stripe.Checkout.Session;
+        const session =
+          event.data.object as Stripe.Checkout.Session;
 
-  if (
-    session.metadata?.payment_type ===
-    "academy_subscription"
-  ) {
-    await confirmAcademySubscription(session);
-    break;
-  }
+        if (
+          session.metadata?.payment_type ===
+          "academy_subscription"
+        ) {
+          await confirmAcademySubscription(
+            session,
+          );
+          break;
+        }
 
-  await confirmPaidBookingGroup(session);
-  break;
-}
+        if (
+          session.metadata?.payment_type ===
+          "academy_purchase"
+        ) {
+          await confirmAcademyPurchase(
+            session,
+          );
+          break;
+        }
+
+        /*
+         * Existing live tutoring payment flow.
+         * Do not change.
+         */
+        await confirmPaidBookingGroup(
+          session,
+        );
+
+        break;
+      }
 
       case "checkout.session.expired":
-case "checkout.session.async_payment_failed": {
-  const session =
-    event.data.object as Stripe.Checkout.Session;
+      case "checkout.session.async_payment_failed": {
+        const session =
+          event.data.object as Stripe.Checkout.Session;
 
-  if (
-    session.metadata?.payment_type ===
-    "academy_subscription"
-  ) {
-    await failAcademySubscriptionCheckout(
-      session,
-    );
-    break;
-  }
+        if (
+          session.metadata?.payment_type ===
+          "academy_subscription"
+        ) {
+          await failAcademySubscriptionCheckout(
+            session,
+          );
+          break;
+        }
 
-  await failUnpaidBookingGroup(session);
-  break;
-}
+        if (
+          session.metadata?.payment_type ===
+          "academy_purchase"
+        ) {
+          await failAcademyPurchaseCheckout(
+            session,
+          );
+          break;
+        }
+
+        /*
+         * Existing live tutoring payment flow.
+         * Do not change.
+         */
+        await failUnpaidBookingGroup(
+          session,
+        );
+
+        break;
+      }
 
 case "customer.subscription.updated": {
   const subscription =
@@ -544,6 +610,108 @@ function mapStripeSubscriptionStatus(
     default:
       return "incomplete";
   }
+}
+
+
+async function confirmAcademyPurchase(
+  session: Stripe.Checkout.Session,
+) {
+  const userId = session.metadata?.user_id;
+  const academyId = session.metadata?.academy_id;
+  const studentId =
+    session.metadata?.student_id?.trim() || null;
+
+  if (!userId || !academyId) {
+    throw new Error(
+      `Academy purchase ${session.id} is missing required metadata.`,
+    );
+  }
+
+  // Never grant access for an unpaid Checkout Session.
+  if (session.payment_status !== "paid") {
+    return;
+  }
+
+  // Financial Literacy currently costs £39 GBP.
+  if (
+    ![1999, 3900].includes(session.amount_total ?? -1) ||
+    session.currency?.toLowerCase() !== "gbp"
+  ) {
+    throw new Error(
+      `Unexpected amount or currency for Academy purchase ${session.id}.`,
+    );
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+
+  /*
+   * Confirm payment and grant access in one
+   * PostgreSQL transaction.
+   *
+   * The database function:
+   * - verifies the payment attempt
+   * - verifies the account and learner
+   * - checks the payment amount
+   * - records the successful attempt
+   * - grants permanent academy access
+   * - preserves an existing paid entitlement
+   */
+  const { data: purchaseId, error } =
+    await supabaseAdmin.rpc(
+      "confirm_academy_payment",
+      {
+        p_session_id: session.id,
+        p_user_id: userId,
+        p_academy_code: academyId,
+        p_student_id: studentId,
+        p_payment_intent_id: paymentIntentId,
+        p_amount: session.amount_total,
+        p_currency: session.currency.toLowerCase(),
+      },
+    );
+
+  if (error) {
+    throw new Error(
+      `Unable to confirm Academy purchase ${session.id}: ${error.message}`,
+    );
+  }
+
+  if (!purchaseId) {
+    throw new Error(
+      `Academy purchase confirmation returned no purchase ID for ${session.id}.`,
+    );
+  }
+}
+
+
+async function failAcademyPurchaseCheckout(
+  session: Stripe.Checkout.Session,
+) {
+  const failedAt = new Date().toISOString();
+
+  const attemptStatus =
+    session.status === "expired"
+      ? "expired"
+      : "failed";
+
+  const { error } = await supabaseAdmin
+    .from("academy_payment_attempts")
+    .update({
+      status: attemptStatus,
+      updated_at: failedAt,
+    })
+    .eq("stripe_checkout_session_id", session.id)
+    .eq("status", "pending");
+
+  if (error) {
+    throw error;
+  }
+
+  // Do not cancel the permanent academy entitlement.
+  // A different payment attempt may already have succeeded.
 }
 
 async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {

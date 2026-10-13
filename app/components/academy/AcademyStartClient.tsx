@@ -23,6 +23,9 @@ import {
 import {
   getAcademySubscriptionAccess,
 } from "@/app/fountaintalk/services/subscriptionAccess";
+import {
+  hasAcademyPurchaseAccess,
+} from "@/app/fountaintalk/services/purchaseAccess";
 
 type StudentRow = {
   id: string;
@@ -74,13 +77,26 @@ export default function AcademyStartClient({
       "session_id",
     );
 
-  const returningFromCheckout =
+    const returningFromCheckout =
     searchParams.get(
       "subscription",
     ) === "success" &&
     Boolean(
       checkoutSessionId,
     );
+
+  const returningFromPurchase =
+    searchParams.get(
+      "purchase",
+    ) === "success" &&
+    Boolean(
+      checkoutSessionId,
+    );
+
+  const returningFromCancelledPurchase =
+    searchParams.get(
+      "purchase",
+    ) === "cancelled";
 
   const academy = useMemo(
     () =>
@@ -124,6 +140,12 @@ export default function AcademyStartClient({
     useState<string | null>(
       null,
     );
+    const [
+  purchaseStudentId,
+  setPurchaseStudentId,
+] = useState<string | null>(
+  null,
+);
 
   const autoRoutedRef =
     useRef(false);
@@ -276,6 +298,160 @@ export default function AcademyStartClient({
           );
           clean.searchParams.delete(
             "session_id",
+          );
+
+          window.history.replaceState(
+            {},
+            "",
+            clean.pathname +
+              clean.search,
+          );
+        }
+
+                if (
+          returningFromPurchase &&
+          checkoutSessionId &&
+          session?.access_token
+        ) {
+          let confirmed = false;
+          let confirmedStudentId:
+            string | null =
+              preferredStudentId;
+
+          for (
+            let attempt = 0;
+            attempt < 6;
+            attempt += 1
+          ) {
+            const response =
+              await fetch(
+                "/api/stripe/academy-purchase-confirm",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                    Authorization:
+                      `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    sessionId:
+                      checkoutSessionId,
+                  }),
+                },
+              );
+
+            const result =
+              (await response.json()) as {
+                confirmed?: boolean;
+                pending?: boolean;
+                studentId?:
+                  string | null;
+                academyId?: string;
+                programmeId?:
+                  string | null;
+                status?: string;
+                error?: string;
+              };
+
+            if (
+              response.ok &&
+              result.confirmed
+            ) {
+              confirmed = true;
+
+              confirmedStudentId =
+                result.studentId ??
+                preferredStudentId;
+
+              break;
+            }
+
+            if (
+              response.status === 202 ||
+              result.pending
+            ) {
+              await new Promise(
+                (resolve) =>
+                  window.setTimeout(
+                    resolve,
+                    900,
+                  ),
+              );
+
+              continue;
+            }
+
+            throw new Error(
+              result.error ??
+                "We could not confirm your Academy purchase.",
+            );
+          }
+
+          if (!confirmed) {
+            throw new Error(
+              "Your payment was received, but Academy access is still being activated. Please refresh in a moment.",
+            );
+          }
+
+          /*
+           * Payment has now been independently
+           * verified against Stripe and ownership
+           * has been written to academy_purchases.
+           *
+           * Go directly to the purchased Academy.
+           */
+                    if (!confirmedStudentId) {
+            throw new Error(
+              "The learner attached to this Academy purchase could not be identified.",
+            );
+          }
+
+          const classroomHref =
+            academyClassroomHref({
+              studentId:
+                confirmedStudentId,
+              academy:
+                academy.academyCode,
+              programme:
+                academy.programmeId,
+            });
+
+          router.replace(
+            biographyId
+              ? `${classroomHref}&biographyId=${encodeURIComponent(
+                  biographyId,
+                )}`
+              : classroomHref,
+          );
+
+          return;
+        }
+
+        if (
+          returningFromCancelledPurchase
+        ) {
+          /*
+           * Stripe checkout was cancelled.
+           * No access is granted.
+           *
+           * Remember the learner so the £19.99
+           * purchase screen can be restored after
+           * the account/learner data has loaded.
+           */
+          if (preferredStudentId) {
+            setPurchaseStudentId(
+              preferredStudentId,
+            );
+          }
+
+          const clean =
+            new URL(
+              window.location.href,
+            );
+
+          clean.searchParams.delete(
+            "purchase",
           );
 
           window.history.replaceState(
@@ -481,11 +657,13 @@ export default function AcademyStartClient({
     return () => {
       cancelled = true;
     };
-  }, [
+    }, [
     academy,
     preferredStudentId,
     biographyId,
     returningFromCheckout,
+    returningFromPurchase,
+    returningFromCancelledPurchase,
     checkoutSessionId,
     router,
   ]);
@@ -716,43 +894,69 @@ export default function AcademyStartClient({
     );
   }
 
-  async function continueWithLearner(
-    studentId: string,
-  ) {
-    if (!academy) return;
+  async function startAcademyPurchase(
+  studentId: string,
+) {
+  if (!academy) return;
 
-    try {
-      setCheckingStudent(
-        studentId,
+  try {
+    setCheckingStudent(
+      studentId,
+    );
+    setError(null);
+
+    const {
+      data: sessionData,
+    } =
+      await supabase.auth.getSession();
+
+    const accessToken =
+      sessionData.session
+        ?.access_token;
+
+    if (!accessToken) {
+      throw new Error(
+        "Please sign in again to purchase the Financial Literacy Academy.",
       );
-      setError(null);
+    }
 
-      const access =
-        await getAcademySubscriptionAccess(
-          studentId,
-        );
+    const response =
+      await fetch(
+        "/api/stripe/academy-purchase-checkout",
+        {
+          method: "POST",
 
-      const hasActivePaidSubscription =
-        [
-          "active",
-          "trialing",
-        ].includes(
-          access.status,
-        ) &&
-        access.plan.accessTier !==
-          "free";
+          headers: {
+            "Content-Type":
+              "application/json",
 
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+
+          body: JSON.stringify({
+            academyId:
+              academy.academyCode,
+
+            programmeId:
+              academy.programmeId,
+
+            studentId,
+          }),
+        },
+      );
+
+    const result =
+      (await response.json()) as {
+        url?: string;
+        error?: string;
+        code?: string;
+      };
+
+    if (!response.ok) {
       if (
-        hasActivePaidSubscription &&
-        !access.learnerCovered
-      ) {
-        await assignSeat(
-          studentId,
-        );
-      }
-
-      if (
-        hasActivePaidSubscription
+        result.code ===
+        "ACADEMY_ALREADY_OWNED"
       ) {
         const classroomHref =
           academyClassroomHref({
@@ -764,17 +968,112 @@ export default function AcademyStartClient({
           });
 
         router.push(
-          biographyId
-            ? `${classroomHref}&biographyId=${encodeURIComponent(
-                biographyId,
-              )}`
-            : classroomHref,
+          classroomHref,
         );
+
         return;
       }
 
-      const pricingHref =
-        academyPricingHref({
+      throw new Error(
+        result.error ??
+          "Unable to start academy checkout.",
+      );
+    }
+
+    if (!result.url) {
+      throw new Error(
+        "Checkout could not be started.",
+      );
+    }
+
+    window.location.href =
+      result.url;
+  } catch (purchaseError) {
+    setError(
+      purchaseError instanceof Error
+        ? purchaseError.message
+        : "Unable to start academy checkout.",
+    );
+
+    setCheckingStudent(null);
+  }
+}
+
+  async function continueWithLearner(
+  studentId: string,
+) {
+  if (!academy) return;
+
+  try {
+    setCheckingStudent(
+      studentId,
+    );
+    setError(null);
+
+    /*
+     * Permanent one-time ownership wins first.
+     */
+    if (
+      academy.academyCode ===
+      "personal-finance"
+    ) {
+      const hasPurchasedAccess =
+        await hasAcademyPurchaseAccess(
+          academy.academyCode,
+          studentId,
+        );
+
+      if (hasPurchasedAccess) {
+        const classroomHref =
+          academyClassroomHref({
+            studentId,
+            academy:
+              academy.academyCode,
+            programme:
+              academy.programmeId,
+          });
+
+        router.push(
+          classroomHref,
+        );
+
+        return;
+      }
+    }
+
+    /*
+     * Existing subscriptions continue to work.
+     * This preserves the future All-Access path.
+     */
+    const access =
+      await getAcademySubscriptionAccess(
+        studentId,
+      );
+
+    const hasActivePaidSubscription =
+      [
+        "active",
+        "trialing",
+      ].includes(
+        access.status,
+      ) &&
+      access.plan.accessTier !==
+        "free";
+
+    if (
+      hasActivePaidSubscription &&
+      !access.learnerCovered
+    ) {
+      await assignSeat(
+        studentId,
+      );
+    }
+
+    if (
+      hasActivePaidSubscription
+    ) {
+      const classroomHref =
+        academyClassroomHref({
           studentId,
           academy:
             academy.academyCode,
@@ -784,23 +1083,68 @@ export default function AcademyStartClient({
 
       router.push(
         biographyId
-          ? `${pricingHref}&biographyId=${encodeURIComponent(
+          ? `${classroomHref}&biographyId=${encodeURIComponent(
               biographyId,
             )}`
-          : pricingHref,
+          : classroomHref,
       );
-    } catch (selectError) {
-      setError(
-        selectError instanceof
-          Error
-          ? selectError.message
-          : "Unable to continue.",
+
+      return;
+    }
+
+    /*
+     * Financial Literacy:
+     * no purchase and no active subscription.
+     *
+     * Show the one-time purchase offer.
+     */
+    if (
+      academy.academyCode ===
+      "personal-finance"
+    ) {
+      setPurchaseStudentId(
+        studentId,
       );
+
       setCheckingStudent(
         null,
       );
+
+      return;
     }
+
+    /*
+     * Other academies retain their existing
+     * pricing/subscription behaviour.
+     */
+    const pricingHref =
+      academyPricingHref({
+        studentId,
+        academy:
+          academy.academyCode,
+        programme:
+          academy.programmeId,
+      });
+
+    router.push(
+      biographyId
+        ? `${pricingHref}&biographyId=${encodeURIComponent(
+            biographyId,
+          )}`
+        : pricingHref,
+    );
+  } catch (selectError) {
+    setError(
+      selectError instanceof Error
+        ? selectError.message
+        : "Unable to continue.",
+    );
+
+    setCheckingStudent(
+      null,
+    );
   }
+}
 
   useEffect(() => {
     if (
@@ -879,13 +1223,172 @@ export default function AcademyStartClient({
 
         <PageStyles />
       </main>
-    );
-  }
+      );
+}
 
-  if (
-    accountType ===
-    "ADULT_LEARNER"
-  ) {
+if (
+  purchaseStudentId &&
+  academy.academyCode ===
+    "personal-finance"
+) {
+  const purchaseStudent =
+    students.find(
+      (student) =>
+        student.id ===
+        purchaseStudentId,
+    );
+
+  return (
+    <main className="startPage">
+      <section className="startCard purchaseCard">
+        <p className="eyebrow">
+          Financial Literacy Academy
+        </p>
+
+        <h1>
+          Unlock the Full Financial
+          Literacy Academy
+        </h1>
+
+        <div className="purchasePrice">
+          <strong>£19.99</strong>
+<span
+  style={{
+    color: "#9ca3af",
+    textDecoration: "line-through",
+    fontSize: "1.1rem",
+    fontWeight: 400,
+  }}
+>
+  £69.99
+</span>
+<small style={{ color: "#9ca3af", fontSize: "0.7rem" }}>
+  Planned price
+</small>
+          <span>one-time</span>
+        </div>
+
+        <p className="intro purchaseIntro">
+          Full self-paced learning for{" "}
+          <strong>
+            {purchaseStudent?.full_name ??
+              "this learner"}
+          </strong>
+          , with a certificate on
+          completion.
+        </p>
+
+        <div className="purchaseBenefits">
+          <div>
+            <span className="benefitTick">
+              ✓
+            </span>
+
+            <div>
+              <strong>
+                Full academy access
+              </strong>
+
+              <p>
+                Continue beyond the free
+                lessons through the complete
+                Financial Literacy pathway.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <span className="benefitTick">
+              ✓
+            </span>
+
+            <div>
+              <strong>
+                Certificate included
+              </strong>
+
+              <p>
+                Complete the academy and
+                receive your FountainPrep
+                certificate.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <span className="benefitTick">
+              ✓
+            </span>
+
+            <div>
+              <strong>
+                No monthly subscription
+              </strong>
+
+              <p>
+                Pay £19.99 once for this
+                academy.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="errorMessage">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className="purchaseButton"
+          disabled={
+            Boolean(checkingStudent)
+          }
+          onClick={() =>
+            void startAcademyPurchase(
+              purchaseStudentId,
+            )
+          }
+        >
+          {checkingStudent ===
+          purchaseStudentId
+            ? "Preparing secure checkout..."
+            : "Unlock Full Academy — £19.99"}
+        </button>
+
+                <button
+          type="button"
+          className="purchaseBack"
+          disabled={Boolean(
+            checkingStudent,
+          )}
+          onClick={() => {
+            setPurchaseStudentId(
+              null,
+            );
+            setError(null);
+          }}
+        >
+          {accountType === "PARENT"
+            ? "← Choose another learner"
+            : "← Back"}
+        </button>
+
+        <p className="secureNote">
+          Secure checkout powered by Stripe
+        </p>
+      </section>
+
+      <PageStyles />
+    </main>
+  );
+}
+
+if (
+  accountType ===
+  "ADULT_LEARNER"
+) {
     return (
       <main className="startPage">
         <section className="startCard individualCard">
@@ -1191,12 +1694,6 @@ export default function AcademyStartClient({
             Add a learner
           </Link>
 
-          <Link
-            href="/financial-education"
-            className="secondary"
-          >
-            Financial Education
-          </Link>
         </div>
       </section>
 
@@ -1568,6 +2065,155 @@ function PageStyles() {
         border: 1px solid
           #e5d8f5;
       }
+
+      .purchaseCard {
+  width: min(
+    680px,
+    100%
+  );
+  text-align: center;
+}
+
+.purchaseCard h1 {
+  max-width: 570px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.purchaseIntro {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.purchasePrice {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 9px;
+  margin: 28px 0 14px;
+}
+
+.purchasePrice strong {
+  color: #4f267c;
+  font-size: clamp(
+    48px,
+    8vw,
+    72px
+  );
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.purchasePrice span {
+  color: #74677d;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.purchaseBenefits {
+  display: grid;
+  gap: 12px;
+  margin: 30px 0;
+  text-align: left;
+}
+
+.purchaseBenefits > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 17px 18px;
+  border: 1px solid
+    rgba(
+      124,
+      58,
+      237,
+      0.12
+    );
+  border-radius: 18px;
+  background: #fbf9ff;
+}
+
+.benefitTick {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #5f3395;
+  background: #efe7fb;
+  font-weight: 950;
+}
+
+.purchaseBenefits strong {
+  display: block;
+  color: #2e1a40;
+  font-size: 15px;
+}
+
+.purchaseBenefits p {
+  margin: 4px 0 0;
+  color: #756a7e;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.purchaseButton {
+  width: 100%;
+  min-height: 58px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 18px;
+  color: white;
+  background: #6d28d9;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow:
+    0 14px 34px
+    rgba(
+      109,
+      40,
+      217,
+      0.22
+    );
+}
+
+.purchaseButton:hover:not(
+  :disabled
+) {
+  transform:
+    translateY(-1px);
+}
+
+.purchaseButton:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.purchaseBack {
+  margin-top: 15px;
+  padding: 8px 12px;
+  border: 0;
+  color: #6d28d9;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.purchaseBack:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secureNote {
+  margin: 12px 0 0;
+  color: #8a7f91;
+  font-size: 12px;
+}
 
       @media (
         max-width: 600px

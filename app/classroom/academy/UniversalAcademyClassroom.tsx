@@ -10,6 +10,10 @@ import {
 } from "@/app/fountaintalk/services/subscriptionAccess";
 
 import {
+  hasAcademyPurchaseAccess,
+} from "@/app/fountaintalk/services/purchaseAccess";
+
+import {
   personalFinanceAcademy,
 } from "@/app/data/academies/personal-finance";
 
@@ -182,14 +186,38 @@ export default function UniversalAcademyClassroom({
 
         await reconcileCheckoutIfNeeded();
 
-        if (cancelled) {
-          return;
-        }
+if (cancelled) {
+  return;
+}
 
-        const access =
-          await getAcademySubscriptionAccess(
-            studentId,
-          );
+/*
+ * Financial Literacy one-time ownership.
+ * A confirmed purchase provides permanent
+ * access without requiring a subscription.
+ */
+const hasPurchasedAccess =
+  await hasAcademyPurchaseAccess(
+    academyCode,
+    studentId,
+  );
+
+if (cancelled) {
+  return;
+}
+
+if (hasPurchasedAccess) {
+  setAccessState("allowed");
+  return;
+}
+
+/*
+ * Preserve access for existing
+ * eligible academy subscribers.
+ */
+const access =
+  await getAcademySubscriptionAccess(
+    studentId,
+  );
 
         if (cancelled) {
           return;
@@ -251,8 +279,10 @@ export default function UniversalAcademyClassroom({
           });
 
         window.location.replace(
-          `/pricing?${params.toString()}`,
-        );
+  `/academies/financial-literacy/start?studentId=${encodeURIComponent(
+    studentId,
+  )}`,
+);
       } catch (error) {
         if (cancelled) {
           return;

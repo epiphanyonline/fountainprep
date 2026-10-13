@@ -42,7 +42,48 @@ function SignupLandingContent() {
   const learnerNext =
     incomingNext || defaultLearnerNext;
 
-  const signupOptions: SignupOption[] = [
+  const isFinancialLiteracySignup =
+  incomingNext === "/academies/financial-literacy/start" ||
+  incomingNext.startsWith(
+    "/academies/financial-literacy/start?"
+  );
+
+  const signupOptions: SignupOption[] = isFinancialLiteracySignup
+  ? [
+      {
+        title: "I'm learning myself",
+        description:
+          "Build practical financial knowledge at your own pace.",
+        icon: "🎓",
+        href: `/signup/learner?next=${encodeURIComponent(learnerNext)}`,
+        action: "Continue as an Adult Learner",
+        points: [
+          "For learners aged 18 and above",
+          "Self-paced Financial Literacy lessons",
+          "Track your learning progress",
+          "Certificate on completion",
+        ],
+        featured: true,
+        badge: "FINANCIAL LITERACY",
+      },
+      {
+        title: "I'm enrolling my child",
+        description:
+          "Register as a parent or guardian to support your child's financial education.",
+        icon: "👨‍👩‍👧",
+        href: `/signup/parent?next=${encodeURIComponent(parentNext)}`,
+        action: "Continue as Parent or Guardian",
+        points: [
+          "Suitable for teenagers",
+          "Parent-managed learning account",
+          "Structured financial education",
+          "Learner progress tracking",
+        ],
+        featured: false,
+        badge: "",
+      },
+    ]
+  : [
     {
       title: "Parent or Guardian",
       description:
@@ -111,13 +152,17 @@ function SignupLandingContent() {
         <section className="signupHero">
           <span>Join Fountain Prep</span>
 
-          <h1>Who are you joining as?</h1>
+          <h1>
+  {isFinancialLiteracySignup
+    ? "Who will take the Financial Literacy course?"
+    : "Who are you joining as?"}
+</h1>
 
           <p>
-            Choose the option that best
-            describes who will take or
-            manage live lessons.
-          </p>
+  {isFinancialLiteracySignup
+    ? "Choose whether you're learning yourself or enrolling your child. Your lessons are self-paced, with no tutor booking required."
+    : "Choose the option that best describes who will take or manage live lessons."}
+</p>
         </section>
 
         <section className="signupCards">
@@ -404,6 +449,43 @@ function safeLiveNextPath(
     return "";
   }
 
+  /*
+   * Financial Literacy is the first
+   * self-paced Academy that is live.
+   *
+   * Preserve its destination through
+   * signup/login so a learner who begins
+   * the Financial Literacy journey is
+   * returned to that journey after
+   * creating an account.
+   */
+  const isFinancialLiteracyDestination =
+    value ===
+      "/academies/financial-literacy" ||
+    value.startsWith(
+      "/academies/financial-literacy/",
+    ) ||
+    value.startsWith(
+      "/academies/financial-literacy?",
+    ) ||
+    value ===
+      "/financial-education" ||
+    value.startsWith(
+      "/financial-education/",
+    ) ||
+    value.startsWith(
+      "/financial-education?",
+    );
+
+  if (isFinancialLiteracyDestination) {
+    return value;
+  }
+
+  /*
+   * Keep all other unfinished
+   * self-paced Academy destinations
+   * protected.
+   */
   const blockedDestinations = [
     "/academies",
     "/financial-education",

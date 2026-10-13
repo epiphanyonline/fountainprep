@@ -7,6 +7,7 @@ import SupportWidget from "./SupportWidget";
 
 const immersiveRoutes = [
   "/classroom",
+  "/academy/dashboard",
 ];
 
 export default function RouteChrome() {

@@ -207,6 +207,46 @@ export async function POST(
     }
 
     /*
+ * Verify paid Academy access before
+ * evaluating or issuing graduation.
+ */
+const {
+  data: purchase,
+  error: purchaseError,
+} = await admin
+  .from("academy_purchases")
+  .select("id")
+  .eq("user_id", user.id)
+  .eq("student_id", studentId)
+  .eq(
+    "academy_code",
+    FINANCIAL_LITERACY_ACADEMY_CODE,
+  )
+  .eq(
+    "programme_id",
+    FINANCIAL_LITERACY_PROGRAMME_ID,
+  )
+  .eq("status", "paid")
+  .limit(1)
+  .maybeSingle();
+
+if (purchaseError) {
+  throw purchaseError;
+}
+
+if (!purchase) {
+  return NextResponse.json(
+    {
+      error:
+        "A completed Financial Literacy Academy purchase is required for graduation.",
+    },
+    {
+      status: 403,
+    },
+  );
+}
+
+    /*
      * Step 3:
      * Build the complete Financial Literacy
      * curriculum requirement directly from

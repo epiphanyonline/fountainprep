@@ -10,8 +10,8 @@ import { useSearchParams } from "next/navigation";
 
 import { supabase } from "@/app/lib/supabase";
 import {
-  financialLiteracyPremiumBlueprint,
-} from "@/app/data/academies/personal-finance/premiumBlueprint";
+  personalFinanceAcademy,
+} from "@/app/data/academies/personal-finance";
 
 type GraduationRecord = {
   learnerId: string;
@@ -194,15 +194,16 @@ FinancialLiteracyCertificateClient() {
     requestedLearnerId,
   ]);
 
-  const stages =
-    useMemo(
-      () =>
-        financialLiteracyPremiumBlueprint.stages.map(
-          (stage) =>
-            stage.title,
-        ),
-      [],
-    );
+    const stages = useMemo(() => {
+    const programme =
+      personalFinanceAcademy.programmes.find(
+        (item) => item.id === "money-foundation",
+      );
+
+    return programme?.courses.map(
+      (course) => course.title,
+    ) ?? [];
+  }, []);
 
   if (loading) {
     return (
@@ -1315,42 +1316,113 @@ function Styles() {
       }
 
       @media print {
-        @page {
-          size: A4 landscape;
-          margin: 0;
-        }
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
 
-        body {
-          background: #fff;
-        }
+  html,
+body {
+    width: 297mm !important;
+    height: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
-        .screenToolbar,
-        .afterCertificate {
-          display: none !important;
-        }
+  body > * {
+    visibility: hidden !important;
+  }
 
-        .certificatePage {
-          min-height: 0;
-          background: #fff;
-        }
+  .certificatePage,
+  .certificatePage * {
+    visibility: visible !important;
+  }
 
-        .certificate {
-          width: 100%;
-          margin: 0;
-          box-shadow: none;
-        }
+  .screenToolbar,
+  .afterCertificate {
+    display: none !important;
+  }
 
-        .outerFrame {
-          min-height:
-            100vh;
-        }
+  .certificatePage {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 297mm !important;
+    height: 210mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
 
-        .innerFrame {
-          min-height:
-            calc(
-              100vh - 28px
-            );
-        }
+  .certificate {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .outerFrame {
+    min-height: 0 !important;
+    height: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .innerFrame {
+    min-height: 0 !important;
+    height: calc(100% - 28px) !important;
+    box-sizing: border-box;
+  }
+
+  /* Fit the complete certificate within landscape A4 */
+.outerFrame {
+  padding: 8px !important;
+}
+
+.innerFrame {
+  height: 100% !important;
+  padding: 18px 32px 12px !important;
+}
+
+.certificateBody {
+  padding: 18px 0 10px !important;
+}
+
+.certificateBody h1 {
+  font-size: 58px !important;
+  margin: 6px 0 12px !important;
+}
+
+.certificateBody h2 {
+  font-size: 36px !important;
+}
+
+.stagePanel {
+  margin-top: 12px !important;
+  padding: 10px 14px !important;
+}
+
+.certificateFooter {
+  padding-top: 10px !important;
+}
+
+.seal > div {
+  width: 58px !important;
+  height: 58px !important;
+}
+
+.credentialNote {
+  margin-top: 10px !important;
+  padding-top: 6px !important;
+}
+}
       }
     `}</style>
   );

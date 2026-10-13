@@ -22,6 +22,10 @@ import {
   useAcademySubscription,
 } from "../../hooks/useAcademySubscription";
 
+import {
+  useAcademyPurchase,
+} from "../../hooks/useAcademyPurchase";
+
 import type {
   AyoPose,
   NonLanguageAcademyId,
@@ -112,10 +116,23 @@ const {
   },
 );
 
+const {
+  hasPurchasedAccess,
+  loading: purchaseLoading,
+  error: purchaseError,
+} = useAcademyPurchase(
+  academyId,
+  studentId,
+  {
+    skip: guestMode,
+  },
+);
+
   const classroom = useAcademyClassroom({
   academyId,
   learner,
   subscriptionAccess,
+  hasPurchasedAccess,
   guestMode,
 });
 
@@ -451,7 +468,10 @@ availableAccessTier,
     );
   }
 
-  if (!guestMode && subscriptionLoading) {
+  if (
+  !guestMode &&
+  (subscriptionLoading || purchaseLoading)
+) {
     return (
       <main className="classroom-loading">
         <div className="loading-mark">
@@ -463,28 +483,36 @@ availableAccessTier,
         <strong>Checking academy access</strong>
 
         <p>
-          Confirming the learner’s subscription and free lesson access...
+          Confirming the learner’s academy access...
         </p>
       </main>
     );
   }
 
-  if (!guestMode && (subscriptionError || !subscriptionAccess)) {
-    return (
-      <main className="classroom-loading">
-        <strong>Unable to confirm academy access</strong>
+  if (
+  !guestMode &&
+  !subscriptionAccess &&
+  !hasPurchasedAccess
+) {
+  return (
+    <main className="classroom-loading">
+      <strong>Unable to confirm academy access</strong>
 
-        <p role="alert">
-          {subscriptionError ??
-            "Subscription access could not be loaded."}
-        </p>
+      <p role="alert">
+        {subscriptionError ??
+          purchaseError ??
+          "Academy access could not be loaded."}
+      </p>
 
-        <Link href="/pricing" className="topbar-link">
-          View academy plans
-        </Link>
-      </main>
-    );
-  }
+      <Link
+        href="/pricing"
+        className="topbar-link"
+      >
+        View academy plans
+      </Link>
+    </main>
+  );
+}
 
   if (!isAgeEligible) {
     return (

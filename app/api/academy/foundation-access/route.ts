@@ -18,6 +18,7 @@ type Action =
   | "complete";
 
 type AccessSource =
+  | "ACADEMY_PURCHASE"
   | "ACADEMY_SUBSCRIPTION"
   | "FREE_FOUNDATION";
 
@@ -51,6 +52,70 @@ function normaliseAcademy(
   }
 
   return null;
+}
+
+async function hasPurchasedAcademyAccess({
+  userId,
+  studentId,
+  academy,
+}: {
+  userId: string;
+  studentId: string | null;
+  academy: AcademyCode;
+}): Promise<boolean> {
+  /*
+   * academy_purchases uses the product-facing academy code.
+   *
+   * Financial Education is called "wealth" inside the
+   * foundation gateway, while the purchasable product is
+   * stored as "personal-finance".
+   */
+  const purchaseAcademyCodes =
+    academy === "wealth"
+      ? [
+          "personal-finance",
+          "financial-literacy",
+          "wealth",
+        ]
+      : [academy];
+
+  let query = supabaseAdmin
+    .from("academy_purchases")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "paid")
+    .in(
+      "academy_code",
+      purchaseAcademyCodes,
+    );
+
+  if (studentId) {
+    /*
+     * A learner-specific purchase grants access to that
+     * learner. An account-level purchase also grants access.
+     */
+    query = query.or(
+      `student_id.eq.${studentId},student_id.is.null`,
+    );
+  } else {
+    query = query.is(
+      "student_id",
+      null,
+    );
+  }
+
+  const {
+    data,
+    error,
+  } = await query.limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(
+    data && data.length > 0,
+  );
 }
 
 async function hasPaidAcademyAccess({
@@ -524,12 +589,73 @@ export async function POST(
           )
         : null;
 
-    const userId =
-      body.userId
-        ? String(
-            body.userId,
-          )
-        : null;
+    const authorization =
+  request.headers.get("authorization");
+
+const accessToken =
+  authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+const { data: authData, error: authError } =
+  accessToken
+    ? await supabaseAdmin.auth.getUser(accessToken)
+    : { data: { user: null }, error: null };
+
+if (accessToken && (authError || !authData.user)) {
+  return NextResponse.json(
+    { error: "Invalid or expired authentication." },
+    { status: 401 },
+  );
+}
+
+const userId = authData.user?.id ?? null;
+
+if (studentId) {
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Authentication is required for learner access." },
+      { status: 401 },
+    );
+  }
+
+  const { data: parent, error: parentError } =
+    await supabaseAdmin
+      .from("parent_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+  if (parentError) {
+    throw parentError;
+  }
+
+  if (!parent) {
+    return NextResponse.json(
+      { error: "Parent profile not found." },
+      { status: 403 },
+    );
+  }
+
+  const { data: learner, error: learnerError } =
+    await supabaseAdmin
+      .from("student_profiles")
+      .select("id")
+      .eq("id", studentId)
+      .eq("parent_id", parent.id)
+      .maybeSingle();
+
+  if (learnerError) {
+    throw learnerError;
+  }
+
+  if (!learner) {
+    return NextResponse.json(
+      { error: "You do not have access to this learner." },
+      { status: 403 },
+    );
+  }
+}
 
     const guestKey =
       body.guestKey
@@ -572,21 +698,58 @@ export async function POST(
       );
     }
 
-    /*
+        /*
      * ==================================================
      * 1. PAID ACCESS ALWAYS WINS
      * ==================================================
+     *
+     * Access priority:
+     *
+     * 1. Permanent one-time academy purchase
+     * 2. Active academy subscription
+     * 3. Complimentary foundation access
      */
 
     if (userId) {
-      const paid =
+      const purchased =
+        await hasPurchasedAcademyAccess({
+          userId,
+          studentId,
+          academy,
+        });
+
+      if (purchased) {
+        return NextResponse.json({
+          allowed: true,
+
+          accessType:
+            "ACADEMY_PURCHASE" satisfies AccessSource,
+
+          unlimited: true,
+
+          completed: null,
+
+          remaining: null,
+
+          foundationLocked:
+            false,
+
+          replayAllowed:
+            true,
+
+          requiresSubscription:
+            false,
+        });
+      }
+
+      const subscribed =
         await hasPaidAcademyAccess({
           userId,
           studentId,
           academy,
         });
 
-      if (paid) {
+      if (subscribed) {
         return NextResponse.json({
           allowed: true,
 

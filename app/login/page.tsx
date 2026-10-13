@@ -17,14 +17,15 @@ function safeParentNext(value: string | null) {
   }
 
   const allowedPrefixes = [
-    "/parent/",
-    "/subjects",
-    "/pricing",
-    "/schedule",
-    "/payment",
-    "/academies/",
-    "/classroom/academy",
-  ];
+  "/parent/",
+  "/subjects",
+  "/pricing",
+  "/schedule",
+  "/payment",
+  "/academies/",
+  "/classroom/academy",
+  "/academy/dashboard",
+];
 
   return allowedPrefixes.some(
     (prefix) =>
@@ -134,34 +135,68 @@ const [verificationLoading, setVerificationLoading] = useState(false);
       return;
     }
 
-    if (userProfile.role === "PARENT") {
-      const { data: parentProfile } = await supabase
-        .from("parent_profiles")
-        .select("account_type")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        if (userProfile.role === "PARENT") {
+      const { data: parentProfile, error: parentError } =
+        await supabase
+          .from("parent_profiles")
+          .select("account_type")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (parentProfile?.account_type === "ADULT_LEARNER") {
-        /*
-         * A destination supplied by the journey takes priority.
-         *
-         * Example:
-         * Financial Education
-         *   -> login
-         *   -> /academies/financial-literacy/start
-         *
-         * Only use the general Adult Learner dashboard when
-         * the learner came directly to the login page.
-         */
-        router.replace(
-          nextPath || "/learner/dashboard",
+      if (parentError || !parentProfile) {
+        showNotice(
+          "error",
+          "We could not load your account profile. Please try again.",
         );
+        setLoading(false);
+        return;
+      }
+
+      // Preserve a destination explicitly requested by the user.
+      if (nextPath) {
+        router.replace(nextPath);
+        router.refresh();
+        return;
+      }
+
+      // Recognise paid Financial Literacy purchases,
+      // including purchases made at the previous £39 price.
+      const { data: purchase, error: purchaseError } =
+        await supabase
+          .from("academy_purchases")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("academy_code", "personal-finance")
+          .eq("programme_id", "money-foundation")
+          .eq("status", "paid")
+          .limit(1)
+          .maybeSingle();
+
+      if (purchaseError) {
+        console.error(
+          "Academy purchase lookup failed:",
+          purchaseError,
+        );
+
+        showNotice(
+          "error",
+          "We could not verify your academy access. Please try again.",
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      if (purchase) {
+        router.replace("/academy/dashboard");
         router.refresh();
         return;
       }
 
       router.replace(
-        nextPath || "/parent/dashboard",
+        parentProfile.account_type === "ADULT_LEARNER"
+          ? "/learner/dashboard"
+          : "/parent/dashboard",
       );
       router.refresh();
       return;

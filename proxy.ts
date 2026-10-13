@@ -1,31 +1,78 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
-const SELF_PACED_ENABLED = false;
+export function proxy(
+  request: NextRequest,
+) {
+  const { pathname } =
+    request.nextUrl;
 
-export function proxy(request: NextRequest) {
-  if (SELF_PACED_ENABLED) {
+  /*
+   * Financial Literacy is the first
+   * self-paced Academy being reopened.
+   *
+   * Only the Financial Literacy journey
+   * and its classroom routes are allowed.
+   * Other self-paced Academies remain
+   * protected by the Coming Soon page.
+   */
+  const isFinancialLiteracyRoute =
+    pathname ===
+      "/financial-education" ||
+    pathname.startsWith(
+      "/financial-education/",
+    ) ||
+    pathname ===
+      "/academies/financial-literacy" ||
+    pathname.startsWith(
+      "/academies/financial-literacy/",
+    ) ||
+    pathname ===
+      "/fountaintalk/classroom/wealth" ||
+    pathname.startsWith(
+      "/fountaintalk/classroom/wealth/",
+    ) ||
+    pathname ===
+      "/fountaintalk/classroom/personal-finance" ||
+    pathname.startsWith(
+      "/fountaintalk/classroom/personal-finance/",
+    );
+
+  if (isFinancialLiteracyRoute) {
     return NextResponse.next();
   }
 
-  const { pathname } = request.nextUrl;
+  /*
+   * Keep every other self-paced Academy
+   * route unavailable for now.
+   */
+  const isProtectedSelfPacedRoute =
+    pathname === "/academies" ||
+    pathname.startsWith(
+      "/academies/",
+    ) ||
+    pathname === "/fountaintalk" ||
+    pathname.startsWith(
+      "/fountaintalk/",
+    );
 
-  const isSelfPacedRoute =
-  pathname === "/academies" ||
-  pathname.startsWith("/academies/") ||
-  pathname === "/financial-education" ||
-  pathname.startsWith("/financial-education/") ||
-  pathname === "/fountaintalk" ||
-  pathname.startsWith("/fountaintalk/");
-
-  if (!isSelfPacedRoute) {
+  if (!isProtectedSelfPacedRoute) {
     return NextResponse.next();
   }
 
-  const url = request.nextUrl.clone();
-  url.pathname = "/academy-coming-soon";
+  const url =
+    request.nextUrl.clone();
+
+  url.pathname =
+    "/academy-coming-soon";
+
   url.search = "";
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(
+    url,
+  );
 }
 
 export const config = {

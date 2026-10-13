@@ -42,6 +42,7 @@ type UseAcademyClassroomInput = {
   academyId: NonLanguageAcademyId;
   learner: SelectedAcademyLearner | null;
   subscriptionAccess: AcademySubscriptionAccess | null;
+  hasPurchasedAccess?: boolean;
   guestMode?: boolean;
 };
 
@@ -184,6 +185,7 @@ export function useAcademyClassroom({
   academyId,
   learner,
   subscriptionAccess,
+  hasPurchasedAccess = false,
   guestMode = false,
 }: UseAcademyClassroomInput) {
   const learnerId = learner?.id ?? "demo-learner";
@@ -201,6 +203,7 @@ const availableAccessTier =
     : "free";
 
 const isCourseAccessible =
+  hasPurchasedAccess ||
   canAccessAcademyTier(
     availableAccessTier,
     requiredAccessTier,
