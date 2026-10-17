@@ -988,18 +988,24 @@ export default function AdminBookingsPage() {
                   </div>
 
                   <div className="lessonActions">
-                    {booking.meeting_link ? (
-                      <a
-                        href={
-                          booking.meeting_link
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="meetButton"
-                      >
-                        Open Google Meet
-                      </a>
-                    ) : null}
+  {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    booking.meeting_link?.trim() ?? ''
+  ) ? (
+    <a
+      href={booking.meeting_link!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="meetButton"
+    >
+      Open Google Meet
+    </a>
+  ) : (
+    <span className="missingLink">
+      {booking.meeting_link
+        ? 'Google Meet link needs attention'
+        : 'Google Meet link missing'}
+    </span>
+  )}
 
                     <button
                       type="button"

@@ -597,26 +597,34 @@ function LessonCard({
       ) : null}
 
       <div className="lessonActions">
-        {lesson.meeting_link ? (
-  <Link
-    href={`/classroom/${lesson.id}`}
-    className="primaryLink actionBtn"
-  >
-    Join Lesson
-  </Link>
-) : (
-  <span className="disabledButton">No meeting link yet</span>
-)}
+  {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    lesson.meeting_link?.trim() ?? ''
+  ) ? (
+    <>
+      <Link
+        href={`/classroom/${lesson.id}`}
+        className="primaryLink actionBtn"
+      >
+        Join Lesson
+      </Link>
 
-        {lesson.meeting_link ? (
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(lesson.meeting_link || '')}
-            className="secondaryButton"
-          >
-            Copy Link
-          </button>
-        ) : null}
+      <button
+        type="button"
+        onClick={() =>
+          navigator.clipboard.writeText(lesson.meeting_link ?? '')
+        }
+        className="secondaryButton"
+      >
+        Copy Link
+      </button>
+    </>
+  ) : (
+    <span className="disabledButton">
+      {lesson.meeting_link
+        ? 'Google Meet link needs attention'
+        : 'No meeting link yet'}
+    </span>
+  )}
 
         <Link
   href={`/tutor/lesson-report?bookingId=${lesson.id}`}

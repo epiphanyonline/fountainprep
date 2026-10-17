@@ -540,7 +540,9 @@ function LessonRow({
         <strong>{formatDate(booking.lesson_date)}</strong>
         <span>{booking.lesson_time || 'Time pending'}</span>
 
-        {booking.meeting_link ? (
+        {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+  booking.meeting_link?.trim() ?? ''
+) ? (
           <a
             href={`/classroom/${booking.id}`}
             target="_blank"

@@ -380,9 +380,11 @@ function LessonCard({
   viewerTimezone: string
 }) {
   const canJoin =
-    lesson.payment_status === 'PAID' &&
-    lesson.status === 'CONFIRMED' &&
-    Boolean(lesson.meeting_link)
+  lesson.payment_status === 'PAID' &&
+  lesson.status === 'CONFIRMED' &&
+  /^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    lesson.meeting_link?.trim() ?? ''
+  )
 
   return (
     <article className="lessonCard">

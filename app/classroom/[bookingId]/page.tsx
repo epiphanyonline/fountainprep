@@ -504,9 +504,11 @@ export default function ClassroomPage() {
               Dashboard
             </Link>
 
-            {booking.meeting_link ? (
+            {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+  booking.meeting_link?.trim() ?? ''
+) ? (
               <a
-                href={booking.meeting_link}
+                href={booking.meeting_link!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="primaryBtn"
@@ -570,9 +572,11 @@ export default function ClassroomPage() {
       to complete lesson notes, homework and progress.
     </p>
 
-    {booking.meeting_link ? (
+    {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+  booking.meeting_link?.trim() ?? ''
+) ? (
       <a
-        href={booking.meeting_link}
+        href={booking.meeting_link!}
         target="_blank"
         rel="noopener noreferrer"
         className="googleMeetBtn"

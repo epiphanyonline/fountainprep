@@ -470,21 +470,25 @@ setSavingId('')
                 </div>
 
                 <div className="lessonActions">
-                  {lesson.meeting_link ? (
-                    <a
-                      href={`/classroom/${lesson.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="primaryBtn"
-                    >
-                      Enter Classroom
-                    </a>
-                  ) : (
-                    <button className="secondaryBtn" disabled>
-                      Meeting Link Pending
-                    </button>
-                  )}
-                </div>
+  {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    lesson.meeting_link?.trim() ?? ''
+  ) ? (
+    <a
+      href={`/classroom/${lesson.id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="primaryBtn"
+    >
+      Enter Classroom
+    </a>
+  ) : (
+    <button className="secondaryBtn" disabled>
+      {lesson.meeting_link
+        ? 'Google Meet link needs attention'
+        : 'Meeting Link Pending'}
+    </button>
+  )}
+</div>
 
                 <div className="noteBox">
                   <div className="sectionHead small">

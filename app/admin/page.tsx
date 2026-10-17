@@ -1549,17 +1549,23 @@ function LessonCard({
         </span>
 
         <span
-          className={
-            booking.meeting_link
-              ? 'miniStatus success'
-              : 'miniStatus danger'
-          }
-        >
-          Meet:{' '}
-          {booking.meeting_link
-            ? 'Ready'
-            : 'Missing'}
-        </span>
+  className={
+    /^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+      booking.meeting_link?.trim() ?? ''
+    )
+      ? 'miniStatus success'
+      : 'miniStatus danger'
+  }
+>
+  Meet:{' '}
+  {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    booking.meeting_link?.trim() ?? ''
+  )
+    ? 'Google Meet Ready'
+    : booking.meeting_link
+      ? 'Needs Attention'
+      : 'Missing'}
+</span>
       </div>
 
       {booking.notes ? (
@@ -1575,22 +1581,24 @@ function LessonCard({
       ) : null}
 
       <div className="lessonActions">
-        {booking.meeting_link ? (
-          <a
-            href={
-              booking.meeting_link
-            }
-            target="_blank"
-            rel="noreferrer"
-            className="meetingLink"
-          >
-            Open Google Meet
-          </a>
-        ) : (
-          <span className="missingLink">
-            Meeting link missing
-          </span>
-        )}
+  {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
+    booking.meeting_link?.trim() ?? ''
+  ) ? (
+    <a
+      href={booking.meeting_link!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="meetingLink"
+    >
+      Open Google Meet
+    </a>
+  ) : (
+    <span className="missingLink">
+      {booking.meeting_link
+        ? 'Google Meet link needs attention'
+        : 'Google Meet link missing'}
+    </span>
+  )}
 
         <Link
           href="/admin/bookings"
