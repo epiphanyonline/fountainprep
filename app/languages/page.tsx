@@ -142,22 +142,24 @@ export default function LanguagesPage() {
           </div>
 
           <h1>
-            Help your child
-            <span> grow closer to Nigerian culture.</span>
+            Learn Nigerian
+            <span> Languages.</span>
           </h1>
 
+          <div className="heroLanguages" aria-label="Available Nigerian languages">
+            <span className="heroLanguage heroLanguageYoruba">Yoruba</span>
+            <span className="heroLanguage heroLanguageIgbo">Igbo</span>
+            <span className="heroLanguage heroLanguageHausa">Hausa</span>
+          </div>
+
           <p className="lead">
-            Live private 1-to-1 Yoruba,
-            Igbo and Hausa lessons with
-            carefully selected tutors who
-            help learners speak with
-            confidence and connect with
-            language and culture.
+            Help your child speak confidently with family, connect with
+            their Nigerian heritage, and learn through live private
+            1-to-1 online lessons.
           </p>
 
           <p className="heroPromise">
-            They will speak their roots and 
-            feel at home in their culture.
+            Real conversations. Stronger family connections.
           </p>
 
           <div className="heroActions">
@@ -180,7 +182,7 @@ export default function LanguagesPage() {
     boxShadow: "0 12px 28px rgba(109, 40, 217, 0.28)",
   }}
 >
-  Find my child a Tutor
+  Find a Language Tutor
   <span>→</span>
 </Link>
 
@@ -760,6 +762,27 @@ export default function LanguagesPage() {
         .pricingHeading h2 span {
           color: #7c3aed;
         }
+
+        .heroLanguages {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 24px;
+        }
+
+        .heroLanguage {
+          display: inline-flex;
+          align-items: center;
+          padding: 9px 17px;
+          border-radius: 999px;
+          font-size: 15px;
+          font-weight: 850;
+          line-height: 1.2;
+        }
+
+        .heroLanguageYoruba { background: #f1e8ff; color: #6d28d9; }
+        .heroLanguageIgbo { background: #e8f1ff; color: #2456a6; }
+        .heroLanguageHausa { background: #e5f7ed; color: #18794e; }
 
         .lead {
           max-width: 550px;
