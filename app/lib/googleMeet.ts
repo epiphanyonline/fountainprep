@@ -120,10 +120,12 @@ export async function getGoogleAccessToken() {
     !payload.access_token
   ) {
     throw new Error(
-      payload.error_description ||
-        payload.error ||
-        `Google OAuth token refresh failed with status ${response.status}.`,
-    );
+  `Google OAuth token refresh failed (HTTP ${response.status}): ${
+    payload.error_description ||
+    payload.error ||
+    "Unknown OAuth error"
+  }`,
+);
   }
 
   return payload.access_token;
@@ -156,9 +158,11 @@ export async function verifyGoogleCalendarConnection() {
 
   if (!response.ok) {
     throw new Error(
-      data?.error?.message ||
-        "Google Calendar connection check failed.",
-    );
+  `Google Calendar access failed (HTTP ${response.status}): ${
+    data?.error?.message ||
+    "Unknown Calendar API error"
+  }`,
+);
   }
 
   return {

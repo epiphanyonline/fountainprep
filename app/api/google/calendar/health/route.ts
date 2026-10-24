@@ -26,14 +26,11 @@ export async function GET() {
     );
 
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Google Calendar connection failed.",
-      },
-      { status: 500 },
-    );
+  {
+    ok: false,
+    error: "Google Calendar connection failed. Check server logs.",
+  },
+  { status: 500 },
+);
   }
 }
