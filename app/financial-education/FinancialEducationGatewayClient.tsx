@@ -2,349 +2,98 @@
 
 import Link from "next/link";
 import FinancialEducationAyoFlow from "./FinancialEducationAyoFlow";
-import FinancialEducationFlowProgress from "./FinancialEducationFlowProgress";
 
+/** Financial Literacy app home. Existing course links and guided tour are retained. */
 export default function FinancialEducationGatewayClient() {
   return (
-    <main className="flowPage">
+    <main className="flowPage fpAppHome">
       <div className="ambientGlow glowPrimary" aria-hidden="true" />
       <div className="ambientGlow glowSecondary" aria-hidden="true" />
       <div className="meshGrid" aria-hidden="true" />
-
       <section className="experienceShell">
-        <FinancialEducationFlowProgress
-          steps={[
-            { label: "Welcome", state: "current" },
-            { label: "Free Lesson", state: "upcoming" },
-            { label: "Learn", state: "upcoming" },
-            { label: "Graduate", state: "upcoming" },
-          ]}
-          nextLabel="Begin with your free Financial Literacy lesson"
-        />
-
-        <div className="brandLine">
-          <span className="brandTag">FOUNTAIN PREP</span>
-          <span className="brandDot" />
-          <span className="brandSub">FINANCIAL EDUCATION</span>
+        <div className="fpAppHeading ayoTourIntro">
+          <div className="fpAppHeadingCopy">
+            <span className="fpEyebrow">FOUNTAINPREP · FINANCIAL EDUCATION</span>
+            <h1>Financial literacy partner <em>for families around the world.</em></h1>
+            <p>Practical financial education for every stage of life.</p>
+          </div>
+          <div className="fpHeroSymbol" aria-hidden="true"><span>₦</span><span>£</span><span>$</span></div>
         </div>
 
-        <header className="intro ayoTourIntro">
-          <span className="eyebrow">FOUNTAIN PREP FINANCIAL LITERACY ACADEMY</span>
-
-          <h1>
-            Build financial knowledge
-            <span className="serifAccent"> for life.</span>
-          </h1>
-
-          <p className="heroCopy">
-            A structured Financial Literacy Academy for individuals and families
-            who want to understand how money, assets, business, investment,
-            risk and capital really work.
-          </p>
-        </header>
-
-        {/* MAIN PRODUCT */}
-        <section className="academyCard ayoTourLearning">
-          <div className="academyGlow" aria-hidden="true" />
-
-          <div className="academyMain">
-            <div className="academyTop">
-              <span className="primaryBadge">
-                <span className="badgePulse" />
-                START HERE
-              </span>
-
-              <span className="academyLabel">FINANCIAL LITERACY ACADEMY</span>
-            </div>
-
-            <div className="academyContent">
-              <div className="academyIcon" aria-hidden="true">
-                <svg
-                  width="30"
-                  height="30"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  <circle cx="12" cy="10" r="2" />
-                </svg>
-              </div>
-
-              <div className="academyText">
-                <h2>Start Financial Literacy</h2>
-
-                <p>
-                  Learn how to think about money beyond saving and spending.
-                  Understand assets, enterprise, investment options, risk,
-                  ownership and capital allocation through a guided learning
-                  journey.
-                </p>
-              </div>
-            </div>
-
-            <div className="journey">
-              <div className="journeyItem">
-                <span className="journeyNumber">1</span>
-                <div>
-                  <strong>Start free</strong>
-                  <small>Take your first lesson at no cost.</small>
-                </div>
-              </div>
-
-              <div className="journeyLine" />
-
-              <div className="journeyItem">
-                <span className="journeyNumber">2</span>
-                <div>
-                  <strong>Unlock the academy</strong>
-                  <small>Continue when you are ready.</small>
-                </div>
-              </div>
-
-              <div className="journeyLine" />
-
-              <div className="journeyItem">
-                <span className="journeyNumber">3</span>
-                <div>
-                  <strong>Complete the training</strong>
-                  <small>Progress through the structured curriculum.</small>
-                </div>
-              </div>
-
-              <div className="journeyLine" />
-
-              <div className="journeyItem">
-                <span className="journeyNumber">4</span>
-                <div>
-                  <strong>Graduate</strong>
-                  <small>Complete the academy and earn your certificate.</small>
-                </div>
-              </div>
-            </div>
-
-            <div className="academyBottom">
-              <div className="academyFacts">
-                <span>✓ First lesson free</span>
-                <span>✓ No card required to start</span>
-                <span>✓ Structured learning</span>
-                <span>✓ Certificate included</span>
-              </div>
-
-              <Link
-  href="/academies/financial-literacy"
-  className="primaryAction"
-  style={{
-    flex: "0 0 auto",
-    width: "260px",
-    minHeight: "64px",
-    boxSizing: "border-box",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "18px",
-    padding: "10px 18px",
-    borderRadius: "16px",
-    color: "#ffffff",
-    textDecoration: "none",
-    background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
-    boxShadow: "0 12px 28px rgba(109, 40, 217, 0.24)",
-  }}
->
-  <span
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-start",
-      gap: "2px",
-    }}
-  >
-    <small
-      style={{
-        display: "block",
-        color: "rgba(255,255,255,0.75)",
-        fontSize: "8px",
-        lineHeight: 1.2,
-        fontWeight: 800,
-        letterSpacing: "0.1em",
-      }}
-    >
-      BEGIN YOUR ACADEMY
-    </small>
-
-    <strong
-      style={{
-        display: "block",
-        color: "#ffffff",
-        fontSize: "15px",
-        lineHeight: 1.25,
-        fontWeight: 850,
-      }}
-    >
-      Start Free Lesson
-    </strong>
-  </span>
-
-  <span
-  aria-hidden="true"
-  style={{
-    color: "#ffffff",
-    fontSize: "20px",
-    fontWeight: 800,
-    lineHeight: 1,
-  }}
->
-  →
-</span>
-</Link>            </div>
+        <section className="fpJourney" aria-labelledby="fp-journey-title">
+          <div className="fpSectionTitle"><div><span className="fpOverline">YOUR ROADMAP</span><h2 id="fp-journey-title">Your learning journey</h2></div><span className="fpJourneyCount">4 steps</span></div>
+          <div className="fpJourneyGrid" aria-label="Start free, unlock, learn and practise, graduate">
+            <div className="fpJourneyStep"><span className="fpStepNumber fpStepCurrent">01</span><strong>Start free</strong></div>
+            <div className="fpJourneyStep"><span className="fpStepNumber">02</span><strong>Unlock</strong></div>
+            <div className="fpJourneyStep"><span className="fpStepNumber">03</span><strong>Learn &amp; practise</strong></div>
+            <div className="fpJourneyStep"><span className="fpStepNumber">04</span><strong>Graduate</strong></div>
           </div>
-
-          <aside className="academyAside">
-            <span className="asideEyebrow">YOUR LEARNING PATH</span>
-
-            <h3>One academy. A clear journey.</h3>
-
-            <p>
-              You do not need to decide between different experiences. Start
-              with Financial Literacy and build your foundation first.
-            </p>
-
-            <div className="pathList">
-              <div className="pathItem">
-                <span>01</span>
-                <div>
-                  <strong>Experience</strong>
-                  <small>Try the first lesson free.</small>
-                </div>
-              </div>
-
-              <div className="pathItem">
-                <span>02</span>
-                <div>
-                  <strong>Learn</strong>
-                  <small>Unlock the complete academy.</small>
-                </div>
-              </div>
-
-              <div className="pathItem">
-                <span>03</span>
-                <div>
-                  <strong>Apply</strong>
-                  <small>Use simulations to practise what you learn.</small>
-                </div>
-              </div>
-
-              <div className="pathItem">
-                <span>04</span>
-                <div>
-                  <strong>Graduate</strong>
-                  <small>Complete your learning journey.</small>
-                </div>
-              </div>
-            </div>
-          </aside>
         </section>
 
-        {/* SECONDARY EXPERIENCE */}
-        <section className="practiceSection ayoTourSimulation">
-          <div className="practiceIcon" aria-hidden="true">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
+        <section className="fpFeatured ayoTourLearning" aria-labelledby="fp-feature-title">
+          <div className="fpFeaturedTop">
+            <span className="fpPill"><span className="fpPulse" /> START HERE</span>
+            <span className="fpFreeTag">LESSON 01 · FREE</span>
           </div>
-
-          <div className="practiceCopy">
-            <span className="practiceEyebrow">PRACTICE WHAT YOU LEARN</span>
-            <h3>Financial Simulation Games</h3>
-            <p>
-              Put financial ideas into practice using fictional money. Make
-              investment and personal-finance decisions without risking real
-              money.
-            </p>
+          <div className="fpFeaturedBody">
+            <div className="fpCourseIcon" aria-hidden="true">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/></svg>
+            </div>
+            <div className="fpFeaturedText">
+              <span className="fpOverline">YOUR FEATURED ACADEMY</span>
+              <h2 id="fp-feature-title">Financial Literacy</h2>
+              <p>Understand money, assets, investing, business, risk and ownership through guided lessons.</p>
+            </div>
           </div>
-
-          <Link
-            href="/academies/financial-literacy/investment-lab"
-            className="practiceAction"
-          >
-            Explore Simulations
-            <span>→</span>
+          <Link className="fpStartButton" href="/academies/financial-literacy">
+            <span><small>BEGIN YOUR LEARNING JOURNEY</small><strong>Start free lesson</strong></span>
+            <span className="fpStartArrow" aria-hidden="true">→</span>
           </Link>
+          <p className="fpTrustLine"><span>✓ No card required</span><span>✓ Learn at your pace</span><span>✓ Certificate pathway</span></p>
         </section>
 
-        {/* OPTIONAL EXPLORATION */}
-        <Link
-          href="/academies/biography"
-          className="biographyLink ayoTourBiography"
-        >
-          <div className="bioBadgeContainer">
-            <span className="bioTag">EXPLORE MORE</span>
+        <section className="fpExplore" aria-labelledby="fp-explore-title">
+          <div className="fpSectionTitle"><div><span className="fpOverline">KEEP EXPLORING</span><h2 id="fp-explore-title">More ways to learn</h2></div></div>
+          <div className="fpExploreGrid">
+            <Link href="/academies/financial-literacy/investment-lab" className="fpExploreCard ayoTourSimulation">
+              <span className="fpExploreIcon fpAmber" aria-hidden="true">◇</span>
+              <span className="fpExploreCopy"><strong>Financial Simulation Games</strong><small>Practise decisions with fictional money, without risking your own.</small><span className="fpExploreAction">Explore simulations →</span></span>
+            </Link>
+            <Link href="/academies/biography" className="fpExploreCard ayoTourBiography">
+              <span className="fpExploreIcon" aria-hidden="true">✦</span>
+              <span className="fpExploreCopy"><strong>Biography of Greatness</strong><small>Learn from the decisions and journeys of remarkable people.</small><span className="fpExploreAction">Explore biographies →</span></span>
+            </Link>
           </div>
-
-          <div className="bioContent">
-            <strong>Biography of Greatness</strong>
-            <small>
-              Study the decisions, ownership and capital allocation behind
-              extraordinary journeys.
-            </small>
-          </div>
-
-          <div className="bioArrow">→</div>
-        </Link>
+        </section>
 
         <FinancialEducationAyoFlow
           title="I’ll guide you from here."
-          text="Financial Literacy is the heart of your journey. Start with your complimentary first lesson, experience the academy, and continue into the full programme when you are ready. The simulations are here to help you practise what you learn."
+          text="Start with your complimentary Financial Literacy lesson, then continue into the full academy when you're ready."
           tourSteps={[
-            {
-              selector: ".ayoTourIntro",
-              title: "Welcome to Fountain Prep Financial Education.",
-              text: "Hello, and welcome. I’m Ayo, and I’ll guide you through your Financial Literacy journey. We built this academy to make important financial knowledge understandable, structured and practical for individuals and families.",
-            },
-            {
-              selector: ".ayoTourLearning",
-              title: "This is where your journey begins.",
-              text: "Financial Literacy is the core academy. Your first lesson is complimentary, so you can experience the learning environment before deciding whether to continue. No card is required to begin.",
-            },
-            {
-              selector: ".ayoTourLearning",
-              title: "Follow one clear learning path.",
-              text: "Start with the free lesson, unlock the full academy when you are ready, progress through the structured training, and complete your learning journey toward graduation and your certificate.",
-            },
-            {
-              selector: ".ayoTourSimulation",
-              title: "Practise what you learn.",
-              text: "The simulation games support your Financial Literacy training. Use fictional money to make decisions, test ideas and see possible consequences without putting real money at risk.",
-            },
-            {
-              selector: ".ayoTourBiography",
-              title: "Explore further when you want to.",
-              text: "Biography of Greatness is an additional experience. It lets you study the decisions, ownership, risks and capital allocation behind extraordinary journeys. Your Financial Literacy Academy remains your main learning path.",
-            },
+            { selector: ".ayoTourIntro", title: "Welcome to FountainPrep Financial Education.", text: "I'm Ayo. This is your starting point for practical, structured financial education." },
+            { selector: ".ayoTourLearning", title: "Your first lesson is free.", text: "Start here to experience the classroom before deciding whether to unlock the academy. No payment card is needed to begin." },
+            { selector: ".fpJourney", title: "Follow your learning journey.", text: "Try your first lesson, unlock the full academy when you're ready, learn and practise, then work toward your certificate." },
+            { selector: ".ayoTourSimulation", title: "Practise safely.", text: "Use fictional money to test financial decisions without putting real money at risk." },
+            { selector: ".ayoTourBiography", title: "Explore remarkable journeys.", text: "Discover the decisions, ownership and risks behind extraordinary life stories." }
           ]}
         />
       </section>
+      <nav className="fpBottomNav" aria-label="Financial Education navigation">
+        <div className="fpBottomNavInner">
+          <Link href="/financial-education" aria-current="page"><span aria-hidden="true">⌂</span><small>Home</small></Link>
+          <Link href="/academies/financial-literacy"><span aria-hidden="true">▤</span><small>Learn</small></Link>
+          <Link href="/academies/financial-literacy/investment-lab"><span aria-hidden="true">◇</span><small>Practise</small></Link>
+          <Link href="/academies/biography"><span aria-hidden="true">✦</span><small>Explore</small></Link>
+        </div>
+      </nav>
+      <style jsx global>{`
 
-      <style jsx>{`
-        :global(html) {
+        html {
           -webkit-text-size-adjust: 100%;
           scroll-behavior: smooth;
         }
 
-        :global(body) {
+        body {
           margin: 0;
           background: #f8f6fc;
           color: #21142d;
@@ -1211,6 +960,73 @@ export default function FinancialEducationGatewayClient() {
             transition: none !important;
           }
         }
+      
+
+/* App-home overrides: deliberately scoped to fpAppHome so other academies are unaffected. */
+.fpAppHome{background:linear-gradient(180deg,#f2eaff 0,#faf8ff 300px,#f7f5fb 100%);padding:16px 16px 110px;min-height:100dvh}
+.fpAppHome .experienceShell{max-width:1060px;padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none;gap:20px}
+.fpAppHeading{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 4px 4px}
+.fpAppHeadingCopy{max-width:690px}.fpEyebrow,.fpOverline{font-size:10px;font-weight:900;letter-spacing:.13em;color:#7c3aed}
+.fpAppHeading h1{font-size:clamp(30px,4.3vw,50px);line-height:1.09;letter-spacing:-.045em;margin:12px 0 10px;color:#261238;font-weight:850}
+.fpAppHeading h1 em{font-family:Georgia,serif;color:#7836d7;font-weight:400}
+.fpAppHeading p{font-size:14px;color:#6c6077;line-height:1.55;margin:0}
+.fpHeroSymbol{flex:0 0 180px;height:130px;border-radius:30px;background:linear-gradient(145deg,#7735e8,#ac83f8);display:flex;align-items:center;justify-content:center;gap:3px;box-shadow:0 16px 32px #7331dd25;transform:rotate(-3deg)}
+.fpHeroSymbol span{display:grid;place-items:center;width:51px;height:51px;border-radius:50%;background:#ffffff22;color:white;font-size:27px;font-weight:700}.fpHeroSymbol span:nth-child(2){transform:translateY(-18px);background:#fff;color:#7432db}
+.fpFeatured{position:relative;background:linear-gradient(130deg,#fff 0%,#fbf8ff 68%,#f1e8ff 100%);border:1px solid #e8dbf8;border-radius:28px;padding:26px;box-shadow:0 15px 42px #54258112;overflow:hidden}
+.fpFeatured:after{content:'';position:absolute;width:210px;height:210px;border:1px solid #d8c3ff;border-radius:50%;right:-120px;top:-125px;pointer-events:none}
+.fpFeaturedTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:19px;position:relative;z-index:1}
+.fpPill,.fpFreeTag{font-size:10px;font-weight:850;letter-spacing:.07em}.fpPill{display:inline-flex;align-items:center;gap:7px;color:#6d28d9;background:#f0e7ff;border-radius:99px;padding:8px 11px}.fpPulse{height:7px;width:7px;border-radius:50%;background:#7c3aed}.fpFreeTag{color:#6d28d9}
+.fpFeaturedBody{display:flex;gap:18px;align-items:center;margin-bottom:20px;position:relative;z-index:1}.fpCourseIcon{width:74px;height:74px;flex:0 0 74px;display:grid;place-items:center;border-radius:23px;color:white;background:linear-gradient(145deg,#9853f2,#6220c4);box-shadow:0 12px 24px #742bd52c}
+.fpFeaturedText h2{font-size:clamp(25px,3.3vw,35px);margin:7px 0;letter-spacing:-.035em;color:#271538;line-height:1.12}.fpFeaturedText p{font-size:13px;line-height:1.6;color:#6c6077;margin:0;max-width:660px}
+.fpStartButton{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:14px;width:100%;max-width:440px;padding:15px 18px;min-height:64px;box-sizing:border-box;background:linear-gradient(135deg,#823bea,#6222c5);color:white!important;text-decoration:none!important;border-radius:17px;box-shadow:0 12px 28px #6d28d930;transition:transform .2s,box-shadow .2s}
+.fpStartButton:hover{transform:translateY(-2px);box-shadow:0 16px 30px #6d28d940}.fpStartButton small{display:block;color:#e9d9ff;font-size:9px;font-weight:800;letter-spacing:.08em}.fpStartButton strong{display:block;color:white;font-size:17px;margin-top:3px}.fpStartArrow{font-size:26px;color:white}
+.fpTrustLine{display:flex;flex-wrap:wrap;gap:6px 16px;margin:15px 0 0;font-size:11px;font-weight:700;color:#756681}
+.fpJourney{padding:23px 25px;border-radius:25px;background:white;border:1px solid #ebe3f5;box-shadow:0 9px 26px #5425810b}.fpSectionTitle{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}.fpSectionTitle h2{font-size:21px;letter-spacing:-.035em;margin:5px 0 0;color:#291738}.fpJourneyCount{font-size:11px;font-weight:800;color:#7c3aed;background:#f3ecff;border-radius:50px;padding:7px 11px;white-space:nowrap}
+.fpJourneyGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:13px}.fpJourneyStep{display:flex;align-items:flex-start;gap:10px;padding:12px 9px;border:1px solid #efe8f7;border-radius:15px;background:#fcfaff}.fpStepNumber{display:grid;place-items:center;flex:0 0 31px;height:31px;border-radius:11px;background:#f0e6ff;color:#7b38d9;font-weight:900;font-size:11px}.fpStepCurrent{background:#7732d8;color:white}.fpJourneyStep strong{display:block;color:#31213e;font-size:12px}.fpJourneyStep small{display:block;color:#82758d;font-size:10px;line-height:1.4;margin-top:4px}
+.fpExploreGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.fpExploreCard{display:flex;align-items:center;gap:15px;padding:20px;background:white;border:1px solid #ebe3f5;border-radius:22px;color:#291738!important;text-decoration:none!important;box-shadow:0 9px 24px #5425810a;transition:transform .2s}.fpExploreCard:hover{transform:translateY(-2px)}.fpExploreIcon{display:grid;place-items:center;flex:0 0 52px;height:52px;border-radius:17px;background:#f0e7ff;color:#7c3aed;font-size:25px}.fpExploreIcon.fpAmber{background:#fff1da;color:#b86a12}.fpExploreCopy strong{display:block;font-size:14px;color:#291738}.fpExploreCopy small{display:block;font-size:11px;color:#81748c;line-height:1.5;margin-top:5px}.fpExploreAction{display:block;font-size:11px;font-weight:850;color:#7430d5;margin-top:9px}
+.fpBottomNav{position:fixed;z-index:35;left:0;right:0;bottom:0;background:#fffffff0;backdrop-filter:blur(16px);border-top:1px solid #e9dff4;padding:8px 12px calc(8px + env(safe-area-inset-bottom))}.fpBottomNavInner{display:flex;align-items:center;justify-content:space-around;max-width:580px;margin:auto}.fpBottomNav a{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;padding:4px 8px;color:#85778f!important;text-decoration:none!important}.fpBottomNav a[aria-current="page"]{color:#7029d7!important}.fpBottomNav a>span{font-size:24px;line-height:1}.fpBottomNav a small{font-size:10px;font-weight:800}
+/* Keep Ayo's existing floating trigger clear of the bottom tab bar. */
+.fpAppHome ~ .fpBottomNav{z-index:35}
+@media(max-width:700px){.fpAppHome{padding:11px 13px 115px}.fpAppHome .experienceShell{gap:16px}.fpAppHeading{padding:7px 3px 0}.fpAppHeading h1{font-size:clamp(28px,8.4vw,37px);margin:8px 0}.fpAppHeading p{font-size:12px}.fpHeroSymbol{display:none}.fpFeatured{padding:19px;border-radius:23px}.fpFeaturedTop{margin-bottom:15px}.fpFeaturedBody{gap:13px;align-items:flex-start;margin-bottom:17px}.fpCourseIcon{width:54px;height:54px;flex-basis:54px;border-radius:17px}.fpFeaturedText h2{font-size:25px;margin:4px 0 7px}.fpFeaturedText p{font-size:12px}.fpStartButton{max-width:none}.fpTrustLine{font-size:10px}.fpJourney{padding:17px;border-radius:22px}.fpJourneyGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fpJourneyStep{padding:10px 8px;gap:7px}.fpJourneyStep strong{font-size:11px}.fpJourneyStep small{font-size:9px}.fpExploreGrid{grid-template-columns:1fr;gap:10px}.fpExploreCard{padding:14px;border-radius:18px}.fpSectionTitle h2{font-size:19px}}
+@media(max-width:370px){.fpAppHome{padding-left:9px;padding-right:9px}.fpFeatured{padding:15px}.fpFeaturedText h2{font-size:22px}.fpFreeTag{font-size:9px}.fpJourneyGrid{grid-template-columns:1fr 1fr}.fpStepNumber{flex-basis:27px;height:27px}}
+@media(prefers-reduced-motion:reduce){.fpStartButton,.fpExploreCard{transition:none}}
+
+
+/* App-home refinement: short introduction, compact roadmap, featured course as the hero. */
+.fpAppHome .experienceShell{gap:14px;max-width:1000px;padding:20px 24px 26px}
+.fpAppHeading{padding:2px 2px 0;gap:12px}
+.fpAppHeadingCopy{max-width:850px}
+.fpAppHeading h1{font-size:clamp(27px,3.5vw,43px);line-height:1.13;margin:6px 0 5px}
+.fpAppHeading p{font-size:13px;line-height:1.4}
+.fpHeroSymbol{transform:scale(.78);transform-origin:right center}
+.fpJourney{padding:12px 15px;border-radius:18px;box-shadow:none;background:#fcfaff}
+.fpJourney .fpSectionTitle{margin-bottom:9px}
+.fpJourney .fpSectionTitle h2{font-size:15px;margin:2px 0 0}
+.fpJourney .fpOverline{font-size:8px}
+.fpJourneyCount{font-size:10px;padding:4px 8px}
+.fpJourneyGrid{margin:0;gap:6px}
+.fpJourneyStep{padding:7px;align-items:center;gap:7px;border-radius:12px}
+.fpJourneyStep strong{font-size:10px;line-height:1.2}
+.fpStepNumber{flex:0 0 25px;height:25px;border-radius:9px;font-size:10px}
+.fpFeatured{padding:29px 30px;border:2px solid #ddc9fb;box-shadow:0 18px 45px #5425811a}
+.fpFeaturedText h2{font-size:clamp(28px,3.8vw,40px)}
+@media(max-width:700px){
+ .fpAppHome{padding:9px 10px 112px}
+ .fpAppHome .experienceShell{padding:13px;gap:12px;border-radius:20px}
+ .fpAppHeading h1{font-size:clamp(26px,7vw,34px);margin:4px 0}
+ .fpAppHeading p{font-size:11px}
+ .fpJourney{padding:10px;border-radius:15px}
+ .fpJourney .fpSectionTitle{margin-bottom:8px}
+ .fpJourney .fpSectionTitle h2{font-size:13px}
+ .fpJourneyCount{font-size:9px}
+ .fpJourneyGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .fpJourneyStep{display:flex;flex-direction:column;justify-content:center;text-align:center;gap:4px;padding:7px 2px;min-height:57px}
+ .fpJourneyStep strong{font-size:9px;overflow-wrap:anywhere}
+ .fpStepNumber{flex:none;width:23px;height:23px;font-size:9px}
+ .fpFeatured{padding:20px 17px;border-radius:22px}
+ .fpFeaturedText h2{font-size:28px}
+}
+
       `}</style>
     </main>
   );
