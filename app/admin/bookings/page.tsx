@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import AdminLessonRescheduler from './AdminLessonRescheduler'
 
 type Booking = {
   id: string
@@ -1006,6 +1007,13 @@ export default function AdminBookingsPage() {
         : 'Google Meet link missing'}
     </span>
   )}
+
+                    <AdminLessonRescheduler
+                      bookingId={booking.id}
+                      tutorId={booking.tutor_id}
+                      status={booking.status}
+                      paymentStatus={booking.payment_status}
+                    />
 
                     <button
                       type="button"
