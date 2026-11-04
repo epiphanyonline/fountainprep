@@ -564,20 +564,15 @@ export default function AdminDashboardPage() {
       ],
     )
 
-  const upcomingLessons =
-    useMemo(
-      () =>
-        confirmedBookings.filter(
-          (booking) =>
-            booking.lesson_date &&
-            booking.lesson_date >
-              today,
-        ),
-      [
-        confirmedBookings,
-        today,
-      ],
-    )
+  const upcomingLessons = useMemo(
+  () =>
+    confirmedBookings.filter(
+      (booking) =>
+        booking.lesson_date &&
+        booking.lesson_date >= today,
+    ),
+  [confirmedBookings, today],
+)
 
   const nextSevenDays =
     useMemo(

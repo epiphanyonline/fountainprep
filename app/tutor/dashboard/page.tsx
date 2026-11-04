@@ -150,7 +150,11 @@ export default function TutorDashboardPage() {
 
       setProfile(tutorProfile as TutorProfile)
 
-      const today = dateKeyInTimezone(new Date(), tutorProfile.timezone)
+      // Include the previous two calendar days to accommodate
+// international lessons and lessons crossing midnight.
+const today = new Date(Date.now() - 48 * 60 * 60 * 1000)
+  .toISOString()
+  .slice(0, 10)
 
       const { data: bookingRows, error: bookingError } = await supabase
         .from('lesson_bookings')
