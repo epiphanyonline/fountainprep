@@ -296,16 +296,12 @@ export async function POST(
           "lesson_bookings",
         )
         .update({
-          meeting_link:
-            created.meetUrl,
-
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq(
-          "id",
-          booking.id,
-        );
+  meeting_link: created.meetUrl,
+  google_calendar_event_id: created.eventId,
+  lesson_starts_at: startIso,
+  updated_at: new Date().toISOString(),
+})
+.eq("id", booking.id);
 
       if (
         bookingUpdateError

@@ -40,6 +40,7 @@ type BookingRow = {
   marketplace_discount_percent: number | null
   parent_booking_group_id: string | null
   booking_frequency: string | null
+hold_expires_at: string | null
 }
 
 type PaymentRow = {
@@ -109,6 +110,67 @@ export async function POST(req: Request) {
     if (groupBookings.length === 0) {
       return NextResponse.json({ error: 'Booking timetable not found.' }, { status: 404 })
     }
+
+    // Only unpaid, pending reservations can enter Checkout.
+if (
+  groupBookings.some(
+    (booking) =>
+      booking.status !== 'PENDING_PAYMENT' ||
+      booking.payment_status !== 'UNPAID'
+  )
+) {
+  return NextResponse.json(
+    {
+      error:
+        'This reservation is no longer awaiting payment. Please check your bookings.',
+      code: 'BOOKING_NOT_PAYABLE',
+    },
+    { status: 409 }
+  )
+}
+
+// Legacy reservations have no expiry deadline.
+// New reservations must remain within their payment window.
+const expiryValues = groupBookings.map(
+  (booking) => booking.hold_expires_at
+)
+
+const hasDeadline = expiryValues.some(
+  (value) => value !== null
+)
+
+if (hasDeadline) {
+  const firstDeadline = expiryValues[0]
+
+  if (
+    !firstDeadline ||
+    expiryValues.some((value) => value !== firstDeadline)
+  ) {
+    return NextResponse.json(
+      {
+        error: 'The reservation deadline is inconsistent. Please contact support.',
+        code: 'BOOKING_DEADLINE_INVALID',
+      },
+      { status: 409 }
+    )
+  }
+
+  const deadlineMs = new Date(firstDeadline).getTime()
+
+  if (
+    !Number.isFinite(deadlineMs) ||
+    Date.now() >= deadlineMs
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          'Your 30-minute reservation window has ended. Please select an available timetable again.',
+        code: 'BOOKING_HOLD_EXPIRED',
+      },
+      { status: 409 }
+    )
+  }
+}
 
     if (
       groupBookings.some(
@@ -284,7 +346,7 @@ async function getOwnedBooking(bookingId: string, userId: string) {
   const { data, error } = await supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency, hold_expires_at'
     )
     .eq('id', bookingId)
     .eq('parent_id', userId)
@@ -298,7 +360,7 @@ async function getOwnedBookingGroup(anchor: BookingRow, userId: string) {
   let query = supabaseAdmin
     .from('lesson_bookings')
     .select(
-      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency'
+      'id, parent_id, student_id, subject_id, program_id, plan_id, product_type, tutor_id, lesson_date, lesson_time, timezone, status, payment_status, amount_gbp, standard_amount_gbp, marketplace_discount_percent, parent_booking_group_id, booking_frequency, hold_expires_at'
     )
     .eq('parent_id', userId)
 

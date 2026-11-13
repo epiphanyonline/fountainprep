@@ -280,6 +280,12 @@ const tutorId = seedSlots[0].tutor_id
     }
 
     const bookingGroupId = crypto.randomUUID()
+
+// One payment deadline for the entire booking group.
+// Applies only to newly created reservations.
+const holdExpiresAt = new Date(
+  Date.now() + 30 * 60 * 1000
+).toISOString()
     const bookingRows = occurrences.map((occurrence) => {
       const matchingSlot = matchingSlots.find(
         (slot) =>
@@ -302,7 +308,8 @@ const tutorId = seedSlots[0].tutor_id
         lesson_time: occurrence.lessonTime,
         timezone: occurrence.seed.timezone || 'Africa/Lagos',
         status: 'PENDING_PAYMENT',
-        payment_status: 'UNPAID',
+payment_status: 'UNPAID',
+hold_expires_at: holdExpiresAt,
         amount_gbp:
   occurrence.seedIndex === 0 && occurrence.weekIndex === 0 ? totalAmount : 0,
 standard_amount_gbp:

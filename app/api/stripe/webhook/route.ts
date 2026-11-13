@@ -749,19 +749,36 @@ async function confirmPaidBookingGroup(session: Stripe.Checkout.Session) {
     ),
   );
 
-  const { error: paymentUpdateError } = await supabaseAdmin
+  const { data: existingPayment, error: paymentReadError } =
+  await supabaseAdmin
     .from("payments")
-    .update({
-      payment_status: "paid",
-      paid_at: new Date().toISOString(),
-      provider_reference: session.id,
-      provider_payment_intent:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", payment.id);
+    .select("paid_at")
+    .eq("id", payment.id)
+    .single();
+
+if (paymentReadError) {
+  throw paymentReadError;
+}
+
+const now = new Date().toISOString();
+
+const { error: paymentUpdateError } = await supabaseAdmin
+  .from("payments")
+  .update({
+    payment_status: "paid",
+    paid_at: existingPayment.paid_at || now,
+    provider_reference: session.id,
+    provider_payment_intent:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : null,
+    updated_at: now,
+  })
+  .eq("id", payment.id);
+
+if (paymentUpdateError) {
+  throw paymentUpdateError;
+}
 
   if (paymentUpdateError) throw paymentUpdateError;
 
@@ -1051,8 +1068,6 @@ async function failUnpaidBookingGroup(session: Stripe.Checkout.Session) {
     .eq("id", payment.id)
     .neq("payment_status", "paid");
 
-  if (paymentUpdateError) throw paymentUpdateError;
-
   if (bookingIds.length > 0) {
     const { error: bookingUpdateError } = await supabaseAdmin
       .from("lesson_bookings")
@@ -1263,11 +1278,11 @@ async function ensureGoogleMeetLinks(
           "lesson_bookings",
         )
         .update({
-          meeting_link:
-            created.meetUrl,
-          updated_at:
-            new Date().toISOString(),
-        })
+  meeting_link: created.meetUrl,
+  google_calendar_event_id: created.eventId,
+  lesson_starts_at: startIso,
+  updated_at: new Date().toISOString(),
+})
         .eq("id", booking.id);
 
     if (error) {

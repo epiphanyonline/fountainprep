@@ -81,6 +81,91 @@ const helpfulLinks = [
 
 const recommendedSubjects = ['Yoruba', 'Maths', 'English', 'Science', 'Coding', 'Music']
 
+// Booking date/time values are wall-clock values in booking.timezone.
+// Convert them to an instant before formatting for the parent's timezone.
+// If a legacy booking has an invalid/missing timezone, show its stored value
+// with a warning rather than silently assuming it is UTC or Lagos time.
+function validTimeZone(value: string | null | undefined): value is string {
+  if (!value) return false
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function zoneParts(instant: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant)
+  const values: Record<string, number> = {}
+  for (const part of parts) {
+    if (part.type !== 'literal') values[part.type] = Number(part.value)
+  }
+  return values
+}
+
+function bookingInstant(booking: LessonBooking): Date | null {
+  if (!booking.lesson_date || !booking.lesson_time || !validTimeZone(booking.timezone)) return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(booking.lesson_date)
+  const time = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(booking.lesson_time)
+  if (!match || !time) return null
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3])
+  const hour = Number(time[1]), minute = Number(time[2]), second = Number(time[3] ?? 0)
+  if (hour > 23 || minute > 59 || second > 59) return null
+  const target = Date.UTC(year, month - 1, day, hour, minute, second)
+  // Check the offsets on either side of this date to account for DST changes.
+  const offsets = new Set<number>()
+  for (const delta of [-86400000, 0, 86400000]) {
+    const probe = new Date(target + delta)
+    const local = zoneParts(probe, booking.timezone)
+    const localAsUtc = Date.UTC(local.year, local.month - 1, local.day,
+      local.hour, local.minute, local.second)
+    offsets.add(Math.round((localAsUtc - probe.getTime()) / 60000))
+  }
+  const matches: Date[] = []
+  for (const offsetMinutes of offsets) {
+    const candidate = new Date(target - offsetMinutes * 60000)
+    const parts = zoneParts(candidate, booking.timezone)
+    if (parts.year === year && parts.month === month && parts.day === day &&
+        parts.hour === hour && parts.minute === minute && parts.second === second) {
+      matches.push(candidate)
+    }
+  }
+  // Ambiguous fall-back times and nonexistent spring-forward times require
+  // manual confirmation; do not guess which occurrence was intended.
+  return matches.length === 1 ? matches[0] : null
+}
+
+function displayLessonTime(booking: LessonBooking, parentZone: string | null | undefined) {
+  const instant = bookingInstant(booking)
+  if (!instant || !validTimeZone(parentZone)) {
+    return {
+      date: formatDate(booking.lesson_date),
+      time: booking.lesson_time || 'Time pending',
+      zone: booking.timezone || 'Timezone missing',
+      warning: 'Timezone needs confirmation',
+      instant: null as Date | null,
+    }
+  }
+  return {
+    date: new Intl.DateTimeFormat('en-GB', {
+      timeZone: parentZone, weekday: 'short', day: 'numeric', month: 'short',
+    }).format(instant),
+    time: new Intl.DateTimeFormat('en-GB', {
+      timeZone: parentZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).format(instant),
+    zone: parentZone,
+    warning: null as string | null,
+    instant,
+  }
+}
+
+
 export default function ParentDashboardPage() {
   const router = useRouter()
 
@@ -162,7 +247,8 @@ export default function ParentDashboardPage() {
 
       setStudents(studentMap)
 
-      const today = new Date().toISOString().split('T')[0]
+      // Include the previous day: timezone conversion can move a lesson across midnight.
+       const today = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
       const { data: bookingRows } = await supabase
         .from('lesson_bookings')
@@ -185,7 +271,7 @@ export default function ParentDashboardPage() {
         .gte('lesson_date', today)
         .order('lesson_date', { ascending: true })
         .order('lesson_time', { ascending: true })
-        .limit(8)
+        .limit(100)
 
       const cleanBookings = (bookingRows ?? []) as LessonBooking[]
       setBookings(cleanBookings)
@@ -232,6 +318,7 @@ export default function ParentDashboardPage() {
   const nextLesson = confirmedLessons[0]
   const firstName = profile?.full_name?.split(' ')[0] || 'Parent'
   const studentList = Object.entries(students)
+   const parentZone = profile?.timezone
 
   if (loading) {
     return (
@@ -321,8 +408,11 @@ export default function ParentDashboardPage() {
               </div>
 
               <div className="lessonTimeBox">
-                <strong>{formatDate(nextLesson.lesson_date)}</strong>
-                <span>{nextLesson.lesson_time || 'Time pending'}</span>
+                <strong>{displayLessonTime(nextLesson, parentZone).date}</strong>
+                <span>{displayLessonTime(nextLesson, parentZone).time} · {displayLessonTime(nextLesson, parentZone).zone}
+                 {displayLessonTime(nextLesson, parentZone).warning && (
+                   <small style={{ display: 'block', color: '#b45309' }}>{displayLessonTime(nextLesson, parentZone).warning}</small>
+                 )}</span>
 
                 {nextLesson.id && (
   <a
@@ -460,6 +550,7 @@ export default function ParentDashboardPage() {
                 booking={booking}
                 childName={students[booking.student_id] || 'Selected child'}
                 subjectName={subjects[booking.subject_id] || 'Selected subject'}
+                 parentZone={parentZone}
               />
             ))}
           </div>
@@ -522,10 +613,12 @@ function LessonRow({
   booking,
   childName,
   subjectName,
+  parentZone,
 }: {
   booking: LessonBooking
   childName: string
   subjectName: string
+  parentZone: string | null | undefined
 }) {
   return (
     <div className="lessonRow">
@@ -537,8 +630,11 @@ function LessonRow({
       </div>
 
       <div className="lessonDate">
-        <strong>{formatDate(booking.lesson_date)}</strong>
-        <span>{booking.lesson_time || 'Time pending'}</span>
+        <strong>{displayLessonTime(booking, parentZone).date}</strong>
+        <span>{displayLessonTime(booking, parentZone).time} · {displayLessonTime(booking, parentZone).zone}
+         {displayLessonTime(booking, parentZone).warning && (
+           <small style={{ color: '#b45309' }}>{displayLessonTime(booking, parentZone).warning}</small>
+         )}</span>
 
         {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
   booking.meeting_link?.trim() ?? ''
