@@ -189,7 +189,7 @@ export default function ParentDashboardPage() {
         .gte('lesson_date', earliestBookingDate)
         .order('lesson_date', { ascending: true })
         .order('lesson_time', { ascending: true })
-        .limit(100)
+        .limit(500)
 
       const cleanBookings = (bookingRows ?? []) as LessonBooking[]
       setBookings(cleanBookings)
