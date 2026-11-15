@@ -14,8 +14,6 @@ type Earning = {
   id: string
   tutor_id: string
   booking_id: string
-  lesson_amount: number | null
-  platform_fee: number | null
   tutor_amount: number | null
   status: string
   created_at: string
@@ -72,7 +70,7 @@ export default function TutorEarningsPage() {
 
       const { data, error } = await supabase
         .from('tutor_earnings')
-        .select('*')
+        .select('id, tutor_id, booking_id, tutor_amount, status, created_at, paid_at, lesson_date')
         .eq('tutor_id', tutorProfile.id)
         .order('created_at', { ascending: false })
 
