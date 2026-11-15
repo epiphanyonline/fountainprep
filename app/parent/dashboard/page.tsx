@@ -471,6 +471,7 @@ export default function ParentDashboardPage() {
                 booking={booking}
                 childName={students[booking.student_id] || 'Selected child'}
                 subjectName={subjects[booking.subject_id] || 'Selected subject'}
+                viewerTimezone={profile?.timezone}
               />
             ))}
           </div>
@@ -533,10 +534,12 @@ function LessonRow({
   booking,
   childName,
   subjectName,
+  viewerTimezone,
 }: {
   booking: LessonBooking
   childName: string
   subjectName: string
+  viewerTimezone?: string | null
 }) {
   return (
     <div className="lessonRow">
@@ -548,8 +551,8 @@ function LessonRow({
       </div>
 
       <div className="lessonDate">
-        <strong>{formatDate(booking.lesson_date)}</strong>
-        <span>{booking.lesson_time || 'Time pending'}</span>
+        <strong>{formatBookingDate(booking.lesson_date, booking.lesson_time, booking.timezone, viewerTimezone)}</strong>
+        <span>{formatBookingTime(booking.lesson_date, booking.lesson_time, booking.timezone, viewerTimezone)}</span>
 
         {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
   booking.meeting_link?.trim() ?? ''
