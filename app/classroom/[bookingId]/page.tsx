@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { onLessonReportReady } from '../../lib/events'
 import LessonControlBar from './components/LessonControlBar'
+import LiveLessonPoints from '../../components/lesson/LiveLessonPoints'
+import LessonTutorReview from '../../components/lesson/LessonTutorReview'
+import { LEARNING_REWARDS_ENABLED } from '../../lib/learningRewardsFlags'
 
 type StudentRow = {
   full_name: string | null
@@ -597,6 +600,23 @@ export default function ClassroomPage() {
   </div>
 </div>
         </section>
+
+        {LEARNING_REWARDS_ENABLED ? (
+          <div style={{ marginTop: 18 }}>
+            <LiveLessonPoints
+              bookingId={booking.id}
+              studentName={studentName}
+              canAward={canEdit && booking.tutor_profiles?.user_id !== undefined && booking.tutor_profiles?.user_id !== null}
+              isLive={isLive}
+            />
+          </div>
+        ) : null}
+
+        {LEARNING_REWARDS_ENABLED && booking.status === 'COMPLETED' && !canEdit ? (
+          <div style={{ marginTop: 18 }}>
+            <LessonTutorReview bookingId={booking.id} tutorName={tutorName} />
+          </div>
+        ) : null}
 
         <section className="mainGrid">
           <div className="workspaceWide">
