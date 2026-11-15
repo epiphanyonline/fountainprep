@@ -60,8 +60,7 @@ create table public.lesson_tutor_reviews (
   comment text check (comment is null or char_length(comment) <= 1000),
   moderation_status text not null default 'pending'
     check (moderation_status in ('pending', 'approved', 'rejected')),
-  created_at timestamptz not null default now(),
-  constraint review_must_start_pending check (moderation_status = 'pending')
+  created_at timestamptz not null default now()
 );
 
 alter table public.lesson_tutor_reviews enable row level security;
