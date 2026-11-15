@@ -31,7 +31,6 @@ type LessonBooking = {
   status: string
   payment_status: string
   meeting_link: string | null
-  amount_gbp: number | null
 }
 
 type ProgressNote = {
@@ -139,8 +138,7 @@ export default function TutorSessionsPage() {
         timezone,
         status,
         payment_status,
-        meeting_link,
-        amount_gbp
+        meeting_link
       `)
       .eq('tutor_id', tutorId)
       .order('lesson_date', { ascending: true })
