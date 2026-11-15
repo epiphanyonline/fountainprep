@@ -8,6 +8,7 @@ import { onLessonReportReady } from '../../lib/events'
 import LessonControlBar from './components/LessonControlBar'
 import LiveLessonPoints from '../../components/lesson/LiveLessonPoints'
 import LessonTutorReview from '../../components/lesson/LessonTutorReview'
+import ClassroomChat from '../../components/lesson/ClassroomChat'
 import { LEARNING_REWARDS_ENABLED } from '../../lib/learningRewardsFlags'
 
 type StudentRow = {
@@ -69,6 +70,7 @@ export default function ClassroomPage() {
   const [message, setMessage] = useState('')
   const [canEdit, setCanEdit] = useState(false)
   const [isAssignedTutor, setIsAssignedTutor] = useState(false)
+  const [classroomViewerId, setClassroomViewerId] = useState<string | null>(null)
 
   const [lessonObjectives, setLessonObjectives] = useState('')
   const [tutorNotes, setTutorNotes] = useState('')
@@ -208,6 +210,7 @@ export default function ClassroomPage() {
 
       setCanEdit(isTutor || isAdmin)
       setIsAssignedTutor(isTutor)
+      setClassroomViewerId(user.id)
       setBooking(row)
 
       setClassroomStatus(row.classroom_status || 'NOT_STARTED')
@@ -602,6 +605,10 @@ export default function ClassroomPage() {
   </div>
 </div>
         </section>
+
+        {process.env.NEXT_PUBLIC_ENABLE_CLASSROOM_CHAT === 'true' && classroomViewerId ? (
+          <ClassroomChat bookingId={booking.id} viewerId={classroomViewerId} />
+        ) : null}
 
         {LEARNING_REWARDS_ENABLED ? (
           <div style={{ marginTop: 18 }}>
