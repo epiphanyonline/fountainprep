@@ -48,6 +48,19 @@ using (
   )
 );
 
+-- Admins may read all points for oversight, but cannot award or edit them.
+-- Match the existing Fountain Prep admin authorization pattern.
+create policy "Admins can view all lesson point awards"
+on public.lesson_point_awards for select to authenticated
+using (
+  exists (
+    select 1 from public.user_profiles up
+    where up.id = (select auth.uid())
+      and up.role = 'ADMIN'
+      and coalesce(up.is_active, true) = true
+  )
+);
+
 -- Do not provide UPDATE or DELETE policies: reward history is append-only.
 grant select, insert on public.lesson_point_awards to authenticated;
 revoke all on public.lesson_point_awards from anon;
