@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { LEARNING_REWARDS_ENABLED } from '../lib/learningRewardsFlags'
 
 type Booking = {
   id: string
@@ -78,6 +79,12 @@ const adminActions = [
     href: '/admin/students',
     tag: 'Learners',
   },
+  ...(LEARNING_REWARDS_ENABLED ? [{
+    title: 'Learner Points & Rewards',
+    text: 'Monitor lifetime points, learner leaderboard, tutor awards and reward history.',
+    href: '/admin/learner-points',
+    tag: 'Learning',
+  }] : []),
   {
     title: 'Tutors',
     text: 'Manage tutor approval, verification, listing status and teaching operations.',
