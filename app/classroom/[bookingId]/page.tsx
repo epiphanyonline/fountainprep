@@ -68,6 +68,7 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [canEdit, setCanEdit] = useState(false)
+  const [isAssignedTutor, setIsAssignedTutor] = useState(false)
 
   const [lessonObjectives, setLessonObjectives] = useState('')
   const [tutorNotes, setTutorNotes] = useState('')
@@ -206,6 +207,7 @@ export default function ClassroomPage() {
       }
 
       setCanEdit(isTutor || isAdmin)
+      setIsAssignedTutor(isTutor)
       setBooking(row)
 
       setClassroomStatus(row.classroom_status || 'NOT_STARTED')
@@ -606,7 +608,7 @@ export default function ClassroomPage() {
             <LiveLessonPoints
               bookingId={booking.id}
               studentName={studentName}
-              canAward={canEdit && booking.tutor_profiles?.user_id !== undefined && booking.tutor_profiles?.user_id !== null}
+              canAward={isAssignedTutor}
               isLive={isLive}
             />
           </div>
