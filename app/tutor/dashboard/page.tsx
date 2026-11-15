@@ -42,7 +42,6 @@ type LessonBooking = {
   timezone: string | null
   status: string
   payment_status: string
-  amount_gbp: number | null
   meeting_link: string | null
   notes: string | null
   student_profiles: {
@@ -169,7 +168,6 @@ const today = new Date(Date.now() - 48 * 60 * 60 * 1000)
           timezone,
           status,
           payment_status,
-          amount_gbp,
           meeting_link,
           notes,
           student_profiles (
