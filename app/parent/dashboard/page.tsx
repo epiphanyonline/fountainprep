@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { addCalendarDays, bookingInstant, formatBookingDate, formatBookingTime, dateKeyInTimezone } from '../../lib/timezone'
+import { isLessonUpcomingOrJoinable } from '../../lib/lessonAccessWindow'
 
 type ParentProfile = {
   id: string
@@ -162,7 +164,9 @@ export default function ParentDashboardPage() {
 
       setStudents(studentMap)
 
-      const today = new Date().toISOString().split('T')[0]
+      // Include recent calendar dates because a booking may be on yesterday's date
+      // in the learner's timezone while today for their tutor.
+      const earliestBookingDate = addCalendarDays(dateKeyInTimezone(new Date(), 'UTC'), -2)
 
       const { data: bookingRows } = await supabase
         .from('lesson_bookings')
@@ -182,10 +186,10 @@ export default function ParentDashboardPage() {
         `
         )
         .eq('parent_id', user.id)
-        .gte('lesson_date', today)
+        .gte('lesson_date', earliestBookingDate)
         .order('lesson_date', { ascending: true })
         .order('lesson_time', { ascending: true })
-        .limit(8)
+        .limit(100)
 
       const cleanBookings = (bookingRows ?? []) as LessonBooking[]
       setBookings(cleanBookings)
@@ -218,8 +222,15 @@ export default function ParentDashboardPage() {
 
   const confirmedLessons = useMemo(() => {
     return bookings.filter(
-      (booking) => booking.status === 'CONFIRMED' || booking.payment_status === 'PAID'
-    )
+      (booking) =>
+        (booking.status === 'CONFIRMED' || booking.payment_status === 'PAID') &&
+        isLessonUpcomingOrJoinable(booking.lesson_date, booking.lesson_time, booking.timezone, booking.status)
+    ).sort((a, b) => {
+      if (!a.lesson_date || !a.lesson_time) return 1
+      if (!b.lesson_date || !b.lesson_time) return -1
+      return bookingInstant(a.lesson_date, a.lesson_time, a.timezone).getTime() -
+        bookingInstant(b.lesson_date, b.lesson_time, b.timezone).getTime()
+    }).slice(0, 8)
   }, [bookings])
 
   const pendingPayments = useMemo(() => {
@@ -321,8 +332,8 @@ export default function ParentDashboardPage() {
               </div>
 
               <div className="lessonTimeBox">
-                <strong>{formatDate(nextLesson.lesson_date)}</strong>
-                <span>{nextLesson.lesson_time || 'Time pending'}</span>
+                <strong>{formatBookingDate(nextLesson.lesson_date, nextLesson.lesson_time, nextLesson.timezone, profile?.timezone)}</strong>
+                <span>{formatBookingTime(nextLesson.lesson_date, nextLesson.lesson_time, nextLesson.timezone, profile?.timezone)}</span>
 
                 {nextLesson.id && (
   <a
