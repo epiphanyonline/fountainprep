@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { isLessonUpcomingOrJoinable } from '../../lib/lessonAccessWindow'
 import {
   bookingInstant,
   dateKeyInTimezone,
@@ -206,7 +207,9 @@ const today = new Date(Date.now() - 48 * 60 * 60 * 1000)
 
   const confirmedLessons = useMemo(() => {
     return lessons.filter(
-      (lesson) => lesson.status === 'CONFIRMED' || lesson.payment_status === 'PAID'
+      (lesson) =>
+        (lesson.status === 'CONFIRMED' || lesson.payment_status === 'PAID') &&
+        isLessonUpcomingOrJoinable(lesson.lesson_date, lesson.lesson_time, lesson.timezone, lesson.status)
     )
   }, [lessons])
 
