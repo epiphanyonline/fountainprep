@@ -75,3 +75,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/staging-schema-DRAFT.sql
       - name: Assert RLS restrictions and private answer-key access
         run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-postgres-assertions.sql
+      - name: Install mock transaction prototype in disposable database
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-prototype.sql
+      - name: Verify atomic persistent scoring, snapshotting and idempotency
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-assertions.sql
