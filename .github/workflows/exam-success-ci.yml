@@ -79,3 +79,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-prototype.sql
       - name: Verify atomic persistent scoring, snapshotting and idempotency
         run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-assertions.sql
+      - name: Check owner isolation and expiry of persistent exam attempts
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-isolation-expiry.sql
+      - name: Verify simultaneous PostgreSQL start and submit attempts
+        run: bash docs/exam-success/ci-concurrency-check.sh
