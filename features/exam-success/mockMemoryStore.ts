@@ -20,6 +20,7 @@ type AttemptRecord = {
   expiresAt: number;
   state: "in_progress" | "submitted" | "expired";
   answers: Map<string, string | null>;
+  frozenQuestions: MockPaper["questions"];
   result?: { earned: number; possible: number };
 };
 
@@ -38,7 +39,7 @@ export class MockMemoryStore implements AuthenticatedExamStore {
   ) {}
 
   addPaper(paper: MockPaper): void {
-    this.papers.set(paper.id, paper);
+    this.papers.set(paper.id, { ...paper, questions: paper.questions.map(q => ({...q, optionIds: [...q.optionIds]})) });
   }
 
   async authenticatedLearnerId(): Promise<string | null> {
@@ -70,6 +71,7 @@ export class MockMemoryStore implements AuthenticatedExamStore {
     this.attempts.set(attemptId, {
       id: attemptId, learnerId: data.learnerId, paperId: data.paperId,
       expiresAt: expiry, state: "in_progress", answers: new Map(),
+      frozenQuestions: paper.questions.map(q => ({...q, optionIds: [...q.optionIds]})),
     });
     this.startRequests.set(requestKey, attemptId);
     return { attemptId, expiresAt: new Date(expiry).toISOString() };
@@ -85,8 +87,7 @@ export class MockMemoryStore implements AuthenticatedExamStore {
     if (attempt.state !== "in_progress" || this.nowMs() >= attempt.expiresAt) {
       return "closed";
     }
-    const paper = this.papers.get(attempt.paperId)!;
-    const question = paper.questions.find(q => q.id === data.questionId);
+    const question = attempt.frozenQuestions.find(q => q.id === data.questionId);
     if (!question || (data.optionId !== null && !question.optionIds.includes(data.optionId))) {
       return "invalid_question";
     }
@@ -123,11 +124,10 @@ export class MockMemoryStore implements AuthenticatedExamStore {
     if (attempt.state !== "in_progress" || this.nowMs() >= attempt.expiresAt) {
       throw new Error("closed");
     }
-    const paper = this.papers.get(attempt.paperId)!;
     const answers: ObjectiveAnswer[] = [...attempt.answers.entries()].map(
       ([questionId, optionId]) => ({ questionId, optionId }),
     );
-    const { earned, possible } = scoreSingleChoice(paper.questions, answers);
+    const { earned, possible } = scoreSingleChoice(attempt.frozenQuestions, answers);
     attempt.result = { earned, possible };
     attempt.state = "submitted";
     this.submissions.set(requestKey, attempt.id);
