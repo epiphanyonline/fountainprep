@@ -30,7 +30,8 @@ begin
  end;
  -- Simulate server clock passing expiry by setting a past deadline on the
  -- synthetic attempt. No client-provided clock enters the function.
- update public.exam_attempts set expires_at=clock_timestamp()-interval '1 second'
+ update public.exam_attempts set started_at=clock_timestamp()-interval '2 minutes',
+    expires_at=clock_timestamp()-interval '1 second'
  where id=v_attempt;
  v_snapshot:=exam_private.resume_test_attempt(v_owner,v_attempt);
  if v_snapshot->>'state' <> 'expired' then
