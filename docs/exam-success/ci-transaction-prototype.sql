@@ -173,8 +173,61 @@ begin
     from public.exam_results r where r.attempt_id=p_attempt;
 end $$;
 
+-- Resume uses the same authoritative DB clock and frozen question snapshot.
+-- The result is a JSON object containing only the learner's own saved answers
+-- and display options. Never return private keys, marking weights or rubrics.
+create or replace function exam_private.resume_test_attempt(
+  p_learner uuid, p_attempt uuid
+) returns jsonb language plpgsql set search_path='' as $
+declare
+  v_attempt public.exam_attempts%rowtype;
+  v_questions jsonb;
+  v_answers jsonb;
+  v_state text;
+begin
+  select * into v_attempt from public.exam_attempts
+    where id=p_attempt and learner_user_id=p_learner;
+  if not found then return null; end if;
+
+  v_state := case
+    when v_attempt.state='in_progress' and clock_timestamp()>=v_attempt.expires_at
+      then 'expired'
+    else v_attempt.state
+  end;
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'id',s.question_id,
+      'format','single_choice',
+      'optionIds',s.options
+    ) order by pq.sort_order
+  ), '[]'::jsonb)
+  into v_questions
+  from exam_private.attempt_question_snapshots s
+  join public.exam_paper_questions pq
+    on pq.question_id=s.question_id and pq.paper_id=v_attempt.paper_id
+  where s.attempt_id=p_attempt;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'questionId',a.question_id,
+      'optionId',a.selected_option_id
+    ) order by a.saved_at, a.question_id
+  ), '[]'::jsonb)
+  into v_answers
+  from public.exam_attempt_answers a where a.attempt_id=p_attempt;
+
+  return jsonb_build_object(
+    'attemptId',v_attempt.id,
+    'expiresAt',v_attempt.expires_at,
+    'state',v_state,
+    'questions',v_questions,
+    'answers',v_answers
+  );
+end $;
+
 revoke all on function exam_private.start_test_attempt(uuid,uuid,text),
   exam_private.save_test_answer(uuid,uuid,uuid,text,text),
-  exam_private.submit_test_attempt(uuid,uuid)
+  exam_private.submit_test_attempt(uuid,uuid),
+  exam_private.resume_test_attempt(uuid,uuid)
   from public,anon,authenticated;
 commit;
