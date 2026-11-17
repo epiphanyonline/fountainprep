@@ -178,7 +178,7 @@ end $$;
 -- and display options. Never return private keys, marking weights or rubrics.
 create or replace function exam_private.resume_test_attempt(
   p_learner uuid, p_attempt uuid
-) returns jsonb language plpgsql set search_path='' as $
+) returns jsonb language plpgsql set search_path='' as $resume$
 declare
   v_attempt public.exam_attempts%rowtype;
   v_questions jsonb;
@@ -223,7 +223,7 @@ begin
     'questions',v_questions,
     'answers',v_answers
   );
-end $;
+end $resume$;
 
 revoke all on function exam_private.start_test_attempt(uuid,uuid,text),
   exam_private.save_test_answer(uuid,uuid,uuid,text,text),
