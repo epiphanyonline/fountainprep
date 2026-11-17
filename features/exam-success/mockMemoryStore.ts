@@ -6,11 +6,9 @@
  * exercise the mock-service contract before a transactional staging database
  * adapter exists. No Supabase or external services are contacted.
  */
-import type {
-  AuthenticatedExamStore,
-  MockPaper,
-  StartResult,
-} from "./mockService";
+import type { MockPaper, StartResult } from "./mockService";
+import type { ResumableExamStore, ResumeSnapshot } from "./mockResume";
+import { toDisplayQuestions } from "./publicQuestion";
 import { scoreSingleChoice, type ObjectiveAnswer } from "./objectiveScoring";
 
 type AttemptRecord = {
@@ -25,7 +23,7 @@ type AttemptRecord = {
 };
 
 /** A synchronous clock makes deadline tests reproducible. */
-export class MockMemoryStore implements AuthenticatedExamStore {
+export class MockMemoryStore implements ResumableExamStore {
   private papers = new Map<string, MockPaper>();
   private attempts = new Map<string, AttemptRecord>();
   private startRequests = new Map<string, string>();
@@ -107,6 +105,25 @@ export class MockMemoryStore implements AuthenticatedExamStore {
       attemptId: data.attemptId, questionId: data.questionId, optionId: data.optionId,
     });
     return "saved";
+  }
+
+  async loadAttemptForResume(data: {
+    learnerId: string; attemptId: string;
+  }): Promise<ResumeSnapshot | null> {
+    if (this.learnerId !== data.learnerId) return null;
+    const attempt = this.attempts.get(data.attemptId);
+    if (!attempt || attempt.learnerId !== data.learnerId) return null;
+    const state = attempt.state === "in_progress" &&
+      this.nowMs() >= attempt.expiresAt ? "expired" : attempt.state;
+    return {
+      attemptId: attempt.id,
+      expiresAt: new Date(attempt.expiresAt).toISOString(),
+      state,
+      questions: toDisplayQuestions(attempt.frozenQuestions),
+      answers: [...attempt.answers].map(([questionId, optionId]) => ({
+        questionId, optionId,
+      })),
+    };
   }
 
   async submitAndScore(data: {
