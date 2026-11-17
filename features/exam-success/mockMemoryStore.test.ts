@@ -46,6 +46,29 @@ describe("mock exam end-to-end contract (synthetic and in-memory only)", () => {
     await expect(startMock(store, "paper_2", "start_1")).rejects.toThrow("idempotency_conflict");
   });
 
+  it("does not let delayed retries overwrite a newer answer", async () => {
+    const { store } = fixture();
+    const { attemptId } = await startMock(store, "paper_1", "start_1");
+    const first = { attemptId, questionId: "q1", optionId: "a", requestId: "save_1" };
+    expect(await saveMockAnswer(store, first)).toBe("saved");
+    expect(await saveMockAnswer(store, {
+      attemptId, questionId: "q1", optionId: "b", requestId: "save_2",
+    })).toBe("saved");
+    expect(await saveMockAnswer(store, first)).toBe("saved");
+    expect(await finishMock(store, attemptId, "submit_1")).toMatchObject({
+      earned: 2, possible: 5,
+    });
+  });
+
+  it("rejects conflicting reuse of a save request key", async () => {
+    const { store } = fixture();
+    const { attemptId } = await startMock(store, "paper_1", "start_1");
+    await saveMockAnswer(store, { attemptId, questionId: "q1", optionId: "a", requestId: "save_1" });
+    await expect(saveMockAnswer(store, {
+      attemptId, questionId: "q1", optionId: "b", requestId: "save_1",
+    })).rejects.toThrow("idempotency_conflict");
+  });
+
   it("rejects attempts at deadline and invalid answer options", async () => {
     const { store, advance } = fixture();
     const { attemptId } = await startMock(store, "paper_1", "start_1");
