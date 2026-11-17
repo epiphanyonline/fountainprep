@@ -10,8 +10,8 @@ import {
   type ServerAuthVerifier,
 } from "./verifiedLearner";
 
-export type StagingStoreFactory = (verifiedLearnerId: string) =>
-  Promise<AuthenticatedExamStore>;
+export type StagingStoreFactory<T extends AuthenticatedExamStore = AuthenticatedExamStore> =
+  (verifiedLearnerId: string) => Promise<T>;
 
 export type StagingEnvironment = {
   vercelEnvironment: string | undefined;
@@ -29,12 +29,12 @@ export type StagingEnvironment = {
  *
  * Never mount this with production Supabase credentials.
  */
-export async function createStagingAuthenticatedStore(
+export async function createStagingAuthenticatedStore<T extends AuthenticatedExamStore>(
   authorization: string | null,
   environment: StagingEnvironment,
   verifier: ServerAuthVerifier,
-  makeStore: StagingStoreFactory,
-): Promise<AuthenticatedExamStore | null> {
+  makeStore: StagingStoreFactory<T>,
+): Promise<T | null> {
   assertIsolatedExamStage(
     environment.stagingProjectRef,
     environment.productionProjectRef,
