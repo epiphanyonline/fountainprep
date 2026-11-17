@@ -25,7 +25,7 @@ create table public.exam_papers (
   constraint exam_papers_reviewed_before_publish check(
     status <> 'published' or reviewed_by is not null
   ),
-  unique(board,variant,country_code,syllabus_year,version)
+  unique(board,variant,country_code,syllabus_year,title,version)
 );
 
 create table public.exam_questions (
@@ -135,7 +135,7 @@ grant select on public.exam_papers,public.exam_attempts,public.exam_attempt_answ
 commit;
 
 -- NOT READY FOR PRODUCTION:
--- (1) Needs migration-generation via CLI, staging permission validation.
+-- (1) Needs migration-generation via CLI, staging permission validation.\n-- (1a) Review paper/version uniqueness, exam paper naming and QA workflows.
 -- (2) Requires trusted transactional server save/submit/scoring procedures.
 -- (3) Requires paper immutability enforcement after first attempt.
 -- (4) Needs academic review workflow, assets, variants and author licensing.
