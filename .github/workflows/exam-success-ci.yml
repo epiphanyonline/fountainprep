@@ -37,3 +37,41 @@ jobs:
         run: npx vitest run features/exam-success
       - name: TypeScript check
         run: npx tsc --noEmit
+
+  isolated-database:
+    name: Disposable PostgreSQL schema security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: exam_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d exam_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGDATABASE: exam_ci
+      PGUSER: postgres
+      PGPASSWORD: test-only-password
+    steps:
+      - name: Check out PR code (read-only)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Set up synthetic Supabase auth placeholders
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-postgres-bootstrap.sql
+      - name: Validate draft schema against isolated ephemeral database
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/staging-schema-DRAFT.sql
+      - name: Assert RLS restrictions and private answer-key access
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-postgres-assertions.sql
