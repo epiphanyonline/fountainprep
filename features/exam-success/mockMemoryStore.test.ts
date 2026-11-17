@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MockMemoryStore } from "./mockMemoryStore";
 import { startMock, saveMockAnswer, finishMock } from "./mockService";
+import { resumeMock } from "./mockResume";
 
 const epoch = Date.parse("2027-02-01T10:00:00.000Z");
 function fixture(learnerId: string | null = "learner_1") {
@@ -83,6 +84,29 @@ describe("mock exam end-to-end contract (synthetic and in-memory only)", () => {
     expect(await finishMock(store, attemptId, "submit_1")).toMatchObject({
       earned: 2, possible: 5,
     });
+  });
+
+  it("resumes with saved answers and no private marking data", async () => {
+    const { store } = fixture();
+    const { attemptId } = await startMock(store, "paper_1", "start_1");
+    await saveMockAnswer(store, { attemptId, questionId: "q1", optionId: "b", requestId: "save_1" });
+    const restored = await resumeMock(store, attemptId);
+    expect(restored.state).toBe("in_progress");
+    expect(restored.answers).toEqual([{ questionId: "q1", optionId: "b" }]);
+    expect(restored.questions).toHaveLength(2);
+    expect(JSON.stringify(restored)).not.toContain("correctOptionId");
+    expect(JSON.stringify(restored)).not.toContain("points");
+  });
+
+  it("shows expired state on resume without reopening the attempt", async () => {
+    const { store, advance } = fixture();
+    const { attemptId } = await startMock(store, "paper_1", "start_1");
+    advance(120_001);
+    const restored = await resumeMock(store, attemptId);
+    expect(restored.state).toBe("expired");
+    expect(await saveMockAnswer(store, {
+      attemptId, questionId: "q1", optionId: "b", requestId: "late_1",
+    })).toBe("closed");
   });
 
   it("rejects attempts at deadline and invalid answer options", async () => {
