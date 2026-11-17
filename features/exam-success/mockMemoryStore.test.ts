@@ -69,6 +69,22 @@ describe("mock exam end-to-end contract (synthetic and in-memory only)", () => {
     })).rejects.toThrow("idempotency_conflict");
   });
 
+  it("marks against the exact frozen paper even after question bank updates", async () => {
+    const { store } = fixture();
+    const { attemptId } = await startMock(store, "paper_1", "start_1");
+    store.addPaper({
+      id: "paper_1", published: true, durationSeconds: 120,
+      questions: [
+        { id: "q1", format: "single_choice", optionIds: ["a", "b"], correctOptionId: "a", points: 90 },
+        { id: "q2", format: "single_choice", optionIds: ["x", "y"], correctOptionId: "y", points: 90 },
+      ],
+    });
+    await saveMockAnswer(store, { attemptId, questionId: "q1", optionId: "b", requestId: "save_1" });
+    expect(await finishMock(store, attemptId, "submit_1")).toMatchObject({
+      earned: 2, possible: 5,
+    });
+  });
+
   it("rejects attempts at deadline and invalid answer options", async () => {
     const { store, advance } = fixture();
     const { attemptId } = await startMock(store, "paper_1", "start_1");
