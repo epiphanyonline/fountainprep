@@ -52,6 +52,30 @@ begin
    raise exception 'Old answer retry overwrote new answer';
  end if;
 
+ -- Restore a previously saved response from the private snapshot, and
+ -- verify that no marking keys, points or other learner data are revealed.
+ declare
+   v_resume jsonb;
+ begin
+   select exam_private.resume_test_attempt(v_user,v_attempt) into v_resume;
+   if v_resume is null or v_resume->>'state'<>'in_progress' then
+     raise exception 'Resume snapshot unavailable';
+   end if;
+   if jsonb_array_length(v_resume->'answers')<>1 or
+      v_resume->'answers'->0->>'optionId'<>'b' then
+     raise exception 'Resume did not restore the most recent saved answer';
+   end if;
+   if v_resume::text like '%correct_option_id%' or
+      v_resume::text like '%correctOptionId%' or
+      v_resume::text like '%points%' then
+     raise exception 'Resume revealed private marking metadata';
+   end if;
+   if exam_private.resume_test_attempt(
+       '00000000-0000-4000-8000-000000000099'::uuid,v_attempt
+     ) is not null then
+     raise exception 'Another learner could resume this exam';
+   end if;
+ end;
  -- Change bank answers/weights: started attempt must retain original snapshot.
  update exam_private.answer_keys set correct_option_id='a'
  where question_id='10000000-0000-4000-8000-000000000001';
@@ -82,5 +106,9 @@ begin
  if has_function_privilege('anon',
      'exam_private.submit_test_attempt(uuid,uuid)','EXECUTE') then
    raise exception 'Unexpected anonymous execution access';
+ end if;
+ if has_function_privilege('authenticated',
+     'exam_private.resume_test_attempt(uuid,uuid)','EXECUTE') then
+   raise exception 'Unexpected direct resume execution access';
  end if;
 end $$;
