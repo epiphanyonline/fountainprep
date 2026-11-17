@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleExamRequest } from "./mockHttp";
-import type { AuthenticatedExamStore } from "./mockService";
+import type { ResumableExamStore } from "./mockResume";
 
-function makeStore(identity: string | null = "trusted_learner"): AuthenticatedExamStore {
+function makeStore(identity: string | null = "trusted_learner"): ResumableExamStore {
   return {
     authenticatedLearnerId: vi.fn(async () => identity),
+    loadAttemptForResume: vi.fn(async ({ learnerId, attemptId }) =>
+      learnerId === "trusted_learner" && attemptId === "attempt_1" ? {
+        attemptId, expiresAt: "2027-01-01T10:02:00Z",
+        state: "in_progress" as const,
+        questions: [{ id: "q1", format: "single_choice" as const, optionIds: ["a", "b"] }],
+        answers: [{ questionId: "q1", optionId: "a" }],
+      } : null),
     loadPublishedPaper: vi.fn(async (id: string) => ({
       id, published: true, durationSeconds: 120,
       questions: [{
@@ -72,6 +79,31 @@ describe("isolated mock HTTP boundary", () => {
     }), store);
     expect(response.status).toBe(400);
     expect(store.saveAnswerIfOpen).not.toHaveBeenCalled();
+  });
+
+  it("resumes only the server-authenticated learner and redacts marking keys", async () => {
+    const store = makeStore();
+    const response = await handleExamRequest(request({
+      action: "resume", attemptId: "attempt_1", learnerId: "spoofed",
+    }), store);
+    expect(response.status).toBe(200);
+    expect(store.loadAttemptForResume).toHaveBeenCalledWith({
+      learnerId: "trusted_learner", attemptId: "attempt_1",
+    });
+    const serialized = await response.text();
+    expect(JSON.parse(serialized)).toMatchObject({
+      attemptId: "attempt_1", answers: [{questionId: "q1",optionId: "a"}],
+    });
+    expect(serialized).not.toContain("correctOptionId");
+  });
+
+  it("returns 404 instead of disclosing another learner's attempt", async () => {
+    const store = makeStore("different_learner");
+    const response = await handleExamRequest(request({
+      action: "resume", attemptId: "attempt_1",
+    }), store);
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "unavailable" });
   });
 
   it("submits via trusted adapter, returning score but no answer key", async () => {
