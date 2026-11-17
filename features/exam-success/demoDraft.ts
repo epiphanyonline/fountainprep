@@ -46,7 +46,7 @@ export function validateDemoDraft(raw: unknown, now: number): DemoDraft | null {
     flagged[key] = val;
   }
   return {version:1, exam:draft.exam as DemoExam, expiresAt:draft.expiresAt,
-    activeIndex:draft.activeIndex, answers, flagged, completed:draft.completed};
+    activeIndex:draft.activeIndex as number, answers, flagged, completed:draft.completed};
 }
 
 export function demoRemainingSeconds(draft: DemoDraft, now: number): number {
