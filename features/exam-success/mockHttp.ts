@@ -8,17 +8,17 @@
  * Never construct a store using browser-supplied learner IDs, service-role keys
  * must remain server-side, and never return stored answer keys before submission.
  */
+import { resumeMock, type ResumableExamStore } from "./mockResume";
 import {
   ExamAccessError,
   finishMock,
   saveMockAnswer,
   startMock,
-  type AuthenticatedExamStore,
 } from "./mockService";
 
-type Action = "start" | "save" | "submit";
+type Action = "start" | "save" | "resume" | "submit";
 type RequestBody = Record<string, unknown>;
-const allowedActions = new Set<Action>(["start", "save", "submit"]);
+const allowedActions = new Set<Action>(["start", "save", "resume", "submit"]);
 const maxBodyBytes = 4096;
 
 function isRecord(value: unknown): value is RequestBody {
@@ -45,7 +45,7 @@ function success(value: unknown, status = 200): Response {
 /** Must be invoked only by a trusted server-authenticated store factory. */
 export async function handleExamRequest(
   request: Request,
-  store: AuthenticatedExamStore,
+  store: ResumableExamStore,
 ): Promise<Response> {
   if (request.method !== "POST") return errorResponse("method_not_allowed", 405);
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
@@ -92,6 +92,11 @@ export async function handleExamRequest(
         saved === "closed" ? 409 :
         saved === "forbidden" ? 403 : 400;
       return success({ status: saved }, status);
+    }
+    if (body.action === "resume") {
+      if (!validId(body.attemptId)) return errorResponse("invalid_request", 400);
+      // Answer keys are never included by the store's resume projection.
+      return success(await resumeMock(store, body.attemptId));
     }
     if (!validId(body.attemptId) || !validId(body.requestId)) {
       return errorResponse("invalid_request", 400);
