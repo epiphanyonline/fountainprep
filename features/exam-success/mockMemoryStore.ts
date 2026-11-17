@@ -29,6 +29,7 @@ export class MockMemoryStore implements AuthenticatedExamStore {
   private attempts = new Map<string, AttemptRecord>();
   private startRequests = new Map<string, string>();
   private submissions = new Map<string, string>();
+  private saveRequests = new Map<string, { attemptId: string; questionId: string; optionId: string | null }>();
   private nextId = 1;
 
   constructor(
@@ -89,10 +90,21 @@ export class MockMemoryStore implements AuthenticatedExamStore {
     if (!question || (data.optionId !== null && !question.optionIds.includes(data.optionId))) {
       return "invalid_question";
     }
-    // A repeated request with identical payload remains harmless; a retry
-    // of an old answer must not overwrite a newer answer in real adapters.
-    // The production adapter needs a per-answer revision + idempotency log.
+    const requestKey = data.learnerId + ":" + data.requestId;
+    const existing = this.saveRequests.get(requestKey);
+    if (existing) {
+      if (existing.attemptId !== data.attemptId ||
+          existing.questionId !== data.questionId ||
+          existing.optionId !== data.optionId) {
+        throw new Error("idempotency_conflict");
+      }
+      // A delayed identical retry must not overwrite a newer answer.
+      return "saved";
+    }
     attempt.answers.set(data.questionId, data.optionId);
+    this.saveRequests.set(requestKey, {
+      attemptId: data.attemptId, questionId: data.questionId, optionId: data.optionId,
+    });
     return "saved";
   }
 
