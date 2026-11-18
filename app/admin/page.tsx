@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { LEARNING_REWARDS_ENABLED } from '../lib/learningRewardsFlags'
+import { isOperationalLessonToday, isOperationalLessonUpcoming, lessonStartMs } from '../lib/lessonDashboardTime'
+import { formatBookingDate, formatBookingTime } from '../lib/timezone'
 
 type Booking = {
   id: string
@@ -557,47 +559,30 @@ export default function AdminDashboardPage() {
       [bookings],
     )
 
-  const todaysLessons =
-    useMemo(
-      () =>
-        confirmedBookings.filter(
-          (booking) =>
-            booking.lesson_date ===
-            today,
-        ),
-      [
-        confirmedBookings,
-        today,
-      ],
-    )
+  const todaysLessons = useMemo(
+    () => confirmedBookings.filter(booking =>
+      isOperationalLessonToday(booking, 'Europe/London')
+    ),
+    [confirmedBookings],
+  )
 
   const upcomingLessons = useMemo(
-  () =>
-    confirmedBookings.filter(
-      (booking) =>
-        booking.lesson_date &&
-        booking.lesson_date >= today,
+    () => confirmedBookings.filter(booking =>
+      isOperationalLessonUpcoming(booking)
+    ).sort((a, b) =>
+      (lessonStartMs(a) ?? Infinity) - (lessonStartMs(b) ?? Infinity)
     ),
-  [confirmedBookings, today],
-)
+    [confirmedBookings],
+  )
 
-  const nextSevenDays =
-    useMemo(
-      () =>
-        confirmedBookings.filter(
-          (booking) =>
-            booking.lesson_date &&
-            booking.lesson_date >=
-              today &&
-            booking.lesson_date <=
-              sevenDaysFromNow,
-        ),
-      [
-        confirmedBookings,
-        today,
-        sevenDaysFromNow,
-      ],
-    )
+  const nextSevenDays = useMemo(
+    () => confirmedBookings.filter(booking => {
+      const start = lessonStartMs(booking)
+      return start !== null && start >= Date.now() &&
+        start <= Date.now() + 7 * 24 * 60 * 60 * 1000
+    }),
+    [confirmedBookings],
+  )
 
   const completedLessons =
     useMemo(
@@ -1495,9 +1480,7 @@ function LessonCard({
           </span>
 
           <strong>
-            {formatDate(
-              booking.lesson_date,
-            )}
+            {formatBookingDate(booking.lesson_date, booking.lesson_time, booking.timezone, 'Europe/London')}
           </strong>
         </div>
 
@@ -1507,8 +1490,7 @@ function LessonCard({
           </span>
 
           <strong>
-            {booking.lesson_time ||
-              'Pending'}
+            {formatBookingTime(booking.lesson_date, booking.lesson_time, booking.timezone, 'Europe/London')}
           </strong>
         </div>
 
@@ -1583,6 +1565,15 @@ function LessonCard({
       ) : null}
 
       <div className="lessonActions">
+        <Link href={`/classroom/${booking.id}`} className="meetingLink">
+          Open Fountain Prep Classroom
+        </Link>
+        <Link href={`/admin/interface-preview?bookingId=${booking.id}&role=tutor`} className="detailLink">
+          Tutor view (read-only) →
+        </Link>
+        <Link href={`/admin/interface-preview?bookingId=${booking.id}&role=parent`} className="detailLink">
+          Parent view (read-only) →
+        </Link>
   {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
     booking.meeting_link?.trim() ?? ''
   ) ? (
