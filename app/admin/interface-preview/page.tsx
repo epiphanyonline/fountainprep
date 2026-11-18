@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { formatBookingDate, formatBookingTime } from '../../lib/timezone'
@@ -27,7 +27,7 @@ type ViewRole = 'tutor' | 'parent'
  * This NEVER changes the authenticated role or logs in as a learner/tutor.
  * All data is fetched with the logged-in admin session; no writes.
  */
-export default function InterfacePreview() {
+function InterfacePreviewContent() {
   const router = useRouter()
   const params = useSearchParams()
   const bookingId = params.get('bookingId') ?? ''
@@ -148,4 +148,8 @@ export default function InterfacePreview() {
       )}
     </main>
   )
+}
+
+export default function InterfacePreview() {
+  return <Suspense fallback={<main className="p-8">Loading administrator preview…</main>}><InterfacePreviewContent /></Suspense>
 }
