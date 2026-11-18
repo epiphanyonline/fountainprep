@@ -525,25 +525,6 @@ export default function AdminDashboardPage() {
     loadAdminDashboard()
   }, [router])
 
-  const today =
-    new Date()
-      .toISOString()
-      .slice(0, 10)
-
-  const sevenDaysFromNow =
-    useMemo(() => {
-      const date =
-        new Date()
-
-      date.setDate(
-        date.getDate() + 7,
-      )
-
-      return date
-        .toISOString()
-        .slice(0, 10)
-    }, [])
-
   const confirmedBookings =
     useMemo(
       () =>
