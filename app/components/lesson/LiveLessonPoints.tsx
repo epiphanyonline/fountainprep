@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canDeductLessonPoints, lessonPointsTotal } from '../../lib/lessonPointBalance'
 
 type Award = { id: string; points: number }
 type Props = {
@@ -28,7 +29,7 @@ export default function LiveLessonPoints({ bookingId, studentName, canAward, isL
       setMessage('Rewards are temporarily unavailable. Your lesson can continue.')
     } else {
       // Positive awards and negative corrections form an append-only audit trail.
-      setTotal(((data || []) as Award[]).reduce((sum, award) => sum + award.points, 0))
+      setTotal(lessonPointsTotal((data || []) as Award[]))
       setMessage('')
     }
     setLoading(false)
@@ -55,8 +56,9 @@ export default function LiveLessonPoints({ bookingId, studentName, canAward, isL
           .select('id, points')
           .eq('booking_id', bookingId)
         if (readError) throw readError
-        const available = ((current || []) as Award[]).reduce((sum, row) => sum + row.points, 0)
-        if (available < Math.abs(points)) {
+        const ledger = (current || []) as Award[]
+        const available = lessonPointsTotal(ledger)
+        if (!canDeductLessonPoints(ledger, Math.abs(points))) {
           setTotal(available)
           setMessage('Not enough points to make that correction.')
           return
