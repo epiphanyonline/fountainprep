@@ -148,9 +148,9 @@ export default function AdminLearnerPointsPage() {
 
     <div className="grid gap-4 sm:grid-cols-3">
       {[
-        ['Lifetime points awarded', number(results.total)],
+        ['Net learner points', number(results.total)],
         ['Learners awarded', number(results.learners.length)],
-        ['Tutors awarding', number(results.tutors.length)],
+        ['Tutors recording points', number(results.tutors.length)],
       ].map(([label, value]) =>
         <div key={label} className="rounded-2xl border border-purple-100 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-600">{label}</p>
@@ -171,7 +171,7 @@ export default function AdminLearnerPointsPage() {
       </div>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead><tr className="border-b text-slate-600"><th className="py-3">Learner</th><th>Lifetime points</th><th>Awards</th></tr></thead>
+          <thead><tr className="border-b text-slate-600"><th className="py-3">Learner</th><th>Lifetime points</th><th>Point changes</th></tr></thead>
           <tbody>{filtered.map(l => <tr key={l.id} className="border-b">
             <td className="py-3 font-medium">{l.name}</td><td>{number(l.total)}</td><td>{number(l.awards)}</td>
           </tr>)}</tbody>
@@ -184,7 +184,7 @@ export default function AdminLearnerPointsPage() {
       <h2 className="text-xl font-bold">Tutor reward activity</h2>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead><tr className="border-b text-slate-600"><th className="py-3">Tutor</th><th>Points awarded</th><th>Award events</th></tr></thead>
+          <thead><tr className="border-b text-slate-600"><th className="py-3">Tutor</th><th>Net points</th><th>Point changes</th></tr></thead>
           <tbody>{results.tutors.map(t => <tr key={t.id} className="border-b">
             <td className="py-3">{t.name}</td><td>{number(t.total)}</td><td>{number(t.awards)}</td>
           </tr>)}</tbody>
@@ -194,14 +194,14 @@ export default function AdminLearnerPointsPage() {
     </section>
 
     <section className="rounded-2xl border p-5">
-      <h2 className="text-xl font-bold">Recent point awards</h2>
-      <p className="mt-1 text-sm text-slate-600">Most recent 100 award events; lifetime totals above use all fetched records.</p>
+      <h2 className="text-xl font-bold">Recent point activity</h2>
+      <p className="mt-1 text-sm text-slate-600">Most recent 100 changes, including deductions; net lifetime totals above use all fetched records.</p>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead><tr className="border-b text-slate-600"><th className="py-3">Date</th><th>Learner</th><th>Tutor</th><th>Points</th></tr></thead>
           <tbody>{results.history.slice(0, 100).map(a => <tr key={a.id} className="border-b">
             <td className="py-3">{new Date(a.created_at).toLocaleString('en-GB')}</td>
-            <td>{a.studentName}</td><td>{a.tutorName}</td><td>+{a.points}</td>
+            <td>{a.studentName}</td><td>{a.tutorName}</td><td>{a.points > 0 ? '+' : ''}{a.points}{a.points < 0 ? ' (correction)' : ''}</td>
           </tr>)}</tbody>
         </table>
         {results.history.length === 0 && <p className="py-4 text-slate-600">No point awards recorded yet.</p>}
