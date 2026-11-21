@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import AdminLessonRescheduler from './AdminLessonRescheduler'
+import { isOperationalLessonToday, isOperationalLessonUpcoming, lessonStartMs } from '../../lib/lessonDashboardTime'
+import { formatBookingDate, formatBookingTime } from '../../lib/timezone'
 
 type Booking = {
   id: string
@@ -343,54 +345,18 @@ export default function AdminBookingsPage() {
     loadBookings()
   }, [router])
 
-  const today =
-    new Date()
-      .toISOString()
-      .split('T')[0]
-
   const operationalBookings = useMemo(() => {
-  const upcoming = bookings
-    .filter(
-      (booking) =>
-        booking.lesson_date &&
-        booking.lesson_date >= today,
+    const upcoming = bookings.filter(booking =>
+      isOperationalLessonUpcoming(booking)
+    ).sort((a, b) =>
+      (lessonStartMs(a) ?? Infinity) - (lessonStartMs(b) ?? Infinity)
     )
-    .sort((a, b) => {
-      const aValue =
-        `${a.lesson_date ?? ''}T${a.lesson_time ?? '00:00'}`;
-
-      const bValue =
-        `${b.lesson_date ?? ''}T${b.lesson_time ?? '00:00'}`;
-
-      return aValue.localeCompare(bValue);
-    });
-
-  const past = bookings
-    .filter(
-      (booking) =>
-        booking.lesson_date &&
-        booking.lesson_date < today,
+    const upcomingIds = new Set(upcoming.map(b => b.id))
+    const remaining = bookings.filter(b => !upcomingIds.has(b.id)).sort((a, b) =>
+      (lessonStartMs(b) ?? -Infinity) - (lessonStartMs(a) ?? -Infinity)
     )
-    .sort((a, b) => {
-      const aValue =
-        `${a.lesson_date ?? ''}T${a.lesson_time ?? '00:00'}`;
-
-      const bValue =
-        `${b.lesson_date ?? ''}T${b.lesson_time ?? '00:00'}`;
-
-      return bValue.localeCompare(aValue);
-    });
-
-  const noDate = bookings.filter(
-    (booking) => !booking.lesson_date,
-  );
-
-  return [
-    ...upcoming,
-    ...past,
-    ...noDate,
-  ];
-}, [bookings, today]);    
+    return [...upcoming, ...remaining]
+  }, [bookings])
 
   const completedBookings =
     bookings.filter(
@@ -399,32 +365,17 @@ export default function AdminBookingsPage() {
         'COMPLETED',
     )
 
-  const todayBookings =
-    bookings.filter(
-      (booking) =>
-        booking.lesson_date ===
-          today &&
-        (
-          booking.payment_status ===
-            'PAID' ||
-          booking.status ===
-            'CONFIRMED'
-        ),
-    )
+  const todayBookings = bookings.filter(
+    booking =>
+      (booking.payment_status === 'PAID' || booking.status === 'CONFIRMED') &&
+      isOperationalLessonToday(booking, 'Europe/London')
+  )
 
-  const upcomingBookings =
-    bookings.filter(
-      (booking) =>
-        booking.lesson_date &&
-        booking.lesson_date >=
-          today &&
-        (
-          booking.payment_status ===
-            'PAID' ||
-          booking.status ===
-            'CONFIRMED'
-        ),
-    )
+  const upcomingBookings = bookings.filter(
+    booking =>
+      (booking.payment_status === 'PAID' || booking.status === 'CONFIRMED') &&
+      isOperationalLessonUpcoming(booking)
+  )
 
   const pendingPaymentBookings =
     bookings.filter(
@@ -435,20 +386,9 @@ export default function AdminBookingsPage() {
           'CANCELLED',
     )
 
-  const missingMeetBookings =
-    bookings.filter(
-      (booking) =>
-        booking.lesson_date &&
-        booking.lesson_date >=
-          today &&
-        (
-          booking.payment_status ===
-            'PAID' ||
-          booking.status ===
-            'CONFIRMED'
-        ) &&
-        !booking.meeting_link,
-    )
+  const missingMeetBookings = bookings.filter(
+    booking => upcomingBookings.some(b => b.id === booking.id) && !booking.meeting_link
+  )
 
   const needsReportBookings =
     bookings.filter(
@@ -902,17 +842,12 @@ export default function AdminBookingsPage() {
                   <div className="lessonFacts">
                     <Fact
                       label="Date"
-                      value={formatDate(
-                        booking.lesson_date,
-                      )}
+                      value={formatBookingDate(booking.lesson_date, booking.lesson_time, booking.timezone, 'Europe/London')}
                     />
 
                     <Fact
                       label="Time"
-                      value={
-                        booking.lesson_time ||
-                        'Pending'
-                      }
+                      value={formatBookingTime(booking.lesson_date, booking.lesson_time, booking.timezone, 'Europe/London')}
                     />
 
                     <Fact
@@ -989,6 +924,15 @@ export default function AdminBookingsPage() {
                   </div>
 
                   <div className="lessonActions">
+                    <Link href={`/classroom/${booking.id}`} className="meetButton">
+                      Open Fountain Prep Classroom
+                    </Link>
+                    <Link href={`/admin/interface-preview?bookingId=${booking.id}&role=tutor`} className="detailsButton">
+                      Preview Tutor View
+                    </Link>
+                    <Link href={`/admin/interface-preview?bookingId=${booking.id}&role=parent`} className="detailsButton">
+                      Preview Parent View
+                    </Link>
   {/^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?(?:[?#].*)?$/i.test(
     booking.meeting_link?.trim() ?? ''
   ) ? (

@@ -21,7 +21,6 @@ type LessonBooking = {
   status: string
   payment_status: string
   meeting_link: string | null
-  amount_gbp: number | null
 }
 
 type ProgressNote = {
@@ -132,8 +131,7 @@ function TutorLessonReportContent() {
         timezone,
         status,
         payment_status,
-        meeting_link,
-        amount_gbp
+        meeting_link
       `)
       .eq('tutor_id', tutorId)
       .in('status', ['CONFIRMED', 'COMPLETED'])
@@ -349,8 +347,6 @@ function TutorLessonReportContent() {
       await supabase.from('tutor_earnings').insert({
         tutor_id: tutor.id,
         booking_id: lesson.id,
-        lesson_amount: lesson.amount_gbp || 0,
-        platform_fee: Math.max(Number(lesson.amount_gbp || 0) - TUTOR_RATE_USD, 0),
         tutor_amount: TUTOR_RATE_USD,
         status: 'pending',
         lesson_date: lesson.lesson_date,

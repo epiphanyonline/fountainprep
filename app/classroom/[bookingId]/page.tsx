@@ -6,6 +6,10 @@ import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { onLessonReportReady } from '../../lib/events'
 import LessonControlBar from './components/LessonControlBar'
+import LiveLessonPoints from '../../components/lesson/LiveLessonPoints'
+import LessonTutorReview from '../../components/lesson/LessonTutorReview'
+import ClassroomChat from '../../components/lesson/ClassroomChat'
+import { LEARNING_REWARDS_ENABLED } from '../../lib/learningRewardsFlags'
 
 type StudentRow = {
   full_name: string | null
@@ -65,6 +69,8 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [canEdit, setCanEdit] = useState(false)
+  const [isAssignedTutor, setIsAssignedTutor] = useState(false)
+  const [classroomViewerId, setClassroomViewerId] = useState<string | null>(null)
 
   const [lessonObjectives, setLessonObjectives] = useState('')
   const [tutorNotes, setTutorNotes] = useState('')
@@ -203,6 +209,8 @@ export default function ClassroomPage() {
       }
 
       setCanEdit(isTutor || isAdmin)
+      setIsAssignedTutor(isTutor)
+      setClassroomViewerId(user.id)
       setBooking(row)
 
       setClassroomStatus(row.classroom_status || 'NOT_STARTED')
@@ -597,6 +605,27 @@ export default function ClassroomPage() {
   </div>
 </div>
         </section>
+
+        {process.env.NEXT_PUBLIC_ENABLE_CLASSROOM_CHAT === 'true' && classroomViewerId ? (
+          <ClassroomChat bookingId={booking.id} viewerId={classroomViewerId} />
+        ) : null}
+
+        {LEARNING_REWARDS_ENABLED ? (
+          <div style={{ marginTop: 18 }}>
+            <LiveLessonPoints
+              bookingId={booking.id}
+              studentName={studentName}
+              canAward={isAssignedTutor}
+              isLive={isLive}
+            />
+          </div>
+        ) : null}
+
+        {LEARNING_REWARDS_ENABLED && booking.status === 'COMPLETED' && !canEdit ? (
+          <div style={{ marginTop: 18 }}>
+            <LessonTutorReview bookingId={booking.id} tutorName={tutorName} />
+          </div>
+        ) : null}
 
         <section className="mainGrid">
           <div className="workspaceWide">

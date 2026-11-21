@@ -1,10 +1,22 @@
 export const DEFAULT_VIEWER_TIMEZONE = 'Europe/London'
 
+// Older tutor profiles store Africa/Ibadan, which is not an IANA timezone.
+// Ibadan and Lagos share the same civil time. Keep existing records unchanged.
+const LEGACY_TIMEZONE_ALIASES: Record<string, string> = {
+  'Africa/Ibadan': 'Africa/Lagos',
+}
+
+export function normalizeLessonTimezone(value?: string | null): string | null {
+  if (!value) return null
+  return LEGACY_TIMEZONE_ALIASES[value] ?? value
+}
+
 export function isValidTimezone(value?: string | null): value is string {
-  if (!value) return false
+  const normalized = normalizeLessonTimezone(value)
+  if (!normalized) return false
 
   try {
-    new Intl.DateTimeFormat('en-GB', { timeZone: value }).format(new Date())
+    new Intl.DateTimeFormat('en-GB', { timeZone: normalized }).format(new Date())
     return true
   } catch {
     return false
@@ -17,7 +29,7 @@ export function resolveViewerTimezone(profileTimezone?: string | null) {
       ? Intl.DateTimeFormat().resolvedOptions().timeZone
       : null
 
-  if (isValidTimezone(profileTimezone)) return profileTimezone
+  if (isValidTimezone(profileTimezone)) return normalizeLessonTimezone(profileTimezone)!
   if (isValidTimezone(browserTimezone)) return browserTimezone
   return DEFAULT_VIEWER_TIMEZONE
 }
@@ -61,7 +73,7 @@ export function bookingInstant(
     lessonDate,
     lessonTime,
     isValidTimezone(bookingTimezone)
-      ? bookingTimezone
+      ? normalizeLessonTimezone(bookingTimezone)!
       : DEFAULT_VIEWER_TIMEZONE
   )
 }
