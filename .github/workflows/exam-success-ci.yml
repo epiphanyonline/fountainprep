@@ -1,0 +1,85 @@
+name: Exam Success isolated checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "features/exam-success/**"
+      - "docs/exam-success/**"
+      - ".github/workflows/exam-success-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-success-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-checks:
+    name: Exam engine tests and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out PR code (read-only)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Run isolated mock engine tests
+        run: npx vitest run features/exam-success
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+  isolated-database:
+    name: Disposable PostgreSQL schema security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: exam_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d exam_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGDATABASE: exam_ci
+      PGUSER: postgres
+      PGPASSWORD: test-only-password
+    steps:
+      - name: Check out PR code (read-only)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Set up synthetic Supabase auth placeholders
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-postgres-bootstrap.sql
+      - name: Validate draft schema against isolated ephemeral database
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/staging-schema-DRAFT.sql
+      - name: Assert RLS restrictions and private answer-key access
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-postgres-assertions.sql
+      - name: Install mock transaction prototype in disposable database
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-prototype.sql
+      - name: Verify atomic persistent scoring, snapshotting and idempotency
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-transaction-assertions.sql
+      - name: Check owner isolation and expiry of persistent exam attempts
+        run: psql -v ON_ERROR_STOP=1 -f docs/exam-success/ci-isolation-expiry.sql
+      - name: Verify simultaneous PostgreSQL start and submit attempts
+        run: bash docs/exam-success/ci-concurrency-check.sh
