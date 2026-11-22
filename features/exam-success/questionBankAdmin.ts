@@ -5,6 +5,7 @@
  */
 import type { BankQuestion } from "./weekendPaperAssembly";
 import type { ExamVariant } from "./examBlueprint";
+import { validateQuestionProvenance, type QuestionProvenance } from "./questionProvenance";
 
 export type QuestionDraft = BankQuestion & {
   prompt: string;
@@ -12,6 +13,7 @@ export type QuestionDraft = BankQuestion & {
   correctOptionId: string;
   explanation: string;
   sourceReference: string;
+  provenance?: QuestionProvenance;
   authorId: string;
   revision: number;
 };
@@ -57,6 +59,7 @@ export function validateQuestionDraft(q: QuestionDraft): string[] {
       !q.options.some(o=>o.id===q.correctOptionId)) {
     problems.push("Invalid or repeated options / correct answer");
   }
+  problems.push(...validateQuestionProvenance(q.provenance));
   if (!q.explanation.trim() || !q.sourceReference.trim() ||
       !q.licence.trim() || !q.authorId.trim()) problems.push("Explanation, provenance, licence and author required");
   if (!Number.isSafeInteger(q.revision) || q.revision<1) problems.push("Positive revision required");
