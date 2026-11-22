@@ -28,8 +28,10 @@ export type ImportReport = {
 
 /** Normalisation catches exact and formatting-only duplicates, not paraphrases. */
 export function fingerprintQuestion(input: Pick<QuestionDraft, "prompt" | "options">): string {
+  const normalise = (value: string): string =>
+    value.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
   return [input.prompt, ...input.options.map(o=>o.text)]
-    .join("\u241F").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+    .map(normalise).join("\u241F");
 }
 
 export function validateQuestionDraft(q: QuestionDraft): string[] {
