@@ -14,6 +14,7 @@ const sampleQuestions:QuestionDraft[]=[
     subjectCode:"ENG",topicCode:"GRAMMAR",difficulty:"easy",
     status:"draft",reviewedBy:null,licence:"Original synthetic demonstration",
     sourceReference:"Fountain Prep demonstration",authorId:"sample_author",
+    provenance:{kind:"original_syllabus",syllabusReference:"Illustrative demo syllabus mapping",independentlyAuthored:true},
     revision:1,prompt:"Choose the sentence with correct punctuation.",
     options:[{id:"a",text:"We are learning, today."},{id:"b",text:"We are learning today."}],
     correctOptionId:"b",
