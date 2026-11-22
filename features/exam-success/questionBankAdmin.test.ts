@@ -60,7 +60,15 @@ describe("large bank intake and independent academic review",()=>{
   expect(publishReviewedQuestion(reviewed,"admin_1").status).toBe("published");
   expect(q.status).toBe("draft");
  });
- it("blocks unlicensed past questions and unverified rewriting of others\u0027 material",()=>{\n  const prohibited=stageQuestionImport([\n   draft("copied",{provenance:{kind:"licensed_past_paper",examinationYear:2023,paperReference:"2023 exam",rightsHolder:"exam board",permissionEvidenceId:"",commercialDigitalReusePermitted:false}}),\n   draft("reworded",{provenance:{kind:"original_exam_style",syllabusReference:"JAMB syllabus",independentlyAuthored:false}}),\n  ],[]);\n  expect(prohibited.accepted).toHaveLength(0);\n  expect(prohibited.rejected).toHaveLength(2);\n });\n it("caps imports and rejects invalid batch limits",()=>{
+ it("blocks unlicensed past questions and unverified rewriting of others' material",()=>{
+  const prohibited=stageQuestionImport([
+   draft("copied",{provenance:{kind:"licensed_past_paper",examinationYear:2023,paperReference:"2023 exam",rightsHolder:"exam board",permissionEvidenceId:"",commercialDigitalReusePermitted:false}}),
+   draft("reworded",{provenance:{kind:"original_exam_style",syllabusReference:"JAMB syllabus",independentlyAuthored:false}}),
+  ],[]);
+  expect(prohibited.accepted).toHaveLength(0);
+  expect(prohibited.rejected).toHaveLength(2);
+ });
+ it("caps imports and rejects invalid batch limits",()=>{
   expect(()=>stageQuestionImport([draft("q1"),draft("q2")],[],1)).toThrow();
   expect(()=>stageQuestionImport([],[],0)).toThrow();
  });
