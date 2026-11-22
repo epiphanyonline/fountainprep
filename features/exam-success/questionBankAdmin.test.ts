@@ -5,6 +5,7 @@ const draft=(id:string,changes:Partial<QuestionDraft>={}):QuestionDraft=>({
  id,canonicalGroupId:"group-"+id,board:"JAMB",variant:"utme",syllabusYear:2027,
  subjectCode:"ENG",topicCode:"GRAMMAR",difficulty:"medium",status:"draft",
  reviewedBy:null,licence:"Original authored content",sourceReference:"author notebook",
+ provenance:{kind:"original_syllabus",syllabusReference:"JAMB English syllabus",independentlyAuthored:true},
  authorId:"author_1",revision:1,prompt:"Choose the correctly punctuated sentence.",
  options:[{id:"a",text:"We arrived, early."},{id:"b",text:"We arrived early."}],
  correctOptionId:"b",explanation:"No comma is required in this short clause.",
@@ -59,7 +60,7 @@ describe("large bank intake and independent academic review",()=>{
   expect(publishReviewedQuestion(reviewed,"admin_1").status).toBe("published");
   expect(q.status).toBe("draft");
  });
- it("caps imports and rejects invalid batch limits",()=>{
+ it("blocks unlicensed past questions and unverified rewriting of others\u0027 material",()=>{\n  const prohibited=stageQuestionImport([\n   draft("copied",{provenance:{kind:"licensed_past_paper",examinationYear:2023,paperReference:"2023 exam",rightsHolder:"exam board",permissionEvidenceId:"",commercialDigitalReusePermitted:false}}),\n   draft("reworded",{provenance:{kind:"original_exam_style",syllabusReference:"JAMB syllabus",independentlyAuthored:false}}),\n  ],[]);\n  expect(prohibited.accepted).toHaveLength(0);\n  expect(prohibited.rejected).toHaveLength(2);\n });\n it("caps imports and rejects invalid batch limits",()=>{
   expect(()=>stageQuestionImport([draft("q1"),draft("q2")],[],1)).toThrow();
   expect(()=>stageQuestionImport([],[],0)).toThrow();
  });
