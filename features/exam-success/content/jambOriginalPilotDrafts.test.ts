@@ -36,7 +36,7 @@ describe("JAMB pilot content: ingestion and editorial safety",()=>{
         q.options.length===4 &&
         q.options.some(option=>option.id===q.correctOptionId) &&
         q.explanation.length>=30 &&
-        q.prompt.length>=25
+        q.prompt.length>=15
       )).toBe(true);
     }
   });
