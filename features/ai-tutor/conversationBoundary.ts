@@ -42,15 +42,16 @@ export function validateTutorChatPayload(input: unknown): TutorChatInput | null 
   let combined = 0;
   for (let index = 0; index < input.messages.length; index++) {
     const entry: unknown = input.messages[index];
+    const expectedRole = index % 2 === 0 ? "user" : "assistant";
     if (!isRecord(entry) ||
-        entry.role !== (index % 2 === 0 ? "user" : "assistant") ||
+        entry.role !== expectedRole ||
         typeof entry.content !== "string") return null;
     const text = entry.content.trim();
     const max = entry.role === "user" ? MAX_LEARNER_CHARS : MAX_RESPONSE_CHARS;
     if (text.length < 1 || text.length > max) return null;
     combined += text.length;
     if (combined > 7500) return null;
-    messages.push({ role: entry.role, content: text });
+    messages.push({ role: expectedRole, content: text });
   }
   return { track: input.track as TutorTrackId, messages };
 }
