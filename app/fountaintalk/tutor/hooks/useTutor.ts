@@ -41,6 +41,10 @@ import {
 } from "@/app/fountaintalk/tutor/services/lessonEngine";
 
 import { supabase } from "@/app/lib/supabase";
+import { splitTargetPhrase } from "@/app/fountaintalk/speech/voiceProfiles";
+import { findPronunciationOverride } from "@/app/fountaintalk/speech/pronunciationOverrides";
+
+const MULTILINGUAL_PILOT = process.env.NEXT_PUBLIC_FOUNTAINTALK_MULTILINGUAL_SPEECH === "true";
 
 type UseTutorOptions = {
   learner: LearnerProfile;
@@ -541,7 +545,9 @@ setProgress({
   const speakText = useCallback(
   async (
     text: string,
-    statusAfterSpeaking: TutorStatus = "ready"
+    statusAfterSpeaking: TutorStatus = "ready",
+    targetLanguage = false,
+    slow = false,
   ) => {
     if (typeof window === "undefined") {
       return;
@@ -568,15 +574,20 @@ setProgress({
       stopAllAudio();
       setTutorStatus("thinking");
 
+      const useSpecialist = MULTILINGUAL_PILOT && targetLanguage;
+      const session = useSpecialist ? (await supabase.auth.getSession()).data.session : null;
+      if (useSpecialist && !session) throw new Error("Sign in to hear the language pronunciation.");
       const response = await fetch(
-        "/api/academy/speech",
+        useSpecialist ? "/api/fountaintalk/speech" : "/api/academy/speech",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
           },
           body: JSON.stringify({
             text: cleanText,
+            ...(useSpecialist ? { language: learner.language } : {}),
           }),
         }
       );
@@ -607,6 +618,7 @@ setProgress({
 
       await new Promise<void>((resolve) => {
         const audio = new Audio(audioUrl);
+        if (useSpecialist && slow) audio.playbackRate = 0.75;
 
         currentAudioRef.current = audio;
 
@@ -666,7 +678,7 @@ setProgress({
       );
     }
   },
-  [stopAllAudio]
+  [learner.language, stopAllAudio]
 );
 
   const playNativeAudio = useCallback(
@@ -863,6 +875,15 @@ setProgress({
      * If there is no native Yoruba recording,
      * Ayo simply teaches the whole step naturally.
      */
+    if (MULTILINGUAL_PILOT && expectedPhrase && !nativeAudio) {
+      const split = splitTargetPhrase(cleanText, expectedPhrase);
+      if (split) {
+        if (split.before) await speakText(split.before, "speaking");
+        await speakText(split.phrase, split.after ? "speaking" : statusAfterSpeaking, true);
+        if (split.after) await speakText(split.after, statusAfterSpeaking);
+        return;
+      }
+    }
     if (!nativeAudio) {
       await speakText(
         cleanText,
@@ -2266,20 +2287,24 @@ if (isPronunciationCorrection) {
         correctedPhrase ??
         tutorMessage;
 
-      if (nativeAudioUrl) {
+      const override = MULTILINGUAL_PILOT && activeLesson.step.expectedPhrase
+        ? findPronunciationOverride(learner.language, activeLesson.step.expectedPhrase)
+        : undefined;
+      if (override || nativeAudioUrl) {
         void playNativeAudio(
-          nativeAudioUrl,
+          override?.normalAudio ?? nativeAudioUrl!,
           expectedPhrase,
           "ready"
         );
         return;
       }
 
-      speakText(expectedPhrase, "ready");
+      void speakText(expectedPhrase, "ready", Boolean(activeLesson.step.expectedPhrase));
     }, [
       activeLesson.step.expectedPhrase,
       activeLesson.step.nativeAudioUrl,
       correctedPhrase,
+      learner.language,
       playNativeAudio,
       speakText,
       tutorMessage,
@@ -2298,16 +2323,17 @@ if (isPronunciationCorrection) {
           .expectedPhrase ??
         tutorMessage;
 
-      if (!selectedAudioUrl) {
-        speakText(
-          fallbackText,
-          "ready"
-        );
+      const override = MULTILINGUAL_PILOT && activeLesson.step.expectedPhrase
+        ? findPronunciationOverride(learner.language, activeLesson.step.expectedPhrase)
+        : undefined;
+      const audio = override?.slowAudio ?? override?.normalAudio ?? selectedAudioUrl;
+      if (!audio) {
+        void speakText(fallbackText, "ready", Boolean(activeLesson.step.expectedPhrase), true);
         return;
       }
 
       void playNativeAudio(
-        selectedAudioUrl,
+        audio,
         fallbackText,
         "ready"
       );
@@ -2318,6 +2344,7 @@ if (isPronunciationCorrection) {
         .nativeAudioUrl,
       activeLesson.step
         .slowAudioUrl,
+      learner.language,
       playNativeAudio,
       speakText,
       tutorMessage,

@@ -12,7 +12,7 @@ export const mandarinFoundationCourse = createFoundationCourse({
     "source": "Hello",
     "target": "你好",
     "pronunciation": "nǐ hǎo",
-    "pronunciationTip": "Use a dipping third tone on both syllables.",
+    "pronunciationTip": "Both syllables are written with third tones; in natural speech the first changes to a rising second tone before the second third tone.",
     "acceptedAnswers": [
       "你好",
       "nǐ hǎo",
