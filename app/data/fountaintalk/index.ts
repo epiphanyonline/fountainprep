@@ -8,15 +8,24 @@ import { hausaCurriculum } from "./hausa";
 import { igboCurriculum } from "./igbo";
 import { mandarinCurriculum } from "./mandarin";
 import { yorubaCurriculum } from "./yoruba";
+import { spanishCurriculum } from "./spanish";
+import { expandFoundation } from "./shared/foundationExpansion";
+
+function withPilotExpansion(curriculum: LanguageCurriculum): LanguageCurriculum {
+  // Preserve current learner progress and course access until the pilot is approved.
+  if (process.env.NEXT_PUBLIC_FOUNTAINTALK_MULTILINGUAL_SPEECH !== "true") return curriculum;
+  return { ...curriculum, courses: curriculum.courses.map(course => course.level === "foundation" ? expandFoundation(course) : course) };
+}
 
 const curriculumRegistry: Partial<
   Record<SupportedLanguage, LanguageCurriculum>
 > = {
-  yoruba: yorubaCurriculum,
-  igbo: igboCurriculum,
-  hausa: hausaCurriculum,
-  french: frenchCurriculum,
-  mandarin: mandarinCurriculum,
+  yoruba: withPilotExpansion(yorubaCurriculum),
+  igbo: withPilotExpansion(igboCurriculum),
+  hausa: withPilotExpansion(hausaCurriculum),
+  french: withPilotExpansion(frenchCurriculum),
+  mandarin: withPilotExpansion(mandarinCurriculum),
+  ...(process.env.NEXT_PUBLIC_FOUNTAINTALK_MULTILINGUAL_SPEECH === "true" ? { spanish: withPilotExpansion(spanishCurriculum) } : {}),
 };
 
 export function getLanguageCurriculum(

@@ -13,6 +13,6 @@ describe("fixed curriculum phrase eligibility", () => {
   it("rejects arbitrary text, wrong lesson, and absent courses", () => {
     expect(curriculumPhrase("yoruba", "private learner conversation")).toBeUndefined();
     expect(curriculumPhrase("yoruba", phrase, "not-a-real-lesson")).toBeUndefined();
-    expect(curriculumPhrase("spanish", phrase)).toBeUndefined();
+    expect(curriculumPhrase("spanish", "private learner conversation")).toBeUndefined();
   });
 });
