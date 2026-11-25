@@ -1,9 +1,9 @@
 import type { SupportedLanguage } from "@/app/types/fountaintalk";
 
 export const voiceProfiles = {
-  yoruba: { provider: "orinode", locale: "yo-NG", voice: "yo-adunni" },
-  igbo: { provider: "orinode", locale: "ig-NG", voice: "ig-chiamaka" },
-  hausa: { provider: "orinode", locale: "ha-NG", voice: "ha-aisha" },
+  yoruba: { provider: "orinode", locale: "yo-NG", voice: "yo (provider default)" },
+  igbo: { provider: "orinode", locale: "ig-NG", voice: "ig (provider default)" },
+  hausa: { provider: "orinode", locale: "ha-NG", voice: "ha (provider default)" },
   french: { provider: "azure", locale: "fr-FR", voice: "fr-FR-DeniseNeural" },
   mandarin: { provider: "azure", locale: "zh-CN", voice: "zh-CN-XiaoxiaoNeural" },
   spanish: { provider: "azure", locale: "es-ES", voice: "es-ES-ElviraNeural" },

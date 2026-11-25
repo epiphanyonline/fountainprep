@@ -1,90 +1,86 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { isSpeechLanguage, makeSsml, normalisePhrase, voiceProfiles } from "@/app/fountaintalk/speech/voiceProfiles";
+import { detectAudioType, MAX_REVIEW_BYTES, MAX_SYNTHESIS_BYTES } from "@/app/fountaintalk/speech/audioValidation";
+import { speechAccess, SpeechAccessError } from "@/app/fountaintalk/speech/serverAccess";
+import { synthesizeOrinode, type OrinodeLanguage } from "@/app/fountaintalk/speech/providers";
 
 export const runtime = "nodejs";
-const MAX_CHARS = 400;
 
 function fail(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
+function audioResponse(bytes: Uint8Array, source: "reviewed" | "orinode" | "azure") {
+  const contentType = detectAudioType(bytes);
+  if (!contentType) return fail("Invalid audio.", 502);
+  return new Response(new Uint8Array(bytes), { headers: {
+    "Content-Type": contentType, "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff", "X-FountainTalk-Audio-Source": source,
+  } });
+}
+
 export async function POST(request: Request) {
-  // Separate from /api/academy/speech: financial literacy and other English narration stay unchanged.
-  if (process.env.FOUNTAINTALK_MULTILINGUAL_SPEECH !== "true") {
-    return fail("Multilingual speech is not enabled.", 404);
-  }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
-  if (!token) return fail("Authentication required.", 401);
-  if (!url || !anon) return fail("Speech pilot authentication is unavailable.", 503);
-
   try {
-    const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await auth.auth.getUser(token);
-    if (error || !data.user) return fail("Invalid session.", 401);
-    // Explicit, server-only pilot account allowlist. No public paid endpoint.
-    const pilots = (process.env.FOUNTAINTALK_SPEECH_PILOT_USERS ?? "").split(",").map(s => s.trim()).filter(Boolean);
-    if (!pilots.includes(data.user.id)) return fail("This account is not enrolled in the speech pilot.", 403);
-
+    const { userId, db } = await speechAccess(request);
     let body: unknown;
     try {
       const raw = await request.text();
       if (raw.length > 4000) return fail("Request too large.", 413);
       body = JSON.parse(raw);
-    } catch {
-      return fail("Invalid speech request.", 400);
-    }
+    } catch { return fail("Invalid speech request.", 400); }
     if (!body || typeof body !== "object") return fail("Invalid speech request.", 400);
-    const { language, text } = body as { language?: unknown; text?: unknown };
-    if (!isSpeechLanguage(language) || typeof text !== "string") return fail("Language and text are required.", 400);
+    const { language, text, mode } = body as { language?: unknown; text?: unknown; mode?: unknown };
+    if (!isSpeechLanguage(language) || typeof text !== "string" || (mode !== undefined && mode !== "approved" && mode !== "generated"))
+      return fail("Invalid language, phrase or playback mode.", 400);
     const phrase = normalisePhrase(text);
-    if (!phrase || phrase.length > MAX_CHARS || /[\u0000-\u001f\u007f]/.test(phrase)) return fail("Provide a phrase of 1–400 characters.", 400);
+    if (!phrase || phrase.length > 400 || /[\u0000-\u001f\u007f]/.test(phrase)) return fail("Provide a phrase of 1–400 characters.", 400);
+
+    // A reviewer can deliberately compare freshly generated audio with the approved recording.
+    // Other pilot accounts cannot bypass a correction.
+    if (mode === "generated") await speechAccess(request, true);
+    if (mode !== "generated") {
+      const { data, error } = await db.from("fountaintalk_pronunciation_revisions")
+        .select("audio_base64").eq("language", language).eq("phrase", phrase)
+        .order("id", { ascending: false }).limit(1).maybeSingle();
+      if (error) return fail("Pronunciation library is not ready.", 503);
+      if (data) {
+        const bytes = Buffer.from(data.audio_base64, "base64");
+        if (bytes.length > MAX_REVIEW_BYTES || !detectAudioType(bytes)) return fail("Reviewed audio is invalid. Please notify a reviewer.", 502);
+        return audioResponse(bytes, "reviewed");
+      }
+      if (mode === "approved") return fail("No reviewed recording for this phrase.", 404);
+    }
 
     const profile = voiceProfiles[language];
-    let response: Response;
-    const signal = AbortSignal.timeout(15000);
+    const key = profile.provider === "orinode" ? process.env.ORINODE_API_KEY : process.env.AZURE_SPEECH_KEY;
+    if (!key) return fail("The language voice provider has not been configured.", 503);
+    const region = process.env.AZURE_SPEECH_REGION;
+    if (profile.provider === "azure" && (!region || !/^[a-z0-9]+$/.test(region))) return fail("Azure Speech region has not been configured.", 503);
+    // Atomic, database-backed daily quota; failure is closed, not a paid request.
+    const { data: allowed, error: quotaError } = await db.rpc("fountaintalk_reserve_speech_pilot", { p_user_id: userId });
+    if (quotaError) return fail("Pilot quota service is not ready.", 503);
+    if (allowed !== true) return fail("Daily speech pilot quota reached.", 429);
+
     if (profile.provider === "orinode") {
-      const key = process.env.ORINODE_API_KEY;
-      if (!key) return fail("African-language voice provider has not been configured.", 503);
-      const voice = language === "igbo" ? process.env.ORINODE_IGBO_VOICE : profile.voice;
-      if (!voice) return fail("Igbo voice ID has not been confirmed.", 503);
-      response = await fetch("https://maraba.ai/api/v1/tts/", {
-        method: "POST",
-        headers: { "X-API-Key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: phrase, voice, format: "mp3", sample_rate: 16000 }),
-        signal,
-      });
-    } else {
-      const key = process.env.AZURE_SPEECH_KEY;
-      const region = process.env.AZURE_SPEECH_REGION;
-      if (!key || !region || !/^[a-z0-9]+$/.test(region)) return fail("Global-language voice provider has not been configured.", 503);
-      response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
-        method: "POST",
-        headers: {
-          "Ocp-Apim-Subscription-Key": key,
-          "Content-Type": "application/ssml+xml",
-          "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
-        },
-        body: makeSsml(profile.locale, profile.voice, phrase),
-        signal,
-      });
+      const bytes = await synthesizeOrinode(language as OrinodeLanguage, phrase, key);
+      return audioResponse(bytes, "orinode");
     }
-    if (!response.ok) {
-      console.error("FountainTalk speech provider error", profile.provider, response.status);
-      return fail("The selected language voice is temporarily unavailable.", 502);
-    }
-    const mediaType = response.headers.get("content-type")?.split(";")[0].trim();
-    if (!mediaType || !["audio/mpeg", "audio/mp3", "application/octet-stream"].includes(mediaType)) {
-      return fail("Speech provider returned an unexpected format.", 502);
-    }
-    const audio = await response.arrayBuffer();
-    if (!audio.byteLength || audio.byteLength > 5 * 1024 * 1024) return fail("Invalid speech audio.", 502);
-    return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+    const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": key, "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+      },
+      body: makeSsml(profile.locale, profile.voice, phrase),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return fail("The selected language voice is temporarily unavailable.", 502);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length > MAX_SYNTHESIS_BYTES) return fail("Invalid speech audio.", 502);
+    return audioResponse(bytes, "azure");
   } catch (error) {
-    console.error("FountainTalk multilingual speech request failed", error instanceof Error ? error.name : "UnknownError");
+    if (error instanceof SpeechAccessError) return fail(error.message, error.status);
+    console.error("FountainTalk speech failure", error instanceof Error ? error.name : "UnknownError");
     return fail("Language speech could not be generated. Please try again.", 502);
   }
 }
