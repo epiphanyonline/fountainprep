@@ -157,7 +157,7 @@ export const TUTOR_TRACKS: Record<TutorTrackId, TutorTrack> = {
 const STEPS: TutorStep[] = ["diagnostic", "lesson", "practice", "reteach", "retry", "complete"];
 
 export function startTutorDemo(track: TutorTrackId): TutorSession {
-  if (!(track in TUTOR_TRACKS)) throw new Error("Unsupported tutor track");
+  if (!Object.prototype.hasOwnProperty.call(TUTOR_TRACKS, track)) throw new Error("Unsupported tutor track");
   return { version: 1, track, step: "diagnostic", answers: {}, explainedFirst: false, feedback: "" };
 }
 
@@ -224,7 +224,7 @@ export function tutorOutcome(session: TutorSession): "demonstrated" | "improving
 export function restoreTutorDemo(input: unknown): TutorSession | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const state = input as Partial<TutorSession>;
-  if (state.version !== 1 || !state.track || !(state.track in TUTOR_TRACKS) ||
+  if (state.version !== 1 || !state.track || !Object.prototype.hasOwnProperty.call(TUTOR_TRACKS, state.track) ||
       !state.step || !STEPS.includes(state.step) ||
       !state.answers || typeof state.answers !== "object" || Array.isArray(state.answers) ||
       typeof state.explainedFirst !== "boolean" ||
