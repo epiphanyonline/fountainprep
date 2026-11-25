@@ -3,6 +3,7 @@ import { isSpeechLanguage, makeSsml, normalisePhrase, voiceProfiles } from "@/ap
 import { detectAudioType, MAX_REVIEW_BYTES, MAX_SYNTHESIS_BYTES } from "@/app/fountaintalk/speech/audioValidation";
 import { speechAccess, SpeechAccessError } from "@/app/fountaintalk/speech/serverAccess";
 import { synthesizeOrinode, type OrinodeLanguage } from "@/app/fountaintalk/speech/providers";
+import { curriculumPhrase } from "@/app/fountaintalk/speech/curriculumPhrases";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ function fail(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
-function audioResponse(bytes: Uint8Array, source: "reviewed" | "orinode" | "azure") {
+function audioResponse(bytes: Uint8Array, source: "reviewed" | "orinode" | "azure" | "cached-ai") {
   const contentType = detectAudioType(bytes);
   if (!contentType) return fail("Invalid audio.", 502);
   return new Response(new Uint8Array(bytes), { headers: {
@@ -52,6 +53,27 @@ export async function POST(request: Request) {
     }
 
     const profile = voiceProfiles[language];
+    // Shared cache is opt-in after confirming provider audio reuse rights.
+    const cacheable = process.env.FOUNTAINTALK_SPEECH_CACHE === "true" && Boolean(curriculumPhrase(language, phrase));
+    const voiceVersion = `${profile.provider}:${profile.voice}:${process.env.FOUNTAINTALK_SPEECH_CACHE_VERSION ?? "v1"}`;
+    if (cacheable) {
+      const { data, error } = await db.from("fountaintalk_speech_cache").select("audio_base64")
+        .eq("language", language).eq("phrase", phrase).eq("voice_version", voiceVersion).maybeSingle();
+      if (!error && data) {
+        const bytes = Buffer.from(data.audio_base64, "base64");
+        if (bytes.length <= MAX_REVIEW_BYTES && detectAudioType(bytes)) return audioResponse(bytes, "cached-ai");
+      }
+    }
+    const saveAudio = async (bytes: Uint8Array) => {
+      if (!cacheable || bytes.length > MAX_REVIEW_BYTES || !detectAudioType(bytes)) return;
+      // Best-effort caching: missing cache storage never prevents AI delivery.
+      try {
+        const { error } = await db.from("fountaintalk_speech_cache").upsert({
+          language, phrase, voice_version: voiceVersion, audio_base64: Buffer.from(bytes).toString("base64"),
+        }, { onConflict: "language,phrase,voice_version", ignoreDuplicates: true });
+        if (error) console.warn("FountainTalk cache write unavailable", error.code);
+      } catch { console.warn("FountainTalk cache write unavailable"); }
+    };
     const key = profile.provider === "orinode" ? process.env.ORINODE_API_KEY : process.env.AZURE_SPEECH_KEY;
     if (!key) return fail("The language voice provider has not been configured.", 503);
     const region = process.env.AZURE_SPEECH_REGION;
@@ -63,6 +85,7 @@ export async function POST(request: Request) {
 
     if (profile.provider === "orinode") {
       const bytes = await synthesizeOrinode(language as OrinodeLanguage, phrase, key);
+      await saveAudio(bytes);
       return audioResponse(bytes, "orinode");
     }
     const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -77,6 +100,7 @@ export async function POST(request: Request) {
     if (!response.ok) return fail("The selected language voice is temporarily unavailable.", 502);
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.length > MAX_SYNTHESIS_BYTES) return fail("Invalid speech audio.", 502);
+    await saveAudio(bytes);
     return audioResponse(bytes, "azure");
   } catch (error) {
     if (error instanceof SpeechAccessError) return fail(error.message, error.status);

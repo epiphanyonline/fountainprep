@@ -7,6 +7,7 @@ import { supabase } from "@/app/lib/supabase";
 import { voiceProfiles } from "@/app/fountaintalk/speech/voiceProfiles";
 import type { SupportedLanguage } from "@/app/types/fountaintalk";
 
+type Issue = { phrase: string; report_count: number; latest_report: string; lesson_id: string };
 type Revision = { id: number; language: string; phrase: string; review_note: string; created_at: string };
 
 async function authorisedFetch(url: string, options: RequestInit = {}) {
@@ -31,6 +32,8 @@ export default function PronunciationLibraryPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [revisions, setRevisions] = useState<Revision[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issuesLoaded, setIssuesLoaded] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioSource, setAudioSource] = useState("");
   useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
@@ -39,6 +42,15 @@ export default function PronunciationLibraryPage() {
     const response = await authorisedFetch(`/api/fountaintalk/pronunciation-library?language=${language}`);
     const result = await response.json();
     setRevisions(result.revisions ?? []);
+  }
+  async function loadIssues() {
+    const response = await authorisedFetch(`/api/fountaintalk/pronunciation-reports?language=${language}`);
+    const body = await response.json();
+    setIssues(body.issues ?? []); setIssuesLoaded(true);
+  }
+  async function dismiss(phrase: string) {
+    await authorisedFetch("/api/fountaintalk/pronunciation-reports", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ language, phrase }) });
+    await loadIssues();
   }
   async function run(task: () => Promise<void>) {
     setBusy(true); setMessage("");
@@ -65,17 +77,28 @@ export default function PronunciationLibraryPage() {
       setConfirmed(false); setNote(""); setRecording(null);
       setMessage("Reviewed recording published. Future pilot requests use this revision.");
       await refresh();
+      await loadIssues();
     });
   }
   return (
     <main style={{ maxWidth: 760, margin: "40px auto", padding: 20 }}>
       <Link href="/admin">← Admin</Link>
       <h1>Pronunciation library</h1>
-      <p>Speech pilot · Authorised reviewers only. Review exact wording and tones before publishing. Never upload a learner recording or a voice without permission.</p>
+      <p>AI audio is available without manual approval. Only investigate reported issues or make optional improvements. Never upload a learner recording or a voice without permission.</p>
       <fieldset disabled={busy} style={{ border: "1px solid #ddd", borderRadius: 12, padding: 20, display: "grid", gap: 12 }}>
-        <label>Language <select value={language} onChange={e => { setLanguage(e.target.value as SupportedLanguage); setRevisions([]); setAudioUrl(""); setConfirmed(false); setRecording(null); setNote(""); }}>
+        <label>Language <select value={language} onChange={e => { setLanguage(e.target.value as SupportedLanguage); setRevisions([]); setIssues([]); setIssuesLoaded(false); setAudioUrl(""); setConfirmed(false); setRecording(null); setNote(""); }}>
           {Object.keys(voiceProfiles).map(name => <option key={name} value={name}>{name}</option>)}
         </select></label>
+        <section aria-label="Pronunciation issue inbox">
+          <h2>Reported pronunciations</h2>
+          <button type="button" onClick={() => void run(loadIssues)}>Load reported issues</button>
+          {issuesLoaded && issues.length === 0 && <p>No open pronunciation issues for this language.</p>}
+          {issues.map(issue => <article key={issue.phrase} style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
+            <strong>{issue.phrase}</strong><p>{issue.report_count} reporting account(s) · {issue.lesson_id}</p>
+            <button type="button" onClick={() => { setPhrase(issue.phrase); setConfirmed(false); setAudioUrl(""); setRecording(null); setNote(""); }}>Review phrase</button>{" "}
+            <button type="button" onClick={() => void run(() => dismiss(issue.phrase))}>Dismiss — no correction needed</button>
+          </article>)}
+        </section>
         <label>Exact target phrase (including tone marks)
           <textarea value={phrase} maxLength={400} rows={3} onChange={e => { setPhrase(e.target.value); setConfirmed(false); setAudioUrl(""); setRecording(null); }} style={{ display: "block", width: "100%" }} />
         </label>
