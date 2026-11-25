@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { isLessonUpcomingOrJoinable } from '../../lib/lessonAccessWindow'
 import {
   bookingInstant,
   dateKeyInTimezone,
@@ -30,7 +31,6 @@ type LessonBooking = {
   status: string
   payment_status: string
   meeting_link: string | null
-  amount_gbp: number | null
 }
 
 type ProgressNote = {
@@ -138,8 +138,7 @@ export default function TutorSessionsPage() {
         timezone,
         status,
         payment_status,
-        meeting_link,
-        amount_gbp
+        meeting_link
       `)
       .eq('tutor_id', tutorId)
       .order('lesson_date', { ascending: true })
@@ -238,13 +237,7 @@ export default function TutorSessionsPage() {
   const upcomingLessons = useMemo(() => {
     return confirmedLessons.filter(
       (lesson) =>
-        lesson.lesson_date &&
-        lesson.lesson_time &&
-        bookingInstant(
-          lesson.lesson_date,
-          lesson.lesson_time,
-          lesson.timezone
-        ).getTime() >= Date.now()
+        isLessonUpcomingOrJoinable(lesson.lesson_date, lesson.lesson_time, lesson.timezone, lesson.status)
     )
   }, [confirmedLessons])
 
