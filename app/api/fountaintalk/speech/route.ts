@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     // Shared cache is opt-in after confirming provider audio reuse rights.
     const cacheable = process.env.FOUNTAINTALK_SPEECH_CACHE === "true" && Boolean(curriculumPhrase(language, phrase));
     const voiceVersion = `${profile.provider}:${profile.voice}:${process.env.FOUNTAINTALK_SPEECH_CACHE_VERSION ?? "v1"}`;
-    if (cacheable) {
+    if (cacheable && mode !== "generated") {
       const { data, error } = await db.from("fountaintalk_speech_cache").select("audio_base64")
         .eq("language", language).eq("phrase", phrase).eq("voice_version", voiceVersion).maybeSingle();
       if (!error && data) {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       }
     }
     const saveAudio = async (bytes: Uint8Array) => {
-      if (!cacheable || bytes.length > MAX_REVIEW_BYTES || !detectAudioType(bytes)) return;
+      if (!cacheable || mode === "generated" || bytes.length > MAX_REVIEW_BYTES || !detectAudioType(bytes)) return;
       // Best-effort caching: missing cache storage never prevents AI delivery.
       try {
         const { error } = await db.from("fountaintalk_speech_cache").upsert({
