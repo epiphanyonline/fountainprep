@@ -16,15 +16,24 @@ const CANDIDATE_MODELS = [
 ] as const;
 let cached: { model: string; expiresAt: number } | null = null;
 
-function oidcToken(): string {
-  const token = process.env.VERCEL_OIDC_TOKEN;
-  if (!token) throw new Error("Missing project-scoped AI Gateway OIDC token");
+async function oidcToken(): Promise<string> {
   // Restrict the experiment to the reviewed Fountain Prep branch.
   if (process.env.VERCEL_ENV !== "preview" ||
       process.env.VERCEL_GIT_COMMIT_REF !== "feature/personal-ai-exam-tutor") {
     throw new Error("Preview branch not permitted");
   }
-  return token;
+  // Vercel makes the rotating OIDC token available on incoming function
+  // requests via x-vercel-oidc-token. VERCEL_OIDC_TOKEN is normally build-time
+  // or local-development only. Never fall back to a standalone API key.
+  if (process.env.VERCEL_OIDC_TOKEN) return process.env.VERCEL_OIDC_TOKEN;
+  try {
+    const { headers } = await import("next/headers");
+    const token = (await headers()).get("x-vercel-oidc-token");
+    if (token) return token;
+  } catch {
+    // Not in an active Next.js request context, or OIDC not enabled.
+  }
+  throw new Error("Missing project-scoped AI Gateway OIDC token");
 }
 
 type ModelAvailability = {
@@ -39,7 +48,7 @@ function record(value: unknown): value is Record<string, unknown> {
 
 /** GET is a no-spend availability check, not a text generation. */
 export async function getEligibleTutorModel(): Promise<string> {
-  const token = oidcToken();
+  const token = await oidcToken();
   if (cached && Date.now() < cached.expiresAt) return cached.model;
 
   const ctrl = new AbortController();
@@ -70,7 +79,7 @@ export async function queryTutorGateway(
   systemPrompt: string,
   messages: readonly TutorChatMessage[],
 ): Promise<string> {
-  const token = oidcToken();
+  const token = await oidcToken();
   const model = await getEligibleTutorModel();
 
   const ctrl = new AbortController();
