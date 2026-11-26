@@ -9,5 +9,8 @@ export const metadata: Metadata = {
 
 export default function TutorChatPreviewPage() {
   if (process.env.VERCEL_ENV !== "preview") notFound();
-  return <TutorConversationPreview />;
+  const liveEnabled = process.env.FOUNTAIN_TUTOR_AI_PREVIEW_ENABLED === "true" &&
+    process.env.FOUNTAIN_TUTOR_AI_SPENDING_APPROVED === "true" &&
+    process.env.VERCEL_GIT_COMMIT_REF === "feature/personal-ai-exam-tutor";
+  return <TutorConversationPreview liveEnabled={liveEnabled} />;
 }
