@@ -85,7 +85,7 @@ export function recordJournalActivity(
     row.topic.toLowerCase() === topic.toLowerCase());
   const at = Date.parse(event.occurredAt);
   const reviewSuggestedAt = new Date(at + REVIEW_AFTER_MS).toISOString();
-  if (exists && at < Date.parse(exists.lastActivityAt)) {
+  if (exists && (exists.visits >= 10_000 || at <= Date.parse(exists.lastActivityAt))) {
     return base; // old/out-of-order event: never roll back progress
   }
   const updated: JournalEntry = exists ? {
