@@ -6,7 +6,7 @@ import type { TutorChatMessage } from "./conversationBoundary";
 
 const TRACKS: TutorTrackId[] = ["jamb-maths", "jamb-english", "ielts-reading"];
 
-export default function TutorConversationPreview() {
+export default function TutorConversationPreview({ liveEnabled = false }: { liveEnabled?: boolean }) {
   const [track, setTrack] = useState<TutorTrackId>("jamb-maths");
   const [history, setHistory] = useState<TutorChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -40,7 +40,7 @@ export default function TutorConversationPreview() {
       if (!response.ok) {
         setDraft(text);
         if (response.status === 503) {
-          setError("Live AI conversations are not enabled yet. The model spending limit and preview access must be approved first. Try the guided teaching walkthrough instead.");
+          setError("The live tutor is temporarily unavailable. The eligible model or AI Gateway credit may not be available. Try the guided teaching walkthrough instead.");
         } else if (response.status === 403) {
           setError("This preview is restricted to authorised visitors.");
         } else {
@@ -77,7 +77,7 @@ export default function TutorConversationPreview() {
           </p>
         </header>
         <aside className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-          <strong>Restricted development feature.</strong> Live AI messages are disabled until a spending cap and authorised access are confirmed.
+          <strong>Restricted development feature.</strong> {liveEnabled ? "Live AI conversations are enabled for authorised preview testers, subject to free-credit eligibility and rate limits." : "Live AI messages are disabled until spending and access checks are confirmed."}
           Do not enter names, contact details or other private information. No conversation is saved to a learner profile; this browser tab only keeps the current visible history.
           AI tutoring does not guarantee exam results, and exam content is not yet academically certified.
         </aside>
