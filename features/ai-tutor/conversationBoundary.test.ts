@@ -65,6 +65,10 @@ describe("AI tutor request safety boundary", () => {
   });
   it("builds exam-specific tutoring instructions", () => {
     expect(buildTutorSystemPrompt("jamb-maths")).toContain("Percentages");
+    expect(buildTutorSystemPrompt("jamb-maths")).toContain("begin teaching algebra now");
+    expect(buildTutorSystemPrompt("jamb-maths")).toContain("ONLY IF LEARNER HAS NOT REQUESTED ANOTHER TOPIC");
+    expect(buildTutorSystemPrompt("jamb-maths")).toContain("explanation with one worked example FIRST");
+    expect(buildTutorSystemPrompt("jamb-maths")).not.toContain("Stay focused on the named subject and lesson objective");
     expect(buildTutorSystemPrompt("jamb-english")).toContain("Conditional sentences");
     expect(buildTutorSystemPrompt("ielts-reading")).toContain("IELTS");
   });
