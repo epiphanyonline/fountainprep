@@ -62,7 +62,7 @@ describe("AI tutor request safety boundary", () => {
     expect(buildTutorSystemPrompt("jamb-maths",{mode:"challenge"})).toContain("moderately harder");
   });
   it("passes an explicitly selected learner topic into the model system prompt", async () => {
-    const model=vi.fn(async()=> "Here's a simple way to solve linear equations.");
+    const model=vi.fn(async (_prompt: string, _history: readonly unknown[]) => "Here's a simple way to solve linear equations.");
     const reply=await handleTutorPreviewChat(request({
       track:"jamb-maths",topic:"Linear equations",mode:"teach",
       messages:[{role:"user",content:"Start at the beginning."}],
