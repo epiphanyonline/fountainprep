@@ -63,7 +63,7 @@ export function validateTutorChatPayload(input: unknown): TutorChatInput | null 
   const topic = input.topic === undefined ? undefined : input.topic;
   if (topic !== undefined &&
       (typeof topic !== "string" || topic.trim().length < 2 ||
-       topic.trim().length > 80 || /[\\r\\n\\x00-\\x1f]/.test(topic))) return null;
+       topic.trim().length > 80 || /[\r\n\x00-\x1f]/.test(topic))) return null;
   const mode: TutorLearningMode =
     input.mode === undefined ? "teach" : input.mode as TutorLearningMode;
   if (!LEARNING_MODES.includes(mode)) return null;
