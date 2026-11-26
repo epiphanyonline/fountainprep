@@ -21,7 +21,16 @@ export async function GET(): Promise<Response> {
   try {
     const model = await getEligibleTutorModel();
     return Response.json({ ready: true, model }, { status: 200, headers });
-  } catch {
-    return Response.json({ ready: false, reason: "model_unavailable" }, { status: 503, headers });
+  } catch (error) {
+    // Fixed diagnostic categories only; never reveal tokens or provider details.
+    const code = error instanceof Error ? error.message : "";
+    const reason =
+      code === "Missing project-scoped AI Gateway OIDC token" ? "oidc_not_configured" :
+      code === "No eligible low-cost preview model" ? "no_eligible_model" :
+      code === "Preview branch not permitted" ? "branch_restricted" :
+      code === "Unexpected eligibility data" ? "invalid_catalogue_response" :
+      code === "Model eligibility unavailable" ? "catalogue_unavailable" :
+      "readiness_unavailable";
+    return Response.json({ ready: false, reason }, { status: 503, headers });
   }
 }
