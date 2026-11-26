@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TUTOR_TRACKS, type TutorTrackId } from "./pilotEngine";
-import type { TutorChatMessage } from "./conversationBoundary";
+import type { TutorChatMessage, TutorLearningMode } from "./conversationBoundary";
 
 const TRACKS: TutorTrackId[] = ["jamb-maths", "jamb-english", "ielts-reading"];
 
@@ -12,12 +12,15 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [topic, setTopic] = useState("");
+  const [mode, setMode] = useState<TutorLearningMode>("teach");
 
   function clear() {
     if (pending) return;
     setHistory([]);
     setDraft("");
     setError("");
+    setMode("teach");
   }
   async function send() {
     const text = draft.trim();
@@ -34,7 +37,7 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ track, messages: outgoing }),
+        body: JSON.stringify({ track, messages: outgoing, topic: topic.trim() || undefined, mode }),
         cache: "no-store",
       });
       if (!response.ok) {
@@ -86,11 +89,42 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
           <select id="tutor-track" value={track} disabled={pending} onChange={event => {
               setTrack(event.target.value as TutorTrackId);
               setHistory([]);
+              setTopic("");
+              setMode("teach");
               setError("");
             }} className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm">
             {TRACKS.map(id=><option key={id} value={id}>{TUTOR_TRACKS[id].exam} — {TUTOR_TRACKS[id].subject}</option>)}
           </select>
           <p className="mt-2 text-xs text-slate-500">Three exam/subject pathways are available in the preview. The suggested lesson is not compulsory—ask about any topic within the selected subject.</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="tutor-topic" className="mb-2 block text-sm font-semibold">What topic would you like to learn?</label>
+              <input
+                id="tutor-topic" type="text" maxLength={80}
+                placeholder="e.g. Algebra or linear equations" value={topic}
+                disabled={pending}
+                onChange={event => {
+                  setTopic(event.target.value);
+                  setHistory([]);
+                  setError("");
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm"
+              />
+              <p className="mt-1 text-xs text-slate-500">Optional. Changing the topic starts a fresh discussion.</p>
+            </div>
+            <div>
+              <label htmlFor="tutor-mode" className="mb-2 block text-sm font-semibold">How should the tutor help?</label>
+              <select id="tutor-mode" disabled={pending} value={mode}
+                onChange={event => setMode(event.target.value as TutorLearningMode)}
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm">
+                <option value="teach">Teach me step by step</option>
+                <option value="practise">Ask me a practice question</option>
+                <option value="simplify">Explain it more simply</option>
+                <option value="challenge">Give me a harder challenge</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">You can change how the tutor teaches at any point.</p>
+            </div>
+          </div>
           <div className="mt-6 space-y-3" aria-live="polite">
             {history.length === 0 && <div className="rounded-xl bg-violet-50 p-5 text-sm leading-6">
               The suggested starting lesson is <strong>{TUTOR_TRACKS[track].title}</strong>, but you can ask about a different topic within {TUTOR_TRACKS[track].subject}.
@@ -112,7 +146,7 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
             <label htmlFor="tutor-message" className="block text-sm font-semibold">Your message</label>
             <textarea id="tutor-message" value={draft} disabled={pending}
               onChange={event=>setDraft(event.target.value.slice(0,700))}
-              placeholder="I'm struggling with percentages. Can you explain and quiz me?"
+              placeholder="I need clarity with algebra. Start with a simple explanation and then check my understanding."
               className="min-h-28 w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-violet-500 focus:outline-none"
               maxLength={700} required />
             <div className="flex flex-wrap justify-between gap-3">
