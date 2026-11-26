@@ -56,3 +56,29 @@ serverless instance-memory rate limits enforce a global usage limit.
 - The assistant's live chat history is browser-only and unverified; there
   is no durable per-learner memory or database staging environment yet.
 - No exam-specific official partnership or official past-paper licence.
+
+## 26 November 2026 — controlled free-credit pilot configuration
+
+- Fountain Prep project AI Gateway budget: USD 5, monthly; alerts 50%, 75%, 100%.
+- The project's preview chat endpoint has a Vercel WAF fixed-window rule:
+  six requests per IP per 3600 seconds, only on preview environment.
+- Two AI feature switches are now set on the Vercel project **preview
+  environment scoped to the `feature/personal-ai-exam-tutor` branch only**.
+- The gateway code authenticates with the deployment project's OIDC token
+  **only**, not standalone API keys (which may bypass project-level budgets).
+- Before generation, the backend calls the authenticated AI Gateway model
+  availability endpoint and selects only an `eligible` model from a
+  small allowlist of low-cost language models.
+- An ineligible model, missing OIDC token, unapproved branch, unavailable
+  Gateway, disabled flags or exhausted credit returns an error rather than
+  silently falling back to paid provider keys.
+- No AI-generated learner outcome is recognised as an official exam score.
+- The Vercel project requires SSO on preview deployments. Confirm actual
+  login access and one real completion manually before declaring the
+  conversational tutor live-tested.
+- Vercel spending caps are soft: the request crossing the cap can finish.
+  Do not claim the $5 budget is a mathematically hard spending ceiling.
+
+This documentation-only commit also triggers a new preview deployment so
+that branch-scoped Vercel environment changes take effect. It does not
+change the main or production branch.
