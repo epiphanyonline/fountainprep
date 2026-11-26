@@ -82,18 +82,18 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
           AI tutoring does not guarantee exam results, and exam content is not yet academically certified.
         </aside>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
-          <label htmlFor="tutor-track" className="mb-2 block text-sm font-semibold">Exam and topic</label>
+          <label htmlFor="tutor-track" className="mb-2 block text-sm font-semibold">Exam and subject</label>
           <select id="tutor-track" value={track} disabled={pending} onChange={event => {
               setTrack(event.target.value as TutorTrackId);
               setHistory([]);
               setError("");
             }} className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm">
-            {TRACKS.map(id=><option key={id} value={id}>{TUTOR_TRACKS[id].exam} — {TUTOR_TRACKS[id].title}</option>)}
+            {TRACKS.map(id=><option key={id} value={id}>{TUTOR_TRACKS[id].exam} — {TUTOR_TRACKS[id].subject}</option>)}
           </select>
-          <p className="mt-2 text-xs text-slate-500">Only three original sample lessons are currently available.</p>
+          <p className="mt-2 text-xs text-slate-500">Three exam/subject pathways are available in the preview. The suggested lesson is not compulsory—ask about any topic within the selected subject.</p>
           <div className="mt-6 space-y-3" aria-live="polite">
             {history.length === 0 && <div className="rounded-xl bg-violet-50 p-5 text-sm leading-6">
-              Tell the tutor what you understand or what you find difficult about <strong>{TUTOR_TRACKS[track].title}</strong>.
+              The suggested starting lesson is <strong>{TUTOR_TRACKS[track].title}</strong>, but you can ask about a different topic within {TUTOR_TRACKS[track].subject}.
               It should respond with an explanation and one targeted knowledge check.
             </div>}
             {history.map((message,index)=>(
