@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { emptyMemory, recordMemory } from "./unifiedLearnerMemory";
+import { assessmentQuestions, gradePractice, addEvidence, assessmentSummary, type AssessmentEvidence } from "./unifiedAssessment";
 import type { TutorChatMessage } from "./conversationBoundary";
 import { EXAM_TRACKS, LANGUAGES, SUBJECTS, EXAM_LABELS, LANGUAGE_LABELS, SUBJECT_LABELS, contextKey, parseLearningContext, parseLearningMode, type LearningContext, type LearningMode } from "./learningContext";
 
@@ -27,6 +29,9 @@ function starter(context: LearningContext) {
   return "Teach me a beginner-friendly concept in " + label(context).toLowerCase() + ".";
 }
 export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEnabled?: boolean }) {
+  const [memory, setMemory] = useState(emptyMemory);
+  const [evidence, setEvidence] = useState<AssessmentEvidence[]>([]);
+  const [feedback, setFeedback] = useState("");
   const [history, setHistory] = useState<TutorChatMessage[]>([]);
   const [context, setContext] = useState<LearningContext>(categories[0].initial);
   const [mode, setMode] = useState<LearningMode>("teach");
@@ -35,7 +40,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   function change(next: LearningContext) {
-    setContext(next); setHistory([]); setDraft(""); setNotice(""); setError(""); setMode("teach");
+    setContext(next); setFeedback(""); setHistory([]); setDraft(""); setNotice(""); setError(""); setMode("teach");
   }
   async function submit() {
     if (busy || !draft.trim()) return;
@@ -55,6 +60,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
       const data = await response.json();
       if (data.context !== contextKey(context) || data.mode !== mode) throw new Error("Unexpected preview response.");
       if (data.status === "answered" && data.live === true && liveEnabled && typeof data.response === "string" && data.response.trim()) {
+        setMemory(previous => recordMemory(previous, context, mode, new Date().toISOString()));
         setHistory([...outgoing, { role: "assistant", content: data.response.trim().slice(0,1300) }]);
       } else if (data.status === "validated" && data.live === false) {
         setNotice("Request validated for " + label(context) + ". Live AI replies are not enabled in this workspace yet.");
@@ -63,6 +69,9 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
     } catch { setError("Unable to complete the request. Your message has been retained; please try again."); }
     finally { setBusy(false); }
   }
+  const summary = assessmentSummary(context,evidence);
+  const question = assessmentQuestions(context).find(q=>!evidence.some(e=>e.context===contextKey(context)&&e.questionId===q.id));
+  const activity = memory.entries.find(e=>contextKey(e.context)===contextKey(context));
   const options = context.kind === "exam" ? EXAM_TRACKS.map(value => ({value, label: EXAM_LABELS[value]}))
     : context.kind === "language" ? LANGUAGES.map(value => ({value, label: LANGUAGE_LABELS[value]}))
     : SUBJECTS.map(value => ({value, label: SUBJECT_LABELS[value]}));
@@ -122,6 +131,23 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
           <p className="mt-4 text-xs leading-5 text-slate-500">{liveEnabled ? "Restricted AI preview. Replies may be inaccurate. Conversation is held in this tab only; no saved learner profile or voice generation." : "Validation-only preview. No AI replies, voice generation or saved learner history."} Use fictional examples only; do not enter personal details.</p>
           {notice && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-sm text-violet-900">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
+        </section>
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="font-semibold">Your learning activity</h2>
+          <p className="mt-2 text-sm text-slate-600">{label(context)} · {activity?.sessions ?? 0} completed AI exchanges · {activity?.help ?? 0} requests for simpler explanations</p>
+          <p className="mt-2 text-xs text-slate-500">Temporary preview activity only. Not saved to an account or a measure of mastery.</p>
+          <h3 className="mt-5 font-semibold">Quick knowledge check</h3>
+          <p className="mt-1 text-sm text-slate-600">{summary.available ? summary.correct + " correct out of " + summary.attempted + " first attempts" : "Sample questions are not yet available for this subject."}</p>
+          {question && <div className="mt-3 space-y-2">
+            <p className="text-sm font-medium">{question.prompt}</p>
+            {question.options.map(option=><button key={option.id} type="button" disabled={busy} className="block w-full rounded-lg border border-slate-200 p-3 text-left text-sm hover:border-violet-500" onClick={()=>{
+              const result=gradePractice(context,question.id,option.id);
+              if(result){setEvidence(previous=>addEvidence(previous,result.evidence));setFeedback((result.evidence.correct?"Correct. ":"Not quite. ")+result.explanation);}
+            }}>{option.text}</button>)}
+          </div>}
+          {feedback && <p role="status" className="mt-3 text-sm text-violet-900">{feedback}</p>}
+          <p className="mt-3 text-xs text-slate-500">Original low-stakes sample questions, not official exams or proficiency scores.</p>
+          <button type="button" disabled={busy} onClick={()=>{setMemory(emptyMemory());setEvidence([]);setFeedback("");}} className="mt-3 text-sm text-violet-700 underline">Clear preview activity</button>
         </section>
         <section className="mt-7 grid gap-3 sm:grid-cols-2">
           <Link href="/subjects" className="rounded-2xl border border-slate-200 bg-white p-5 hover:border-violet-300"><strong>Learn with a human tutor</strong><p className="mt-1 text-sm text-slate-600">Explore existing live one-to-one lessons.</p></Link>
