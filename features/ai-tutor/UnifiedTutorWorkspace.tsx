@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { buildLearningPlan } from "./unifiedLearningPlan";
 import { emptyMemory, recordMemory } from "./unifiedLearnerMemory";
 import { assessmentQuestions, gradePractice, addEvidence, assessmentSummary, type AssessmentEvidence } from "./unifiedAssessment";
 import type { TutorChatMessage } from "./conversationBoundary";
@@ -69,6 +70,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
     } catch { setError("Unable to complete the request. Your message has been retained; please try again."); }
     finally { setBusy(false); }
   }
+  const plan = buildLearningPlan(context,evidence,memory,new Date().toISOString());
   const summary = assessmentSummary(context,evidence);
   const question = assessmentQuestions(context).find(q=>!evidence.some(e=>e.context===contextKey(context)&&e.questionId===q.id));
   const activity = memory.entries.find(e=>contextKey(e.context)===contextKey(context));
@@ -148,6 +150,15 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
           {feedback && <p role="status" className="mt-3 text-sm text-violet-900">{feedback}</p>}
           <p className="mt-3 text-xs text-slate-500">Original low-stakes sample questions, not official exams or proficiency scores.</p>
           <button type="button" disabled={busy} onClick={()=>{setMemory(emptyMemory());setEvidence([]);setFeedback("");}} className="mt-3 text-sm text-violet-700 underline">Clear preview activity</button>
+        </section>
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="font-semibold">Your suggested learning plan</h2>
+          <p className="mt-1 text-xs text-slate-500">Based on temporary sample activity. Not a validated proficiency assessment.</p>
+          {plan.map((action,index)=><div key={action.kind+action.topic} className="mt-4 border-t border-slate-100 pt-3">
+            <p className="text-sm font-semibold">{index+1}. {action.topic} · about {action.minutes} min</p>
+            <p className="mt-1 text-sm text-slate-600">{action.reason}</p>
+            <button type="button" disabled={busy} onClick={()=>{setMode(action.mode);setDraft(action.prompt);setNotice("");setError("");}} className="mt-2 text-sm font-semibold text-violet-700 underline">Prepare learning request</button>
+          </div>)}
         </section>
         <section className="mt-7 grid gap-3 sm:grid-cols-2">
           <Link href="/subjects" className="rounded-2xl border border-slate-200 bg-white p-5 hover:border-violet-300"><strong>Learn with a human tutor</strong><p className="mt-1 text-sm text-slate-600">Explore existing live one-to-one lessons.</p></Link>
