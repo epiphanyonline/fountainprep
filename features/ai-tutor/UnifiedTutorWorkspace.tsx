@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import type { TutorChatMessage } from "./conversationBoundary";
 import { EXAM_TRACKS, LANGUAGES, SUBJECTS, EXAM_LABELS, LANGUAGE_LABELS, SUBJECT_LABELS, contextKey, parseLearningContext, parseLearningMode, type LearningContext, type LearningMode } from "./learningContext";
 
 const categories = [
@@ -25,7 +26,8 @@ function starter(context: LearningContext) {
   if (context.kind === "homework") return "Show me how to approach a " + label(context).toLowerCase() + " homework problem step by step.";
   return "Teach me a beginner-friendly concept in " + label(context).toLowerCase() + ".";
 }
-export default function UnifiedTutorWorkspace() {
+export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEnabled?: boolean }) {
+  const [history, setHistory] = useState<TutorChatMessage[]>([]);
   const [context, setContext] = useState<LearningContext>(categories[0].initial);
   const [mode, setMode] = useState<LearningMode>("teach");
   const [draft, setDraft] = useState("");
@@ -33,23 +35,32 @@ export default function UnifiedTutorWorkspace() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   function change(next: LearningContext) {
-    setContext(next); setDraft(""); setNotice(""); setError(""); setMode("teach");
+    setContext(next); setHistory([]); setDraft(""); setNotice(""); setError(""); setMode("teach");
   }
   async function submit() {
     if (busy || !draft.trim()) return;
     setBusy(true); setNotice(""); setError("");
+    const message: TutorChatMessage = { role: "user", content: draft.trim() };
+    // Retain whole exchanges only, and respect both character and UTF-8 body limits.
+    let outgoing = [...history.slice(-10), message];
+    const payload = () => JSON.stringify({ context, mode, messages: outgoing });
+    while (outgoing.length > 1 && (outgoing.reduce((n,m) => n + m.content.length, 0) > 7500 || new TextEncoder().encode(payload()).length > 12000)) outgoing = outgoing.slice(2);
     try {
       const response = await fetch("/api/ai-tutor-preview/unified", {
         method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, mode, messages: [{ role: "user", content: draft.trim() }] }),
+        body: payload(),
       });
       if (!response.ok) throw new Error("Preview request could not be validated.");
       const data = await response.json();
-      if (data.status !== "validated" || data.live !== false || data.context !== contextKey(context) || data.mode !== mode) throw new Error("Unexpected preview response.");
-      setNotice("Request validated for " + label(context) + ". Live AI replies are not enabled in this workspace yet.");
+      if (data.context !== contextKey(context) || data.mode !== mode) throw new Error("Unexpected preview response.");
+      if (data.status === "answered" && data.live === true && liveEnabled && typeof data.response === "string" && data.response.trim()) {
+        setHistory([...outgoing, { role: "assistant", content: data.response.trim().slice(0,1300) }]);
+      } else if (data.status === "validated" && data.live === false) {
+        setNotice("Request validated for " + label(context) + ". Live AI replies are not enabled in this workspace yet.");
+      } else throw new Error("Unexpected preview response.");
       setDraft("");
-    } catch { setError("Unable to validate the request. Please try again."); }
+    } catch { setError("Unable to complete the request. Your message has been retained; please try again."); }
     finally { setBusy(false); }
   }
   const options = context.kind === "exam" ? EXAM_TRACKS.map(value => ({value, label: EXAM_LABELS[value]}))
@@ -93,16 +104,22 @@ export default function UnifiedTutorWorkspace() {
               onClick={() => { const next = parseLearningMode(item.value); if (next) {setMode(next); setNotice("");} }}
               className={"rounded-full border px-3 py-2 text-xs font-semibold " + (mode === item.value ? "border-violet-700 bg-violet-700 text-white" : "border-slate-200 text-slate-700")}>{item.label}</button>)}
           </div>
+          {history.length > 0 && <div className="mt-5 space-y-3" aria-live="polite">
+            {history.map((message,index) => <div key={index} className={"rounded-xl p-4 text-sm leading-6 whitespace-pre-wrap break-words " + (message.role === "user" ? "bg-violet-700 text-white ml-6" : "bg-slate-100 mr-6")}>
+              <p className="mb-1 text-xs font-bold">{message.role === "user" ? "You" : "AYO"}</p>{message.content}
+            </div>)}
+            <button type="button" disabled={busy} onClick={() => {setHistory([]);setDraft("");setError("");setNotice("");}} className="text-sm font-semibold text-violet-700">Start a new conversation</button>
+          </div>}
           <form className="mt-5" onSubmit={event => {event.preventDefault(); void submit();}}>
             <label htmlFor="unified-message" className="sr-only">Your learning request</label>
             <textarea id="unified-message" value={draft} disabled={busy} onChange={event => {setDraft(event.target.value); setNotice(""); setError("");}} maxLength={700} required
               placeholder="Ask AYO to explain a topic..." className="min-h-28 w-full resize-y rounded-xl border border-slate-300 p-4 text-sm focus:border-violet-600 focus:outline-none focus:ring-1 focus:ring-violet-600"/>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <button type="button" disabled={busy} onClick={() => {setDraft(starter(context));setNotice("");setError("");}} className="text-sm font-semibold text-violet-700 hover:underline">Try a sample request</button>
-              <button type="submit" disabled={busy || !draft.trim()} className="rounded-xl bg-violet-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{busy ? "Checking…" : "Validate request"}</button>
+              <button type="submit" disabled={busy || !draft.trim()} className="rounded-xl bg-violet-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{busy ? "Working…" : liveEnabled ? "Ask AYO" : "Validate request"}</button>
             </div>
           </form>
-          <p className="mt-4 text-xs leading-5 text-slate-500">Validation-only preview. No AI replies, voice generation or saved learner history. Use fictional examples only; do not enter personal details.</p>
+          <p className="mt-4 text-xs leading-5 text-slate-500">{liveEnabled ? "Restricted AI preview. Replies may be inaccurate. Conversation is held in this tab only; no saved learner profile or voice generation." : "Validation-only preview. No AI replies, voice generation or saved learner history."} Use fictional examples only; do not enter personal details.</p>
           {notice && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-sm text-violet-900">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
