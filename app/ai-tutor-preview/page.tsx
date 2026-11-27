@@ -19,6 +19,13 @@ export default function AiTutorPreviewPage() {
       </a>
       {" "}— model responses will remain disabled until a usage budget is approved.
     </div>
+    {process.env.VERCEL_GIT_COMMIT_REF === "feature/unified-ai-tutor" && (
+      <div className="bg-white px-4 py-5 text-center">
+        <a href="/ai-tutor-preview/unified" className="inline-block rounded-xl bg-violet-700 px-5 py-3 text-sm font-semibold text-white">
+          Explore the unified AYO learning workspace
+        </a>
+      </div>
+    )}
     <TutorPilot/>
   </>;
 }
