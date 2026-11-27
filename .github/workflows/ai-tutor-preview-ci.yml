@@ -5,6 +5,7 @@ on:
     paths:
       - 'features/ai-tutor/**'
       - 'app/ai-tutor-preview/**'
+      - 'app/api/ai-tutor-preview/**'
       - '.github/workflows/ai-tutor-preview-ci.yml'
   workflow_dispatch:
 
