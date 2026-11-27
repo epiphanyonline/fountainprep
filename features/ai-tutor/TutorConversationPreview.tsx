@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { emptyLearningJournal, recordJournalActivity, selectReviewTopics } from "./learningJournal";
 import { TUTOR_TRACKS, type TutorTrackId } from "./pilotEngine";
 import type { TutorChatMessage, TutorLearningMode } from "./conversationBoundary";
 
@@ -14,6 +15,10 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
   const [error, setError] = useState("");
   const [topic, setTopic] = useState("");
   const [mode, setMode] = useState<TutorLearningMode>("teach");
+
+  const [journal, setJournal] = useState(emptyLearningJournal);
+  const [journalNow, setJournalNow] = useState("");
+  const due = journalNow ? selectReviewTopics(journal, journalNow) : [];
 
   function clear() {
     if (pending) return;
@@ -60,6 +65,16 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
       }
       const answer = payload.response.trim().slice(0, 1300);
       setHistory([...outgoing, { role: "assistant", content: answer }]);
+      const focus = topic.trim();
+      if (focus.length >= 2 && focus.length <= 80 && !/[\x00-\x1f]/.test(focus)) {
+        const occurredAt = new Date().toISOString();
+        setJournalNow(occurredAt);
+        setJournal(previous => recordJournalActivity(previous, {
+          track, topic: focus, occurredAt,
+          activity: mode === "simplify" ? "help_requested" :
+            mode === "practise" || mode === "challenge" ? "practice_requested" : "explored",
+        }));
+      }
     } catch {
       setDraft(text);
       setError("Network unavailable. Your last message was not submitted.");
@@ -159,6 +174,24 @@ export default function TutorConversationPreview({ liveEnabled = false }: { live
             </div>
             <p className="text-xs text-slate-500">{draft.length}/700 characters · No automatic saving · Responses are AI-generated when enabled</p>
           </form>
+        </section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+          <h2 className="text-xl font-bold">My learning journal</h2>
+          <p className="mt-2 text-sm text-slate-600">Preview only. Tracks successful replies for explicitly selected topics in this tab, not grades or mastery. Refreshing clears this journal.</p>
+          <p className="mt-3 text-sm font-semibold">{journal.topics.length} topics explored</p>
+          {journal.topics.length === 0 && <p className="mt-2 text-sm">Enter a topic and ask the tutor to begin tracking your activity.</p>}
+          {journal.topics.map(entry => <div key={entry.track + ":" + entry.topic} className="mt-3 rounded-xl border border-slate-200 p-4">
+            <p className="font-semibold">{entry.topic}</p>
+            <p className="text-xs text-slate-500">{TUTOR_TRACKS[entry.track].exam} · {TUTOR_TRACKS[entry.track].subject}</p>
+            <p className="mt-2 text-sm">{entry.visits} replies · {entry.practiceRequests} practice-mode replies · {entry.helpRequests} simpler-explanation replies</p>
+            <p className="mt-1 text-xs text-slate-600">Suggested review: {new Date(entry.reviewSuggestedAt).toLocaleString()}</p>
+            <button type="button" disabled={pending} className="mt-3 font-semibold text-violet-700" onClick={() => {
+              setTrack(entry.track); setTopic(entry.topic); setMode("practise");
+              setHistory([]); setError(""); setDraft("Please help me review this topic with a practice question.");
+            }}>Review this topic</button>
+          </div>)}
+          <p className="mt-4 text-sm">{due.length} suggested reviews due at last activity</p>
+          <button type="button" disabled={pending} className="mt-3 text-sm underline" onClick={() => setJournal(emptyLearningJournal())}>Clear learning journal</button>
         </section>
       </div>
     </main>
