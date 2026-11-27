@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import UnifiedTutorWorkspace from "@/features/ai-tutor/UnifiedTutorWorkspace";
-import { isUnifiedPreview } from "@/features/ai-tutor/unifiedPreviewBoundary";
+import { isUnifiedPreview, unifiedLiveAllowed } from "@/features/ai-tutor/unifiedPreviewBoundary";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -10,5 +10,11 @@ export const metadata: Metadata = {
 };
 export default function UnifiedTutorPreviewPage() {
   if (!isUnifiedPreview(process.env.VERCEL_ENV, process.env.VERCEL_GIT_COMMIT_REF)) notFound();
-  return <UnifiedTutorWorkspace />;
+  return <UnifiedTutorWorkspace liveEnabled={unifiedLiveAllowed({
+    environment: process.env.VERCEL_ENV,
+    branch: process.env.VERCEL_GIT_COMMIT_REF,
+    enabled: process.env.FOUNTAIN_UNIFIED_AI_ENABLED === "true",
+    budgetApproved: process.env.FOUNTAIN_UNIFIED_BUDGET_APPROVED === "true",
+    accessVerified: process.env.FOUNTAIN_UNIFIED_ACCESS_VERIFIED === "true",
+  })} />;
 }
