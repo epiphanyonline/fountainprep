@@ -1,17 +1,23 @@
 import { contextKey } from "./learningContext";
-import { validateUnifiedChat } from "./unifiedConversation";
+import { buildUnifiedTutorPrompt, validateUnifiedChat, type UnifiedChatInput } from "./unifiedConversation";
+import { MAX_RESPONSE_CHARS, type TutorChatModel } from "./conversationBoundary";
 
 export function isUnifiedPreview(environment: string | undefined, branch: string | undefined): boolean {
   return environment === "preview" && branch === "feature/unified-ai-tutor";
+}
+export function unifiedLiveAllowed(settings: { environment?: string; branch?: string; enabled?: boolean; budgetApproved?: boolean; accessVerified?: boolean }): boolean {
+  return isUnifiedPreview(settings.environment, settings.branch) &&
+    settings.enabled === true && settings.budgetApproved === true && settings.accessVerified === true;
 }
 const MAX_BYTES = 12000;
 function reply(status: number, body: object): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-/** Validation-only transport. Intentionally has no provider, storage or billing dependency. */
+/** Preview transport: validation by default, generation only after all independent gates. */
 export async function handleUnifiedPreviewRequest(
-  request: Request, settings: { environment?: string; branch?: string },
+  request: Request, settings: { environment?: string; branch?: string; enabled?: boolean; budgetApproved?: boolean; accessVerified?: boolean },
+  provider?: TutorChatModel,
 ): Promise<Response> {
   if (!isUnifiedPreview(settings.environment, settings.branch)) return reply(404, { error: "not_found" });
   if (request.method !== "POST") return reply(405, { error: "method_not_allowed" });
@@ -26,6 +32,7 @@ export async function handleUnifiedPreviewRequest(
   }
   const length = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isSafeInteger(length) || length < 0 || length > MAX_BYTES) return reply(413, { error: "payload_too_large" });
+  let input: UnifiedChatInput | null;
   try {
     const reader = request.body?.getReader();
     if (!reader) return reply(400, { error: "invalid_json" });
@@ -44,9 +51,15 @@ export async function handleUnifiedPreviewRequest(
       }
       raw += decoder.decode();
     } finally { reader.releaseLock(); }
-    const input = validateUnifiedChat(JSON.parse(raw) as unknown);
-    if (!input) return reply(400, { error: "invalid_chat" });
-    // Do not echo learner messages or internal prompts, or simulate a model reply.
-    return reply(200, { status: "validated", context: contextKey(input.context), mode: input.mode, live: false });
+    input = validateUnifiedChat(JSON.parse(raw) as unknown);
   } catch { return reply(400, { error: "invalid_json" }); }
+  if (!input) return reply(400, { error: "invalid_chat" });
+  const metadata = { context: contextKey(input.context), mode: input.mode };
+  if (!unifiedLiveAllowed(settings)) return reply(200, { status: "validated", ...metadata, live: false });
+  if (!provider) return reply(503, { error: "model_unavailable" });
+  try {
+    const result = await provider(buildUnifiedTutorPrompt(input), input.messages);
+    if (typeof result !== "string" || !result.trim()) return reply(502, { error: "model_unavailable" });
+    return reply(200, { status: "answered", ...metadata, live: true, response: result.trim().slice(0, MAX_RESPONSE_CHARS) });
+  } catch { return reply(502, { error: "model_unavailable" }); }
 }
