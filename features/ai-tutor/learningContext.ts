@@ -1,7 +1,7 @@
 /** Shared learning contexts for the unified preview. No provider or persistence. */
 export const EXAM_TRACKS = ["jamb-maths", "jamb-english", "ielts-reading"] as const;
 export const LANGUAGES = ["yoruba", "igbo", "hausa", "mandarin", "spanish", "french"] as const;
-export const SUBJECTS = ["mathematics", "english", "science", "other"] as const;
+export const SUBJECTS = ["mathematics", "english", "science", "financial-literacy", "other"] as const;
 export const LEARNING_MODES = ["teach", "practise", "simplify", "challenge"] as const;
 type ExamTrack = typeof EXAM_TRACKS[number];
 type Language = typeof LANGUAGES[number];
@@ -49,5 +49,5 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
   yoruba: "Yoruba", igbo: "Igbo", hausa: "Hausa", mandarin: "Mandarin", spanish: "Spanish", french: "French",
 };
 export const SUBJECT_LABELS: Record<Subject, string> = {
-  mathematics: "Mathematics", english: "English", science: "Science", other: "Other subject",
+  mathematics: "Mathematics", english: "English", science: "Science", "financial-literacy": "Financial literacy", other: "Other subject",
 };
