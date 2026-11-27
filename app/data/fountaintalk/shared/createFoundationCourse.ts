@@ -45,19 +45,21 @@ function createLesson(
   language: SupportedLanguage,
   phrase: FoundationPhrase,
   lessonNumber: number,
+  unitNumber = 1,
+  theme = "Greetings and introductions",
 ): CurriculumLesson {
   const vocabulary = vocabularyFor(phrase);
 
   return {
-    id: `${language}-foundation-unit-1-lesson-${lessonNumber}`,
+    id: `${language}-foundation-unit-${unitNumber}-lesson-${lessonNumber}`,
     language,
     level: "foundation",
-    unitNumber: 1,
+    unitNumber,
     lessonNumber,
     title: phrase.title,
     description: phrase.objective,
     objective: phrase.objective,
-    theme: "Greetings and introductions",
+    theme,
     tags: ["foundation", "speaking", "listening", "conversation"],
     suitableGoals: ["conversation", "family", "culture", "heritage", "travel", "education"],
     scenarioContext: "community",
@@ -178,4 +180,16 @@ export function createFoundationCourse({
     estimatedHours: 8,
     completionPoints: lessons.reduce((sum, lesson) => sum + lesson.completionPoints, 0),
   };
+}
+
+/** Append units without changing the IDs or order of existing learner content. */
+export function appendFoundationUnits(course: CurriculumCourse, additions: { title: string; description: string; phrases: FoundationPhrase[] }[]): CurriculumCourse {
+  const units = [...course.units];
+  for (const addition of additions) {
+    const unitNumber = Math.max(0, ...units.map(u => u.unitNumber)) + 1;
+    const lessons = addition.phrases.map((phrase, index) => createLesson(course.language, phrase, index + 1, unitNumber, addition.title));
+    units.push({ id: `${course.language}-foundation-unit-${unitNumber}`, language: course.language, level: "foundation", unitNumber, title: addition.title, description: addition.description, theme: addition.title, lessons });
+  }
+  const lessons = units.flatMap(unit => unit.lessons);
+  return { ...course, units, estimatedHours: lessons.reduce((sum, lesson) => sum + (lesson.estimatedMinutes ?? 10), 0) / 60, completionPoints: lessons.reduce((sum, lesson) => sum + lesson.completionPoints, 0) };
 }

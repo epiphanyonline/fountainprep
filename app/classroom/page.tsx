@@ -13,6 +13,8 @@ import LessonHeader from "./components/LessonHeader";
 import LessonSlide from "./components/LessonSlide";
 import ProgressCard from "./components/ProgressCard";
 import VoiceControls from "./components/VoiceControls";
+import ReportPronunciation from "./components/ReportPronunciation";
+import { curriculumPhrase } from "@/app/fountaintalk/speech/curriculumPhrases";
 import { useClassroomEngine } from "./hooks/useClassroomEngine";
 
 type StudentProfileRow = {
@@ -429,6 +431,9 @@ function ConnectedClassroom({
               />
 
               <div className="rightRail">
+                {process.env.NEXT_PUBLIC_FOUNTAINTALK_MULTILINGUAL_SPEECH === "true" && curriculumPhrase(learner.language, classroomState.currentSlide.expectedAnswer ?? "", classroomState.lesson.id) && (
+                  <ReportPronunciation key={`${learner.language}:${classroomState.lesson.id}:${classroomState.currentSlide.expectedAnswer}`} language={learner.language} phrase={classroomState.currentSlide.expectedAnswer ?? ""} lessonId={classroomState.lesson.id} />
+                )}
                 <ConversationPanel
                   messages={classroomState.conversation}
                   status={classroomState.status}
