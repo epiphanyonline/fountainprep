@@ -8,7 +8,7 @@ export type PilotStore={
   revoke(userId:string,enrollmentId:string):Promise<void>;
 };
 const reply=(status:number,body:object)=>Response.json(body,{status,headers:{"Cache-Control":"no-store","Vary":"Authorization"}});
-async function readSmallJson(request:Request):Promise<unknown>{
+export async function readSmallJson(request:Request):Promise<unknown>{
   if(request.headers.get("content-type")?.split(";")[0].trim().toLowerCase()!=="application/json")throw Error("type");
   const reader=request.body?.getReader();
   if(!reader)throw Error("body");
