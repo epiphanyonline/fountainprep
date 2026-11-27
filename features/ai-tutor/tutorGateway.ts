@@ -19,7 +19,11 @@ let cached: { model: string; expiresAt: number } | null = null;
 async function oidcToken(): Promise<string> {
   // Restrict the experiment to the reviewed Fountain Prep branch.
   if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.VERCEL_GIT_COMMIT_REF !== "feature/personal-ai-exam-tutor") {
+      (process.env.VERCEL_GIT_COMMIT_REF !== "feature/personal-ai-exam-tutor" &&
+       !(process.env.VERCEL_GIT_COMMIT_REF === "feature/unified-ai-tutor" &&
+         process.env.FOUNTAIN_UNIFIED_AI_ENABLED === "true" &&
+         process.env.FOUNTAIN_UNIFIED_BUDGET_APPROVED === "true" &&
+         process.env.FOUNTAIN_UNIFIED_ACCESS_VERIFIED === "true"))) {
     throw new Error("Preview branch not permitted");
   }
   // Vercel makes the rotating OIDC token available on incoming function
