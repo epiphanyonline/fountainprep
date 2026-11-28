@@ -1,3 +1,4 @@
+import {visionAllowed} from "@/features/ai-tutor/visionAttachment";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import UnifiedTutorWorkspace from "@/features/ai-tutor/UnifiedTutorWorkspace";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 };
 export default function UnifiedTutorPreviewPage() {
   if (!isUnifiedPreview(process.env.VERCEL_ENV, process.env.VERCEL_GIT_COMMIT_REF)) notFound();
-  return <UnifiedTutorWorkspace voiceEnabled={voicePreviewAllowed({environment:process.env.VERCEL_ENV,branch:process.env.VERCEL_GIT_COMMIT_REF,enabled:process.env.AYO_VOICE_ENABLED==="true",accessVerified:process.env.AYO_VOICE_ACCESS_VERIFIED==="true",budgetApproved:process.env.AYO_VOICE_BUDGET_APPROVED==="true"})} liveEnabled={unifiedLiveAllowed({
+  return <UnifiedTutorWorkspace visionEnabled={visionAllowed({environment:process.env.VERCEL_ENV,branch:process.env.VERCEL_GIT_COMMIT_REF,enabled:process.env.AYO_VISION_ENABLED==="true",accessVerified:process.env.AYO_VISION_ACCESS_VERIFIED==="true",budgetApproved:process.env.AYO_VISION_BUDGET_APPROVED==="true"})} voiceEnabled={voicePreviewAllowed({environment:process.env.VERCEL_ENV,branch:process.env.VERCEL_GIT_COMMIT_REF,enabled:process.env.AYO_VOICE_ENABLED==="true",accessVerified:process.env.AYO_VOICE_ACCESS_VERIFIED==="true",budgetApproved:process.env.AYO_VOICE_BUDGET_APPROVED==="true"})} liveEnabled={unifiedLiveAllowed({
     environment: process.env.VERCEL_ENV,
     branch: process.env.VERCEL_GIT_COMMIT_REF,
     enabled: process.env.FOUNTAIN_UNIFIED_AI_ENABLED === "true",
