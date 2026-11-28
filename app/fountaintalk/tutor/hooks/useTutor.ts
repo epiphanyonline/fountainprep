@@ -41,6 +41,10 @@ import {
 } from "@/app/fountaintalk/tutor/services/lessonEngine";
 
 import { supabase } from "@/app/lib/supabase";
+import { splitTargetPhrase } from "@/app/fountaintalk/speech/voiceProfiles";
+import { findPronunciationOverride } from "@/app/fountaintalk/speech/pronunciationOverrides";
+
+const MULTILINGUAL_PILOT = process.env.NEXT_PUBLIC_FOUNTAINTALK_MULTILINGUAL_SPEECH === "true";
 
 type UseTutorOptions = {
   learner: LearnerProfile;
@@ -541,7 +545,10 @@ setProgress({
   const speakText = useCallback(
   async (
     text: string,
-    statusAfterSpeaking: TutorStatus = "ready"
+    statusAfterSpeaking: TutorStatus = "ready",
+    targetLanguage = false,
+    slow = false,
+    localAudio?: string,
   ) => {
     if (typeof window === "undefined") {
       return;
@@ -568,19 +575,27 @@ setProgress({
       stopAllAudio();
       setTutorStatus("thinking");
 
-      const response = await fetch(
-        "/api/academy/speech",
+      const useSpecialist = MULTILINGUAL_PILOT && targetLanguage;
+      const session = useSpecialist ? (await supabase.auth.getSession()).data.session : null;
+      if (useSpecialist && !session) throw new Error("Sign in to hear the language pronunciation.");
+      let response = await fetch(
+        useSpecialist ? "/api/fountaintalk/speech" : "/api/academy/speech",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
           },
           body: JSON.stringify({
             text: cleanText,
+            ...(useSpecialist ? { language: learner.language, ...(localAudio ? { mode: "approved" } : {}) } : {}),
           }),
         }
       );
 
+      if (useSpecialist && localAudio && response.status === 404) {
+        response = await fetch(localAudio);
+      }
       if (!response.ok) {
         const responseText = await response.text();
 
@@ -607,6 +622,7 @@ setProgress({
 
       await new Promise<void>((resolve) => {
         const audio = new Audio(audioUrl);
+        if (useSpecialist && slow) audio.playbackRate = 0.75;
 
         currentAudioRef.current = audio;
 
@@ -666,7 +682,7 @@ setProgress({
       );
     }
   },
-  [stopAllAudio]
+  [learner.language, stopAllAudio]
 );
 
   const playNativeAudio = useCallback(
@@ -679,6 +695,10 @@ setProgress({
         return;
       }
 
+      if (MULTILINGUAL_PILOT && fallbackText.trim()) {
+        await speakText(fallbackText, statusAfterSpeaking, true, false, audioUrl);
+        return;
+      }
       try {
         setErrorMessage("");
         stopAllAudio();
@@ -774,6 +794,13 @@ setProgress({
         beforeText = clean;
       }
 
+      if (MULTILINGUAL_PILOT) {
+        if (beforeText) await speakText(beforeText, "speaking");
+        await speakText(phrase, "speaking", true, false, audioUrl);
+        if (afterText) await speakText(afterText, "ready");
+        return;
+      }
+
       const speakSegment = (text: string) =>
         new Promise<void>((resolve) => {
           if (!("speechSynthesis" in window) || !text.trim()) {
@@ -838,7 +865,7 @@ setProgress({
       setTutorStatus("ready");
       setAudioWorking(true);
     },
-    [learner.ageGroup, stopAllAudio]
+    [learner.ageGroup, speakText, stopAllAudio]
   );
 
   const playStepAudio = useCallback(
@@ -846,11 +873,10 @@ setProgress({
     text: string,
     statusAfterSpeaking: TutorStatus = "ready"
   ) => {
-    const nativeAudio =
-      activeLesson.step.nativeAudioUrl;
-
-    const expectedPhrase =
-      activeLesson.step.expectedPhrase;
+    const expectedPhrase = activeLesson.step.expectedPhrase;
+    const override = MULTILINGUAL_PILOT && expectedPhrase
+      ? findPronunciationOverride(learner.language, expectedPhrase) : undefined;
+    const nativeAudio = override?.normalAudio ?? activeLesson.step.nativeAudioUrl;
 
     const cleanText = text
       .replace(/\*\*/g, "")
@@ -863,6 +889,15 @@ setProgress({
      * If there is no native Yoruba recording,
      * Ayo simply teaches the whole step naturally.
      */
+    if (MULTILINGUAL_PILOT && expectedPhrase && !nativeAudio) {
+      const split = splitTargetPhrase(cleanText, expectedPhrase);
+      if (split) {
+        if (split.before) await speakText(split.before, "speaking");
+        await speakText(split.phrase, split.after ? "speaking" : statusAfterSpeaking, true);
+        if (split.after) await speakText(split.after, statusAfterSpeaking);
+        return;
+      }
+    }
     if (!nativeAudio) {
       await speakText(
         cleanText,
@@ -938,6 +973,7 @@ setProgress({
   [
     activeLesson.step.nativeAudioUrl,
     activeLesson.step.expectedPhrase,
+    learner.language,
     playNativeAudio,
     speakText,
   ]
@@ -1511,14 +1547,22 @@ const phraseToPlay =
 
 const isPronunciationCorrection =
   conversationMode === "curriculum" &&
-  Boolean(nativeAudioUrl) &&
+  (Boolean(nativeAudioUrl) || MULTILINGUAL_PILOT) &&
   Boolean(phraseToPlay) &&
   (
     effectiveAction === "repeat_step" ||
     Boolean(data.correctedPhrase)
   );
 
-if (isPronunciationCorrection) {
+if (isPronunciationCorrection && MULTILINGUAL_PILOT) {
+  const split = splitTargetPhrase(data.speechText, phraseToPlay);
+  if (split?.before) await speakText(split.before, "speaking");
+  else if (!split) await speakText("Listen carefully.", "speaking");
+  const reviewed = findPronunciationOverride(learner.language, phraseToPlay);
+  const fallback = reviewed?.normalAudio ?? (phraseToPlay === activeLesson.step.expectedPhrase ? nativeAudioUrl : undefined);
+  await speakText(phraseToPlay, "speaking", true, false, fallback);
+  await speakText(split?.after || (allowContinue ? "You can continue and practise again later." : "Now try it once more."), "ready");
+} else if (isPronunciationCorrection) {
   await speakCorrectionSequence({
     speechText: data.speechText,
     phrase: phraseToPlay,
@@ -2218,6 +2262,17 @@ if (isPronunciationCorrection) {
     setPronunciationAttempts(0);
     setCanProceedAfterAttempts(false);
 
+    if (MULTILINGUAL_PILOT && nextActive.step.expectedPhrase) {
+      const phrase = nextActive.step.expectedPhrase;
+      const split = splitTargetPhrase(nextMessage, phrase);
+      const override = findPronunciationOverride(learner.language, phrase);
+      const fallback = override?.normalAudio ?? nextActive.step.nativeAudioUrl;
+      if (split?.before) await speakText(split.before, "speaking");
+      else if (!split) await speakText(nextMessage, "speaking");
+      await speakText(phrase, split?.after ? "speaking" : "ready", true, false, fallback);
+      if (split?.after) await speakText(split.after, "ready");
+      return;
+    }
     if (nextActive.step.nativeAudioUrl) {
       void playNativeAudio(
         nextActive.step.nativeAudioUrl,
@@ -2266,20 +2321,24 @@ if (isPronunciationCorrection) {
         correctedPhrase ??
         tutorMessage;
 
-      if (nativeAudioUrl) {
+      const override = MULTILINGUAL_PILOT && activeLesson.step.expectedPhrase
+        ? findPronunciationOverride(learner.language, activeLesson.step.expectedPhrase)
+        : undefined;
+      if (override || nativeAudioUrl) {
         void playNativeAudio(
-          nativeAudioUrl,
+          override?.normalAudio ?? nativeAudioUrl!,
           expectedPhrase,
           "ready"
         );
         return;
       }
 
-      speakText(expectedPhrase, "ready");
+      void speakText(expectedPhrase, "ready", Boolean(activeLesson.step.expectedPhrase));
     }, [
       activeLesson.step.expectedPhrase,
       activeLesson.step.nativeAudioUrl,
       correctedPhrase,
+      learner.language,
       playNativeAudio,
       speakText,
       tutorMessage,
@@ -2298,16 +2357,21 @@ if (isPronunciationCorrection) {
           .expectedPhrase ??
         tutorMessage;
 
-      if (!selectedAudioUrl) {
-        speakText(
-          fallbackText,
-          "ready"
-        );
+      const override = MULTILINGUAL_PILOT && activeLesson.step.expectedPhrase
+        ? findPronunciationOverride(learner.language, activeLesson.step.expectedPhrase)
+        : undefined;
+      if (MULTILINGUAL_PILOT && activeLesson.step.expectedPhrase) {
+        void speakText(fallbackText, "ready", true, true, override?.normalAudio ?? activeLesson.step.nativeAudioUrl);
+        return;
+      }
+      const audio = override?.slowAudio ?? override?.normalAudio ?? selectedAudioUrl;
+      if (!audio) {
+        void speakText(fallbackText, "ready", Boolean(activeLesson.step.expectedPhrase), true);
         return;
       }
 
       void playNativeAudio(
-        selectedAudioUrl,
+        audio,
         fallbackText,
         "ready"
       );
@@ -2318,6 +2382,7 @@ if (isPronunciationCorrection) {
         .nativeAudioUrl,
       activeLesson.step
         .slowAudioUrl,
+      learner.language,
       playNativeAudio,
       speakText,
       tutorMessage,
