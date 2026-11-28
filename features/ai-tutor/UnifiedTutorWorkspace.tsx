@@ -39,6 +39,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
   const [context, setContext] = useState<LearningContext>(categories[0].initial);
   const [mode, setMode] = useState<LearningMode>("teach");
   const [draft, setDraft] = useState("");
+  const [voiceTurn, setVoiceTurn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -117,10 +118,11 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
               onClick={() => { const next = parseLearningMode(item.value); if (next) {setMode(next); setNotice("");} }}
               className={"rounded-full border px-3 py-2 text-xs font-semibold " + (mode === item.value ? "border-violet-700 bg-violet-700 text-white" : "border-slate-200 text-slate-700")}>{item.label}</button>)}
           </div>
+          {voiceEnabled && liveEnabled && <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={voiceTurn} onChange={e=>setVoiceTurn(e.target.checked)}/> Voice conversation mode (push to talk)</label>}
           {history.length > 0 && <div className="mt-5 space-y-3" aria-live="polite">
             {history.map((message,index) => <div key={index} className={"rounded-xl p-4 text-sm leading-6 whitespace-pre-wrap break-words " + (message.role === "user" ? "bg-violet-700 text-white ml-6" : "bg-slate-100 mr-6")}>
               <p className="mb-1 text-xs font-bold">{message.role === "user" ? "You" : "AYO"}</p>{message.content}
-              {voiceEnabled && message.role==="assistant" && <SpokenReply key={message.content} text={message.content} context={context}/>}
+              {voiceEnabled && message.role==="assistant" && (!voiceTurn || index===history.length-1) && <SpokenReply key={message.content} text={message.content} context={context}/>}
             </div>)}
             <button type="button" disabled={busy} onClick={() => {setHistory([]);setDraft("");setError("");setNotice("");}} className="text-sm font-semibold text-violet-700">Start a new conversation</button>
           </div>}
@@ -137,7 +139,8 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
           {notice && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-sm text-violet-900">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
-        <VoiceRecordingPreview context={context} voiceEnabled={voiceEnabled} key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");}} />
+        {voiceTurn && voiceEnabled && liveEnabled && <p className="mt-5 text-sm text-slate-600">Listen to the latest reply, record your next question, review the transcript and select Ask AYO. The microphone never starts automatically.</p>}
+        <VoiceRecordingPreview context={context} voiceEnabled={voiceEnabled} key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");if(voiceTurn)document.getElementById("unified-message")?.focus();}} />
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-semibold">Your learning activity</h2>
           <p className="mt-2 text-sm text-slate-600">{label(context)} · {activity?.sessions ?? 0} completed AI exchanges · {activity?.help ?? 0} requests for simpler explanations</p>
