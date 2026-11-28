@@ -1,0 +1,21 @@
+import type {VisionProvider} from "./visionBoundary";
+import {visionAllowed} from "./visionAttachment";
+const base="https://ai-gateway.vercel.sh/v1";
+export const queryVisionGateway:VisionProvider=async input=>{
+ if(!visionAllowed({environment:process.env.VERCEL_ENV,branch:process.env.VERCEL_GIT_COMMIT_REF,enabled:process.env.AYO_VISION_ENABLED==="true",accessVerified:process.env.AYO_VISION_ACCESS_VERIFIED==="true",budgetApproved:process.env.AYO_VISION_BUDGET_APPROVED==="true"}))throw Error("Vision disabled");
+ const token=process.env.VERCEL_OIDC_TOKEN||(await (await import("next/headers")).headers()).get("x-vercel-oidc-token");
+ if(!token)throw Error("Missing project credentials");
+ const model="openai/gpt-4.1-mini";
+ const headers={Authorization:"Bearer "+token,"Content-Type":"application/json"};
+ const availability=await fetch(base+"/models?include_availability",{headers,cache:"no-store",signal:AbortSignal.timeout(8000)});
+ if(!availability.ok)throw Error("Model availability unknown");
+ const catalog=await availability.json();
+ if(!Array.isArray(catalog.data)||!catalog.data.some((m:{id?:string;model_eligibility?:{status?:string}})=>m.id===model&&m.model_eligibility?.status==="eligible"))throw Error("Model not eligible");
+ const data=Buffer.from(input.bytes).toString("base64");
+ const part=input.kind==="pdf"?{type:"file",file:{filename:"learning-material.pdf",file_data:"data:application/pdf;base64,"+data}}:{type:"image_url",image_url:{url:"data:"+input.mime+";base64,"+data}};
+ const r=await fetch(base+"/chat/completions",{method:"POST",headers,cache:"no-store",signal:AbortSignal.timeout(30000),body:JSON.stringify({model,messages:[{role:"system",content:input.prompt},{role:"user",content:[{type:"text",text:"Analyse this educational material according to the requested learning task."},part]}],max_completion_tokens:1000,stream:false})});
+ if(!r.ok)throw Error("Analysis unavailable");
+ const result=await r.json();const answer=result.choices?.[0]?.message?.content;
+ if(typeof answer!=="string"||!answer.trim())throw Error("Empty analysis");
+ return answer;
+};
