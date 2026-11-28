@@ -141,7 +141,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
         {voiceTurn && voiceEnabled && liveEnabled && <p className="mt-5 text-sm text-slate-600">Listen to the latest reply, record your next question, review the transcript and select Ask AYO. The microphone never starts automatically.</p>}
-        <AttachmentPreview key={contextKey(context)} context={context} enabled={visionEnabled} />
+        <AttachmentPreview key={contextKey(context)} context={context} enabled={visionEnabled} voiceEnabled={voiceEnabled} />
         <VoiceRecordingPreview context={context} voiceEnabled={voiceEnabled} key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");if(voiceTurn)document.getElementById("unified-message")?.focus();}} />
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-semibold">Your learning activity</h2>
