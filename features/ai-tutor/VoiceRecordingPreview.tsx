@@ -3,10 +3,11 @@ import {useEffect,useRef,useState} from "react";
 import {MAX_VOICE_SECONDS,MAX_VOICE_BYTES,validateRecording} from "./unifiedVoice";
 
 /** Local microphone rehearsal only: no upload, transcription or persistent storage. */
-export default function VoiceRecordingPreview(){
+export default function VoiceRecordingPreview({onDraft,disabled=false}:{onDraft?:(text:string)=>void;disabled?:boolean}){
  const [status,setStatus]=useState("Ready");
  const [phase,setPhase]=useState<"idle"|"requesting"|"recording">("idle");
  const [audio,setAudio]=useState("");
+ const [transcript,setTranscript]=useState("");
  const active=useRef<MediaRecorder|null>(null);
  const stream=useRef<MediaStream|null>(null);
  const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -27,7 +28,7 @@ export default function VoiceRecordingPreview(){
  useEffect(()=>()=>clear(),[]);
  async function start(){
   if(phase!=="idle")return;
-  clear();setAudio("");setPhase("requesting");setStatus("Requesting microphone permission…");
+  clear();setAudio("");setTranscript("");setPhase("requesting");setStatus("Requesting microphone permission…");
   const id=generation.current;
   try{
    if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined")throw Error("unsupported");
@@ -59,11 +60,11 @@ export default function VoiceRecordingPreview(){
   <h2 className="font-semibold">Microphone rehearsal</h2>
   <p className="mt-2 text-sm text-slate-600">Local recording only. Use fictional examples. No transcription or AI upload.</p>
   <div className="mt-3 flex flex-wrap gap-3">
-   <button type="button" disabled={phase!=="idle"} onClick={()=>void start()} className="rounded-lg bg-violet-700 px-4 py-2 text-white disabled:opacity-50">Record</button>
+   <button type="button" disabled={disabled||phase!=="idle"} onClick={()=>void start()} className="rounded-lg bg-violet-700 px-4 py-2 text-white disabled:opacity-50">Record</button>
    <button type="button" disabled={phase!=="recording"} onClick={()=>{if(active.current?.state==="recording")active.current.stop();}} className="rounded-lg border px-4 py-2 disabled:opacity-50">Stop</button>
-   <button type="button" onClick={()=>{clear();setAudio("");setPhase("idle");setStatus("Recording discarded.");}} className="rounded-lg border px-4 py-2">Discard</button>
+   <button type="button" onClick={()=>{clear();setAudio("");setTranscript("");setPhase("idle");setStatus("Recording discarded.");}} className="rounded-lg border px-4 py-2">Discard</button>
   </div>
   <p role="status" className="mt-3 text-sm">{status}</p>
-  {audio&&<audio className="mt-3 max-w-full" controls src={audio}/>}
+  {audio&&<><audio className="mt-3 max-w-full" controls src={audio}/><label className="mt-3 block text-sm" htmlFor="voice-draft">Type or correct what you said (manual rehearsal)</label><textarea id="voice-draft" className="w-full rounded-lg border p-2" maxLength={700} value={transcript} onChange={e=>setTranscript(e.target.value)}/><button type="button" disabled={disabled||!transcript.trim()||!onDraft} onClick={()=>onDraft?.(transcript.trim())} className="mt-2 rounded-lg border px-4 py-2 disabled:opacity-50">Use text in learning request</button></>}
  </section>;
 }
