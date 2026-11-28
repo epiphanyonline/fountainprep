@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import {supabase} from "@/app/lib/supabase";
 import AttachmentPreview from "./AttachmentPreview";
 import SpokenReply from "./SpokenReply";
 import VoiceRecordingPreview from "./VoiceRecordingPreview";
@@ -56,9 +57,11 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
     const payload = () => JSON.stringify({ context, mode, messages: outgoing });
     while (outgoing.length > 1 && (outgoing.reduce((n,m) => n + m.content.length, 0) > 7500 || new TextEncoder().encode(payload()).length > 12000)) outgoing = outgoing.slice(2);
     try {
+      const token=liveEnabled?(await supabase.auth.getSession()).data.session?.access_token:undefined;
+      if(liveEnabled&&!token)throw Error("Pilot sign-in required");
       const response = await fetch("/api/ai-tutor-preview/unified", {
         method: "POST", credentials: "same-origin", cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token?{Authorization:"Bearer "+token}:{}) },
         body: payload(),
       });
       if (!response.ok) throw new Error("Preview request could not be validated.");
