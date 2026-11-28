@@ -1,3 +1,4 @@
+import {queryVisionGateway} from "@/features/ai-tutor/visionGateway";
 import {handleVision} from "@/features/ai-tutor/visionBoundary";
 import {speechAccess} from "@/app/fountaintalk/speech/serverAccess";
 export const runtime="nodejs";
@@ -13,5 +14,5 @@ export async function POST(request:Request){
  if(!access)return false;
  const {data,error}=await access.db.rpc("fountaintalk_reserve_speech_pilot",{p_user_id:access.userId});
  return !error&&data===true;
- });
+ },queryVisionGateway);
 }
