@@ -32,7 +32,7 @@ function starter(context: LearningContext) {
   if (context.kind === "homework") return "Show me how to approach a " + label(context).toLowerCase() + " homework problem step by step.";
   return "Teach me a beginner-friendly concept in " + label(context).toLowerCase() + ".";
 }
-export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnabled = false }: { liveEnabled?: boolean; voiceEnabled?: boolean }) {
+export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnabled = false, visionEnabled = false }: { liveEnabled?: boolean; voiceEnabled?: boolean; visionEnabled?: boolean }) {
   const [memory, setMemory] = useState(emptyMemory);
   const [evidence, setEvidence] = useState<AssessmentEvidence[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -141,7 +141,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
         {voiceTurn && voiceEnabled && liveEnabled && <p className="mt-5 text-sm text-slate-600">Listen to the latest reply, record your next question, review the transcript and select Ask AYO. The microphone never starts automatically.</p>}
-        <AttachmentPreview key={contextKey(context)} />
+        <AttachmentPreview key={contextKey(context)} context={context} enabled={visionEnabled} />
         <VoiceRecordingPreview context={context} voiceEnabled={voiceEnabled} key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");if(voiceTurn)document.getElementById("unified-message")?.focus();}} />
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-semibold">Your learning activity</h2>
