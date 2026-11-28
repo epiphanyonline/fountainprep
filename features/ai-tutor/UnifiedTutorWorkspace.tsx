@@ -30,7 +30,7 @@ function starter(context: LearningContext) {
   if (context.kind === "homework") return "Show me how to approach a " + label(context).toLowerCase() + " homework problem step by step.";
   return "Teach me a beginner-friendly concept in " + label(context).toLowerCase() + ".";
 }
-export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEnabled?: boolean }) {
+export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnabled = false }: { liveEnabled?: boolean; voiceEnabled?: boolean }) {
   const [memory, setMemory] = useState(emptyMemory);
   const [evidence, setEvidence] = useState<AssessmentEvidence[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -135,7 +135,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false }: { liveEna
           {notice && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-sm text-violet-900">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
-        <VoiceRecordingPreview key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");}} />
+        <VoiceRecordingPreview context={context} voiceEnabled={voiceEnabled} key={contextKey(context)} disabled={busy} onDraft={text=>{setDraft(text);setNotice("");setError("");}} />
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="font-semibold">Your learning activity</h2>
           <p className="mt-2 text-sm text-slate-600">{label(context)} · {activity?.sessions ?? 0} completed AI exchanges · {activity?.help ?? 0} requests for simpler explanations</p>
