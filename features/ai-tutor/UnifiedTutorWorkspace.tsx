@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import SpokenReply from "./SpokenReply";
 import VoiceRecordingPreview from "./VoiceRecordingPreview";
 import { buildLearningPlan } from "./unifiedLearningPlan";
 import { emptyMemory, recordMemory } from "./unifiedLearnerMemory";
@@ -119,6 +120,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
           {history.length > 0 && <div className="mt-5 space-y-3" aria-live="polite">
             {history.map((message,index) => <div key={index} className={"rounded-xl p-4 text-sm leading-6 whitespace-pre-wrap break-words " + (message.role === "user" ? "bg-violet-700 text-white ml-6" : "bg-slate-100 mr-6")}>
               <p className="mb-1 text-xs font-bold">{message.role === "user" ? "You" : "AYO"}</p>{message.content}
+              {voiceEnabled && message.role==="assistant" && <SpokenReply key={message.content} text={message.content} context={context}/>}
             </div>)}
             <button type="button" disabled={busy} onClick={() => {setHistory([]);setDraft("");setError("");setNotice("");}} className="text-sm font-semibold text-violet-700">Start a new conversation</button>
           </div>}
@@ -131,7 +133,7 @@ export default function UnifiedTutorWorkspace({ liveEnabled = false, voiceEnable
               <button type="submit" disabled={busy || !draft.trim()} className="rounded-xl bg-violet-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{busy ? "Working…" : liveEnabled ? "Ask AYO" : "Validate request"}</button>
             </div>
           </form>
-          <p className="mt-4 text-xs leading-5 text-slate-500">{liveEnabled ? "Restricted AI preview. Replies may be inaccurate. Conversation is held in this tab only; no saved learner profile or voice generation." : "Validation-only preview. No AI replies, voice generation or saved learner history."} Use fictional examples only; do not enter personal details.</p>
+          <p className="mt-4 text-xs leading-5 text-slate-500">{liveEnabled ? "Restricted AI preview. Replies may be inaccurate. Conversation is held in this tab only; no saved learner profile. Voice is separately restricted." : "Validation-only preview. No AI replies, voice generation or saved learner history."} Use fictional examples only; do not enter personal details.</p>
           {notice && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-sm text-violet-900">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
         </section>
